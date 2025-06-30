@@ -96,6 +96,85 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
     }
   }
 
+  // Function to update chart datasets for a specific device
+  const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
+    if (!chartRef.current) return
+
+    const chart = chartRef.current
+    const deviceLabel = deviceId === 'simulation' ? 'Sim' : `Device ${deviceId.slice(-4)}`
+    
+    // Device color mapping for multi-device support
+    const deviceColors = [
+      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+      '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#eab308'
+    ]
+    
+    const getDeviceColor = (baseColor: string) => {
+      const deviceIndex = [...deviceDataBuffers.current.keys()].indexOf(deviceId)
+      
+      // If it's the first device or simulation, use base colors
+      if (deviceIndex === 0 || deviceId === 'simulation') {
+        return baseColor
+      }
+      
+      // For other devices, use device-specific colors while maintaining channel relationships
+      const modifier = deviceIndex % deviceColors.length
+      return deviceColors[modifier]
+    }
+    
+    // Helper function to find or create dataset
+    const findOrCreateDataset = (color: string, fullLabel: string) => {
+      const label = `${deviceLabel} - ${fullLabel}`
+      let dataset = chart.data.datasets.find(ds => ds.label === label)
+      
+      if (!dataset) {
+        const finalColor = getDeviceColor(color)
+        dataset = {
+          label,
+          data: [],
+          borderColor: finalColor,
+          backgroundColor: finalColor + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        }
+        chart.data.datasets.push(dataset)
+      }
+      
+      return dataset
+    }
+
+    // Update datasets based on current mode
+    if (chartMode === 'all' || chartMode === 'resistance') {
+      const r1Dataset = findOrCreateDataset(CHART_COLORS.R1, 'R1 (Resistance)')
+      const r2Dataset = findOrCreateDataset(CHART_COLORS.R2, 'R2 (Resistance)')
+      const r3Dataset = findOrCreateDataset(CHART_COLORS.R3, 'R3 (Resistance)')
+      
+      r1Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R1 })
+      r2Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R2 })
+      r3Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R3 })
+    }
+    
+    if (chartMode === 'all' || chartMode === 'acceleration') {
+      const xDataset = findOrCreateDataset(CHART_COLORS.X, 'X (Accel)')
+      const yDataset = findOrCreateDataset(CHART_COLORS.Y, 'Y (Accel)')
+      const zDataset = findOrCreateDataset(CHART_COLORS.Z, 'Z (Accel)')
+      
+      xDataset.data.push({ x: gaitData.timestamp, y: gaitData.X })
+      yDataset.data.push({ x: gaitData.timestamp, y: gaitData.Y })
+      zDataset.data.push({ x: gaitData.timestamp, y: gaitData.Z })
+    }
+
+    // Keep only last 5 seconds of data for performance
+    chart.data.datasets.forEach(dataset => {
+      if (dataset.data.length > 500) {
+        dataset.data.shift()
+      }
+    })
+
+    chart.update('none')
+  }, [chartMode])
+
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
     const deviceId = gaitData.device_id
@@ -115,33 +194,9 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
     }
     
     if (chartRef.current) {
-      const datasets = chartRef.current.data.datasets
-      
-      // Update datasets based on current mode
-      if (chartMode === 'all' || chartMode === 'resistance') {
-        const rIndex = chartMode === 'all' ? 0 : 0
-        if (datasets[rIndex]) datasets[rIndex].data.push({ x: gaitData.timestamp, y: gaitData.R1 })
-        if (datasets[rIndex + 1]) datasets[rIndex + 1].data.push({ x: gaitData.timestamp, y: gaitData.R2 })
-        if (datasets[rIndex + 2]) datasets[rIndex + 2].data.push({ x: gaitData.timestamp, y: gaitData.R3 })
-      }
-      
-      if (chartMode === 'all' || chartMode === 'acceleration') {
-        const aIndex = chartMode === 'all' ? 3 : 0
-        if (datasets[aIndex]) datasets[aIndex].data.push({ x: gaitData.timestamp, y: gaitData.X })
-        if (datasets[aIndex + 1]) datasets[aIndex + 1].data.push({ x: gaitData.timestamp, y: gaitData.Y })
-        if (datasets[aIndex + 2]) datasets[aIndex + 2].data.push({ x: gaitData.timestamp, y: gaitData.Z })
-      }
-      
-      // Keep only last 5 seconds of data for performance
-      datasets.forEach(dataset => {
-        if (dataset.data.length > 500) {
-          dataset.data.shift()
-        }
-      })
-      
-      chartRef.current.update('none')
+      updateChartForDevice(deviceId, gaitData)
     }
-  }, [chartMode])
+  }, [updateChartForDevice])
 
   // BLE characteristic event handler
   const handleBLECharacteristicChange = useCallback((event: Event) => {
