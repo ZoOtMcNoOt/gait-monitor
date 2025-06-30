@@ -353,29 +353,84 @@ async fn start_gait_notifications(
     }
   };
   
+  // Verify connection state before proceeding
+  if !peripheral.is_connected().await.unwrap_or(false) {
+    return Err(format!("Device {} is not connected", device_id));
+  }
+  
   // Define the UUIDs from your Arduino code
   let service_uuid = Uuid::parse_str("48877734-d012-40c4-81de-3ab006f71189")
     .map_err(|e| format!("Invalid service UUID: {}", e))?;
   let characteristic_uuid = Uuid::parse_str("8c4711b4-571b-41ba-a240-73e6884a85eb")
     .map_err(|e| format!("Invalid characteristic UUID: {}", e))?;
   
-  // Discover services
-  peripheral.discover_services().await
-    .map_err(|e| format!("Failed to discover services: {}", e))?;
+  println!("Discovering services for device: {}", device_id);
+  
+  // Discover services with retry logic
+  let mut discovery_attempts = 0;
+  const MAX_DISCOVERY_ATTEMPTS: u32 = 3;
+  
+  while discovery_attempts < MAX_DISCOVERY_ATTEMPTS {
+    discovery_attempts += 1;
+    
+    match peripheral.discover_services().await {
+      Ok(_) => {
+        println!("Service discovery completed (attempt {})", discovery_attempts);
+        break;
+      }
+      Err(e) => {
+        println!("Service discovery attempt {} failed: {}", discovery_attempts, e);
+        if discovery_attempts < MAX_DISCOVERY_ATTEMPTS {
+          async_std::task::sleep(std::time::Duration::from_millis(1000)).await;
+          continue;
+        } else {
+          return Err(format!("Failed to discover services after {} attempts: {}", MAX_DISCOVERY_ATTEMPTS, e));
+        }
+      }
+    }
+  }
+  
+  // Wait a bit more for services to be available
+  async_std::task::sleep(std::time::Duration::from_millis(500)).await;
+  
+  // Get all services and log them for debugging
+  let services = peripheral.services();
+  println!("Found {} services on device {}:", services.len(), device_id);
+  for (i, service) in services.iter().enumerate() {
+    println!("  Service {}: {} (characteristics: {})", i, service.uuid, service.characteristics.len());
+    for (j, char) in service.characteristics.iter().enumerate() {
+      println!("    Characteristic {}: {}", j, char.uuid);
+    }
+  }
   
   // Find the gait service
-  let services = peripheral.services();
   let gait_service = services.iter()
     .find(|s| s.uuid == service_uuid)
-    .ok_or_else(|| format!("Gait service not found on device: {}", device_id))?;
+    .ok_or_else(|| {
+      let service_uuids: Vec<String> = services.iter().map(|s| s.uuid.to_string()).collect();
+      format!("Gait service {} not found on device {}. Available services: [{}]", 
+        service_uuid, device_id, service_uuids.join(", "))
+    })?;
+  
+  println!("Found gait service on device: {}", device_id);
   
   // Find the gait characteristic
   let gait_characteristic = gait_service.characteristics.iter()
     .find(|c| c.uuid == characteristic_uuid)
-    .ok_or_else(|| format!("Gait characteristic not found on device: {}", device_id))?;
-    // Subscribe to notifications
+    .ok_or_else(|| {
+      let char_uuids: Vec<String> = gait_service.characteristics.iter().map(|c| c.uuid.to_string()).collect();
+      format!("Gait characteristic {} not found on device {}. Available characteristics: [{}]", 
+        characteristic_uuid, device_id, char_uuids.join(", "))
+    })?;
+    
+  println!("Found gait characteristic on device: {}", device_id);
+  
+  // Subscribe to notifications
+  println!("Subscribing to notifications for device: {}", device_id);
   peripheral.subscribe(gait_characteristic).await
     .map_err(|e| format!("Failed to subscribe to notifications: {}", e))?;
+  
+  println!("Successfully subscribed to notifications for device: {}", device_id);
   
   // Mark device as actively collecting
   {
@@ -436,9 +491,18 @@ async fn stop_gait_notifications(
     let connected = connected_devices.0.lock().await;
     match connected.get(&device_id) {
       Some(peripheral) => peripheral.clone(),
-      None => return Err(format!("Device not connected: {}", device_id)),
+      None => {
+        println!("Device {} not found in connected devices, marking as inactive only", device_id);
+        return Ok(format!("Device {} marked as inactive", device_id));
+      }
     }
   };
+  
+  // Check if still connected
+  if !peripheral.is_connected().await.unwrap_or(false) {
+    println!("Device {} is no longer connected, marking as inactive only", device_id);
+    return Ok(format!("Device {} was already disconnected", device_id));
+  }
   
   // Define UUIDs
   let service_uuid = Uuid::parse_str("48877734-d012-40c4-81de-3ab006f71189")
@@ -449,15 +513,21 @@ async fn stop_gait_notifications(
   // Find the characteristic
   let services = peripheral.services();
   let gait_service = services.iter()
-    .find(|s| s.uuid == service_uuid)
-    .ok_or_else(|| format!("Gait service not found"))?;
-  let gait_characteristic = gait_service.characteristics.iter()
-    .find(|c| c.uuid == characteristic_uuid)
-    .ok_or_else(|| format!("Gait characteristic not found"))?;
-  
-  // Unsubscribe from notifications
-  peripheral.unsubscribe(gait_characteristic).await
-    .map_err(|e| format!("Failed to unsubscribe: {}", e))?;
+    .find(|s| s.uuid == service_uuid);
+    
+  if let Some(gait_service) = gait_service {
+    if let Some(gait_characteristic) = gait_service.characteristics.iter().find(|c| c.uuid == characteristic_uuid) {
+      // Unsubscribe from notifications
+      match peripheral.unsubscribe(gait_characteristic).await {
+        Ok(_) => println!("Successfully unsubscribed from notifications for device: {}", device_id),
+        Err(e) => println!("Warning: Failed to unsubscribe from device {}: {}", device_id, e),
+      }
+    } else {
+      println!("Warning: Gait characteristic not found on device {} during unsubscribe", device_id);
+    }
+  } else {
+    println!("Warning: Gait service not found on device {} during unsubscribe", device_id);
+  }
   
   Ok(format!("Stopped notifications for device: {}", device_id))
 }
@@ -478,6 +548,56 @@ async fn is_device_collecting(
 ) -> Result<bool, String> {
   let active = active_notifications.0.lock().await;
   Ok(active.get(&device_id).copied().unwrap_or(false))
+}
+
+#[tauri::command]
+async fn debug_device_services(
+  device_id: String,
+  connected_devices: tauri::State<'_, ConnectedDevicesState>,
+) -> Result<Vec<String>, String> {
+  use btleplug::api::Peripheral;
+  
+  println!("Debug: Listing services for device: {}", device_id);
+  
+  let peripheral = {
+    let connected = connected_devices.0.lock().await;
+    match connected.get(&device_id) {
+      Some(peripheral) => peripheral.clone(),
+      None => return Err(format!("Device not connected: {}", device_id)),
+    }
+  };
+  
+  // Verify connection state
+  if !peripheral.is_connected().await.unwrap_or(false) {
+    return Err(format!("Device {} is not connected", device_id));
+  }
+  
+  // Discover services
+  println!("Debug: Starting service discovery for device: {}", device_id);
+  peripheral.discover_services().await
+    .map_err(|e| format!("Failed to discover services: {}", e))?;
+  
+  // Wait for discovery to complete
+  async_std::task::sleep(std::time::Duration::from_millis(1000)).await;
+  
+  // List all services
+  let services = peripheral.services();
+  let mut service_info = Vec::new();
+  
+  println!("Debug: Found {} services on device {}:", services.len(), device_id);
+  for (i, service) in services.iter().enumerate() {
+    let service_str = format!("Service {}: {} (characteristics: {})", i, service.uuid, service.characteristics.len());
+    println!("  {}", service_str);
+    service_info.push(service_str);
+    
+    for (j, char) in service.characteristics.iter().enumerate() {
+      let char_str = format!("    Characteristic {}: {}", j, char.uuid);
+      println!("  {}", char_str);
+      service_info.push(char_str);
+    }
+  }
+  
+  Ok(service_info)
 }
 
 fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
@@ -519,7 +639,7 @@ fn main() {
     .manage(discovered_devices)
     .manage(bt_manager)
     .manage(active_notifications)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

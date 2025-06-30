@@ -117,6 +117,22 @@ export default function DeviceList() {
     }
   }
 
+  async function debugServices(deviceId: string) {
+    try {
+      console.log(`Debug: Getting services for device: ${deviceId}`)
+      const services: string[] = await invoke('debug_device_services', { deviceId })
+      console.log('Debug: Services found:', services)
+      
+      const device = devices.find(d => d.id === deviceId);
+      const deviceName = device?.name || 'Unknown Device';
+      
+      alert(`Services for ${deviceName}:\n\n${services.join('\n')}`);
+    } catch (e) {
+      console.error('Debug services failed:', e)
+      alert(`Debug services failed: ${e}`)
+    }
+  }
+
   const isConnected = (deviceId: string) => connectedDevices.includes(deviceId)
   const isConnecting = (deviceId: string) => connecting === deviceId
 
@@ -165,13 +181,22 @@ export default function DeviceList() {
                 
                 <div className="device-actions">
                   {isConnected(d.id) ? (
-                    <button 
-                      onClick={() => disconnect(d.id)}
-                      disabled={isConnecting(d.id)}
-                      className="btn-disconnect"
-                    >
-                      {isConnecting(d.id) ? 'Disconnecting...' : 'Disconnect'}
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => disconnect(d.id)}
+                        disabled={isConnecting(d.id)}
+                        className="btn-disconnect"
+                      >
+                        {isConnecting(d.id) ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                      <button 
+                        onClick={() => debugServices(d.id)}
+                        className="btn-debug"
+                        title="Debug: List all services on this device"
+                      >
+                        Debug Services
+                      </button>
+                    </>
                   ) : (
                     <button 
                       onClick={() => connect(d.id)}
