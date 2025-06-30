@@ -43,6 +43,7 @@ interface BLEFunctions {
 }
 
 interface GaitData {
+  device_id: string  // Add device identification
   R1: number
   R2: number
   R3: number
@@ -53,6 +54,7 @@ interface GaitData {
 }
 
 interface BLEPayload {
+  device_id: string  // Add device identification
   r1: number
   r2: number
   r3: number
@@ -75,11 +77,15 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
-  const dataBufferRef = useRef<GaitData[]>([])
+  const [availableDevices, setAvailableDevices] = useState<string[]>([])
+  
+  // Store data per device
+  const deviceDataBuffers = useRef<Map<string, GaitData[]>>(new Map())
 
   // Function to parse BLE data packet (24 bytes = 6 floats)
-  const parseBLEData = (dataView: DataView): GaitData => {
+  const parseBLEData = (dataView: DataView, deviceId: string = 'unknown'): GaitData => {
     return {
+      device_id: deviceId,
       R1: dataView.getFloat32(0, true),  // little endian
       R2: dataView.getFloat32(4, true),
       R3: dataView.getFloat32(8, true),
@@ -92,10 +98,20 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
 
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
-    // Store data for analysis
-    dataBufferRef.current.push(gaitData)
-    if (dataBufferRef.current.length > 500) { // Keep last 5 seconds at 100Hz
-      dataBufferRef.current.shift()
+    const deviceId = gaitData.device_id
+    
+    // Get or create device buffer
+    if (!deviceDataBuffers.current.has(deviceId)) {
+      deviceDataBuffers.current.set(deviceId, [])
+      setAvailableDevices(prev => [...prev, deviceId])
+    }
+    
+    const deviceBuffer = deviceDataBuffers.current.get(deviceId)!
+    deviceBuffer.push(gaitData)
+    
+    // Keep only last 5 seconds at 100Hz per device
+    if (deviceBuffer.length > 500) {
+      deviceBuffer.shift()
     }
     
     if (chartRef.current) {
@@ -323,12 +339,14 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
         try {
           const unlisten = await listen('gait-data', (event: { payload: BLEPayload }) => {
             const payload = event.payload as {
+              device_id: string,
               r1: number, r2: number, r3: number,
               x: number, y: number, z: number,
               timestamp: number
             }
             
             const gaitData: GaitData = {
+              device_id: payload.device_id,
               R1: payload.r1,
               R2: payload.r2,
               R3: payload.r3,
@@ -361,6 +379,7 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
           const noise = () => (Math.random() - 0.5) * 2
           
           const gaitData: GaitData = {
+            device_id: 'simulation',
             R1: 10.0 + walkCycle * 5 + noise(), // Resistance values with walking pattern
             R2: 11.0 + walkCycle * 4 + noise(),
             R3: 12.0 + walkCycle * 3 + noise(),
@@ -436,7 +455,9 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
         <div className="data-info">
           <span>Sample Rate: 100 Hz</span>
           <span>•</span>
-          <span>Buffer: {dataBufferRef.current.length} samples</span>
+          <span>Devices: {availableDevices.length}</span>
+          <span>•</span>
+          <span>Total Samples: {Array.from(deviceDataBuffers.current.values()).reduce((sum, buffer) => sum + buffer.length, 0)}</span>
           <span>•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
         </div>

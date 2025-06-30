@@ -22,6 +22,10 @@ pub struct DiscoveredDevicesState(Arc<Mutex<HashMap<String, Peripheral>>>);
 #[derive(Clone)]
 pub struct BluetoothManagerState(Arc<Mutex<Option<Manager>>>);
 
+// New state to track which devices are actively streaming data
+#[derive(Clone)]
+pub struct ActiveNotificationsState(Arc<Mutex<HashMap<String, bool>>>);
+
 // A simple serializable struct to send back to JS
 #[derive(Serialize)]
 struct BluetoothDeviceInfo {
@@ -38,6 +42,7 @@ struct BluetoothDeviceInfo {
 // Add BLE data streaming functionality
 #[derive(Clone, Serialize)]
 struct GaitData {
+  device_id: String,  // Add device identification
   r1: f32,
   r2: f32,
   r3: f32,
@@ -333,6 +338,7 @@ async fn is_device_connected(device_id: String, connected_devices: tauri::State<
 async fn start_gait_notifications(
   device_id: String,
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
+  active_notifications: tauri::State<'_, ActiveNotificationsState>,
   app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
   use btleplug::api::Peripheral;
@@ -367,23 +373,40 @@ async fn start_gait_notifications(
   let gait_characteristic = gait_service.characteristics.iter()
     .find(|c| c.uuid == characteristic_uuid)
     .ok_or_else(|| format!("Gait characteristic not found on device: {}", device_id))?;
-  
-  // Subscribe to notifications
+    // Subscribe to notifications
   peripheral.subscribe(gait_characteristic).await
     .map_err(|e| format!("Failed to subscribe to notifications: {}", e))?;
   
+  // Mark device as actively collecting
+  {
+    let mut active = active_notifications.0.lock().await;
+    active.insert(device_id.clone(), true);
+  }
+
   // Set up notification handler
   let app_handle_clone = app_handle.clone();
+  let device_id_clone = device_id.clone();
+  let active_notifications_clone = active_notifications.inner().clone();
   
   // Start listening for notifications in a background task
   tauri::async_runtime::spawn(async move {
     let mut notification_stream = peripheral.notifications().await.unwrap();
     
     while let Some(data) = notification_stream.next().await {
+      // Check if device is still active
+      let is_active = {
+        let active = active_notifications_clone.0.lock().await;
+        active.get(&device_id_clone).copied().unwrap_or(false)
+      };
+      
+      if !is_active {
+        break; // Stop listening if device was deactivated
+      }
+      
       if data.uuid == characteristic_uuid && data.value.len() == 24 {
         // Parse the 24-byte packet (6 floats)
-        if let Ok(gait_data) = parse_gait_data(&data.value) {
-          // Emit to frontend
+        if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
+          // Emit to frontend with device ID
           let _ = app_handle_clone.emit("gait-data", &gait_data);
         }
       }
@@ -397,11 +420,18 @@ async fn start_gait_notifications(
 async fn stop_gait_notifications(
   device_id: String,
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
+  active_notifications: tauri::State<'_, ActiveNotificationsState>,
 ) -> Result<String, String> {
   use btleplug::api::Peripheral;
   
   println!("Stopping gait notifications for device: {}", device_id);
   
+  // Mark device as inactive first (this will stop the notification loop)
+  {
+    let mut active = active_notifications.0.lock().await;
+    active.insert(device_id.clone(), false);
+  }
+
   let peripheral = {
     let connected = connected_devices.0.lock().await;
     match connected.get(&device_id) {
@@ -432,7 +462,25 @@ async fn stop_gait_notifications(
   Ok(format!("Stopped notifications for device: {}", device_id))
 }
 
-fn parse_gait_data(data: &[u8]) -> Result<GaitData, String> {
+#[tauri::command]
+async fn get_active_notifications(active_notifications: tauri::State<'_, ActiveNotificationsState>) -> Result<Vec<String>, String> {
+  let active = active_notifications.0.lock().await;
+  let active_device_ids: Vec<String> = active.iter()
+    .filter_map(|(device_id, is_active)| if *is_active { Some(device_id.clone()) } else { None })
+    .collect();
+  Ok(active_device_ids)
+}
+
+#[tauri::command]
+async fn is_device_collecting(
+  device_id: String, 
+  active_notifications: tauri::State<'_, ActiveNotificationsState>
+) -> Result<bool, String> {
+  let active = active_notifications.0.lock().await;
+  Ok(active.get(&device_id).copied().unwrap_or(false))
+}
+
+fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
   if data.len() != 24 {
     return Err(format!("Invalid data length: {} (expected 24)", data.len()));
   }
@@ -446,6 +494,7 @@ fn parse_gait_data(data: &[u8]) -> Result<GaitData, String> {
   let z = f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
   
   Ok(GaitData {
+    device_id: device_id.to_string(),
     r1,
     r2,
     r3,
@@ -463,12 +512,14 @@ fn main() {
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let bt_manager = BluetoothManagerState(Arc::new(Mutex::new(None)));
+  let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
   
   tauri::Builder::default()
     .manage(connected_devices)
     .manage(discovered_devices)
     .manage(bt_manager)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications])
+    .manage(active_notifications)
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

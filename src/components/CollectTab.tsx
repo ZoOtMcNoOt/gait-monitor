@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import MetadataForm from './MetadataForm'
 import LiveChart from './LiveChart'
+import MultiDeviceSelector from './MultiDeviceSelector'
 
 type CollectStep = 'metadata' | 'live' | 'review'
 
@@ -25,6 +26,7 @@ export default function CollectTab() {
   const [isCollecting, setIsCollecting] = useState(false)
   const [bleFunctions, setBLEFunctions] = useState<BLEFunctions | null>(null)
   const [connectedDevices, setConnectedDevices] = useState<string[]>([])
+  const [activeCollectingDevices, setActiveCollectingDevices] = useState<string[]>([])
   const [activeCharacteristic, setActiveCharacteristic] = useState<BluetoothRemoteGATTCharacteristic | null>(null)
   const [isUsingRealData, setIsUsingRealData] = useState(false)
 
@@ -140,6 +142,19 @@ export default function CollectTab() {
     setCollectedData(null)
   }
 
+  // Handle multi-device collection toggle
+  const handleDeviceToggle = (deviceId: string, isCollecting: boolean) => {
+    if (isCollecting) {
+      setActiveCollectingDevices(prev => [...prev, deviceId])
+      setIsUsingRealData(true)
+    } else {
+      setActiveCollectingDevices(prev => prev.filter(id => id !== deviceId))
+    }
+    
+    // Update overall collection state
+    setIsCollecting(activeCollectingDevices.length > 0 || isCollecting)
+  }
+
   return (
     <div className="tab-content">
       <div className="tab-header">
@@ -205,6 +220,9 @@ export default function CollectTab() {
             <LiveChart 
               isCollecting={isCollecting} 
               onBLEFunctionsReady={setBLEFunctions}
+            />
+            <MultiDeviceSelector 
+              onDeviceToggle={handleDeviceToggle}
             />
           </div>
         )}
