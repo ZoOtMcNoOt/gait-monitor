@@ -1,0 +1,76 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules and dependencies
+node_modules
+jspm_packages/
+
+# Build outputs
+dist
+dist-ssr
+*.local
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Cache directories
+.npm
+.eslintcache
+.stylelintcache
+.cache
+.parcel-cache
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Tauri specific
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Rust build artifacts
+**/target/
+**/*.rs.bk
+*.pdb
+
+# Application bundles and installers
+*.exe
+*.msi
+*.dmg
+*.deb
+*.rpm
+*.app
+*.AppImage
+
+# Temporary files
+*.tmp
+*.temp
+*~
