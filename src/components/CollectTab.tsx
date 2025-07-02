@@ -164,10 +164,18 @@ export default function CollectTab() {
                 </button>
               </div>
             </div>
-            <LiveChart 
-              isCollecting={isCollecting} 
-            />
-            <MultiDeviceSelector />
+            
+            {/* Two-column layout for live collection */}
+            <div className="collection-layout">
+              <div className="main-collection-area">
+                <LiveChart 
+                  isCollecting={isCollecting} 
+                />
+              </div>
+              <div className="collection-sidebar">
+                <MultiDeviceSelector />
+              </div>
+            </div>
           </div>
         )}
 

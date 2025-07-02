@@ -1414,194 +1414,271 @@ input:checked + .toggle-slider:before {
   }
 }
 
-/* Multi-Device Selector Styles */
-.multi-device-selector {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+/* Multi-Device Selector Styles - Sidebar Style */
+.collection-sidebar .multi-device-selector.sidebar-style {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 1rem;
+  margin-bottom: 0;
+  max-width: 100%;
+  font-size: 0.9rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.selector-header {
+.multi-device-selector .selector-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 15px;
 }
 
-.selector-header h3 {
+.multi-device-selector .selector-header h3 {
   margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--text-color);
-  font-size: 1.2em;
 }
 
-.refresh-btn {
-  background: var(--accent-color);
-  color: white;
-  border: none;
+.multi-device-selector .refresh-btn {
+  background: none;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 8px 12px;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.9rem;
+  color: var(--text-color);
   transition: all 0.2s ease;
 }
 
-.refresh-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
+.multi-device-selector .refresh-btn:hover:not(:disabled) {
+  background: var(--bg-color);
+  border-color: var(--accent-color);
 }
 
-.refresh-btn:disabled {
-  opacity: 0.6;
+.multi-device-selector .refresh-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.device-list {
+.multi-device-selector .collection-summary {
+  margin-bottom: 1rem;
+}
+
+.multi-device-selector .summary-stats {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  padding: 0.75rem;
+  background: var(--bg-color);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.multi-device-selector .stat {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.device-card {
+.multi-device-selector .stat-number {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.multi-device-selector .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.multi-device-selector .device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.multi-device-selector .device-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
   background: var(--bg-color);
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  padding: 15px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.device-card.collecting {
+.multi-device-selector .device-item:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+}
+
+.multi-device-selector .device-item.collecting {
   border-color: var(--success-color);
   background: var(--success-bg);
 }
 
-.device-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.multi-device-selector .device-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.device-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.device-name {
-  font-weight: 600;
-  color: var(--text-color);
-  font-size: 1.1em;
-}
-
-.device-id {
-  font-size: 0.8em;
-  color: var(--text-secondary);
-  font-family: monospace;
-  margin-top: 4px;
-}
-
-.status {
-  font-size: 0.9em;
+.multi-device-selector .device-name {
   font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.status.connected {
-  color: var(--success-color);
-  background: var(--success-bg);
-}
-
-.status.disconnected {
-  color: var(--error-color);
-  background: var(--error-bg);
-}
-
-.device-controls {
+.multi-device-selector .device-status {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
 }
 
-.collection-btn {
-  padding: 10px 20px;
+.multi-device-selector .status-indicator {
+  font-size: 0.6rem;
+}
+
+.multi-device-selector .status-indicator.connected {
+  color: var(--success-color);
+}
+
+.multi-device-selector .status-indicator.disconnected {
+  color: var(--text-secondary);
+}
+
+.multi-device-selector .status-text {
+  color: var(--text-secondary);
+}
+
+.multi-device-selector .device-controls {
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
+}
+
+.multi-device-selector .collection-toggle {
+  width: 2rem;
+  height: 2rem;
   border: none;
-  border-radius: 6px;
-  font-weight: 600;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  font-size: 0.8rem;
   transition: all 0.2s ease;
-  font-size: 0.95em;
 }
 
-.collection-btn.start {
+.multi-device-selector .collection-toggle.start {
   background: var(--success-color);
   color: white;
 }
 
-.collection-btn.start:hover:not(:disabled) {
+.multi-device-selector .collection-toggle.start:hover:not(:disabled) {
   background: var(--success-hover);
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
-.collection-btn.stop {
+.multi-device-selector .collection-toggle.stop {
   background: var(--error-color);
   color: white;
 }
 
-.collection-btn.stop:hover:not(:disabled) {
+.multi-device-selector .collection-toggle.stop:hover:not(:disabled) {
   background: var(--error-hover);
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
-.collection-btn:disabled {
-  opacity: 0.6;
+.multi-device-selector .collection-toggle:disabled {
+  background: #9ca3af;
   cursor: not-allowed;
-  transform: none;
+  opacity: 0.6;
 }
 
-.collecting-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--success-color);
-  font-size: 0.9em;
+.multi-device-selector .collecting-indicator {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.multi-device-selector .pulse-animation {
+  width: 100%;
+  height: 100%;
+  background: var(--success-color);
+  border-radius: 50%;
+  animation: pulse-sidebar 2s infinite;
+}
+
+@keyframes pulse-sidebar {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.multi-device-selector .no-devices {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-secondary);
+}
+
+.multi-device-selector .no-devices-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.multi-device-selector .no-devices p {
+  margin: 0.5rem 0;
   font-weight: 500;
 }
 
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--success-color);
-  border-radius: 50%;
-  animation: pulse 1.5s infinite;
+.multi-device-selector .no-devices small {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
-.collection-summary {
+.multi-device-selector .loading {
   text-align: center;
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  font-size: 0.9em;
-}
-
-.no-devices {
-  text-align: center;
-  padding: 40px 20px;
+  padding: 2rem 1rem;
   color: var(--text-secondary);
 }
 
-.no-devices p {
-  margin: 8px 0;
+.multi-device-selector .loading-spinner {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  animation: spin 1s linear infinite;
 }
 
-.loading {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-secondary);
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Device connection status styling */
@@ -1821,4 +1898,105 @@ input:checked + .toggle-slider:before {
 
 .connected-devices-section .device-card:hover {
   box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+/*────────────────────────────────────────────────────────
+  Collection Layout - Two Column Design
+────────────────────────────────────────────────────────*/
+
+.collection-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  height: calc(100vh - 300px); /* Adjust based on header height */
+  min-height: 600px;
+}
+
+.main-collection-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex child to shrink */
+}
+
+.collection-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chart container adjustments for two-column layout */
+.main-collection-area .chart-container {
+  height: calc(100vh - 400px); /* Adjust height for two-column layout */
+  min-height: 400px;
+  max-height: 700px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-collection-area .chart-container canvas {
+  flex: 1;
+  min-height: 300px;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 1200px) {
+  .collection-layout {
+    grid-template-columns: 1fr 280px;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .collection-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 1rem;
+    height: auto;
+  }
+  
+  .collection-sidebar {
+    order: -1; /* Move sidebar above main content on mobile */
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .collection-layout {
+    gap: 0.75rem;
+  }
+  
+  .collection-sidebar {
+    max-height: 250px;
+  }
+}
+
+/* Custom scrollbar for collection sidebar */
+.collection-sidebar::-webkit-scrollbar,
+.multi-device-selector .device-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.collection-sidebar::-webkit-scrollbar-track,
+.multi-device-selector .device-list::-webkit-scrollbar-track {
+  background: var(--color-bg);
+  border-radius: 3px;
+}
+
+.collection-sidebar::-webkit-scrollbar-thumb,
+.multi-device-selector .device-list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.collection-sidebar::-webkit-scrollbar-thumb:hover,
+.multi-device-selector .device-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }

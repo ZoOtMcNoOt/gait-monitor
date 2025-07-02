@@ -83,68 +83,84 @@ export default function MultiDeviceSelector() {
 
   if (loading && devices.length === 0) {
     return (
-      <div className="multi-device-selector">
-        <div className="loading">Loading device statuses...</div>
-      </div>
-    )
-  }
-
-  if (devices.length === 0) {
-    return (
-      <div className="multi-device-selector">
-        <div className="no-devices">
-          <p>No connected devices found.</p>
-          <p>Please connect to devices in the Connect tab first.</p>
+      <div className="multi-device-selector sidebar-style">
+        <div className="selector-header">
+          <h3>📊 Collection Control</h3>
+        </div>
+        <div className="loading">
+          <div className="loading-spinner">🔄</div>
+          <p>Loading devices...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="multi-device-selector">
+    <div className="multi-device-selector sidebar-style">
       <div className="selector-header">
-        <h3>Device Collection Control</h3>
-        <button onClick={loadDeviceStatuses} className="refresh-btn" disabled={loading}>
-          {loading ? '🔄' : '↻'} Refresh
+        <h3>📊 Collection Control</h3>
+        <button onClick={loadDeviceStatuses} className="refresh-btn" disabled={loading} title="Refresh device status">
+          {loading ? '🔄' : '↻'}
         </button>
       </div>
       
-      <div className="device-list">
-        {devices.map(device => (
-          <div key={device.id} className={`device-card ${device.isCollecting ? 'collecting' : ''}`}>
-            <div className="device-info">
-              <div className="device-name">{device.name}</div>
-              <div className="device-id">{device.id}</div>
-              <div className={`status ${device.isConnected ? 'connected' : 'disconnected'}`}>
-                {device.isConnected ? '🔗 Connected' : '❌ Disconnected'}
-              </div>
+      {devices.length === 0 ? (
+        <div className="no-devices">
+          <div className="no-devices-icon">🔌</div>
+          <p>No connected devices</p>
+          <small>Connect devices in the Connect tab</small>
+        </div>
+      ) : (
+        <>
+          <div className="collection-summary">
+            <div className="summary-stats">
+              <span className="stat">
+                <span className="stat-number">{devices.filter(d => d.isCollecting).length}</span>
+                <span className="stat-label">Active</span>
+              </span>
+              <span className="stat">
+                <span className="stat-number">{devices.length}</span>
+                <span className="stat-label">Total</span>
+              </span>
             </div>
-            
-            <div className="device-controls">
-              <button
-                className={`collection-btn ${device.isCollecting ? 'stop' : 'start'}`}
-                onClick={() => handleToggleCollection(device.id, device.isCollecting)}
-                disabled={!device.isConnected || loading}
-              >
-                {device.isCollecting ? '⏹️ Stop' : '▶️ Start'}
-              </button>
-            </div>
-            
-            {device.isCollecting && (
-              <div className="collecting-indicator">
-                <div className="pulse-dot"></div>
-                <span>Collecting data...</span>
-              </div>
-            )}
           </div>
-        ))}
-      </div>
-      
-      <div className="collection-summary">
-        <span>
-          {devices.filter(d => d.isCollecting).length} of {devices.length} devices collecting data
-        </span>
-      </div>
+          
+          <div className="device-list">
+            {devices.map(device => (
+              <div key={device.id} className={`device-item ${device.isCollecting ? 'collecting' : ''}`}>
+                <div className="device-info">
+                  <div className="device-name">{device.name}</div>
+                  <div className="device-status">
+                    <span className={`status-indicator ${device.isConnected ? 'connected' : 'disconnected'}`}>
+                      {device.isConnected ? '●' : '○'}
+                    </span>
+                    <span className="status-text">
+                      {device.isConnected ? 'Connected' : 'Disconnected'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="device-controls">
+                  <button
+                    className={`collection-toggle ${device.isCollecting ? 'stop' : 'start'}`}
+                    onClick={() => handleToggleCollection(device.id, device.isCollecting)}
+                    disabled={!device.isConnected || loading}
+                    title={device.isCollecting ? 'Stop data collection' : 'Start data collection'}
+                  >
+                    {device.isCollecting ? '⏹' : '▶'}
+                  </button>
+                </div>
+                
+                {device.isCollecting && (
+                  <div className="collecting-indicator">
+                    <div className="pulse-animation"></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
