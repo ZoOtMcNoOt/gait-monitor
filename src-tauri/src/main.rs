@@ -6,6 +6,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::path::Path;
 use async_std::sync::Mutex;
 use btleplug::platform::{Peripheral, Manager};
 use uuid::Uuid;
@@ -49,7 +50,7 @@ struct BluetoothDeviceInfo {
 }
 
 // Add BLE data streaming functionality
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, serde::Deserialize)]
 struct GaitData {
   device_id: String,  // Add device identification
   r1: f32,
@@ -677,6 +678,326 @@ async fn check_connection_status(
   Ok(actually_connected)
 }
 
+// File system and data management commands
+
+#[derive(Serialize, serde::Deserialize, Clone)]
+struct SessionMetadata {
+  id: String,
+  session_name: String,
+  subject_id: String,
+  notes: String,
+  timestamp: u64,
+  data_points: usize,
+  file_path: String,
+  devices: Vec<String>,
+}
+
+#[tauri::command]
+async fn save_session_data(
+  session_name: String,
+  subject_id: String,
+  notes: String,
+  data: Vec<GaitData>,
+  storage_path: Option<String>,
+) -> Result<String, String> {
+  use std::fs;
+  use std::path::Path;
+  
+  if data.is_empty() {
+    return Err("No data to save".to_string());
+  }
+
+  // Determine storage directory
+  let base_path = storage_path.unwrap_or_else(|| {
+    // Default to Documents/GaitMonitor or current directory
+    dirs::document_dir()
+      .map(|p| p.join("GaitMonitor"))
+      .unwrap_or_else(|| std::env::current_dir().unwrap().join("gait_data"))
+      .to_string_lossy()
+      .to_string()
+  });
+
+  // Create directory if it doesn't exist
+  fs::create_dir_all(&base_path)
+    .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+  // Generate filename with timestamp
+  let timestamp = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap()
+    .as_secs();
+  
+  let safe_session_name = session_name
+    .chars()
+    .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+    .collect::<String>();
+  
+  let filename = format!("gait_{}_{}.csv", 
+    chrono::DateTime::from_timestamp(timestamp as i64, 0)
+      .unwrap()
+      .format("%Y%m%d_%H%M%S"),
+    safe_session_name
+  );
+  
+  let file_path = Path::new(&base_path).join(&filename);
+
+  // Generate CSV content
+  let mut csv_content = String::new();
+  
+  // Header with metadata
+  csv_content.push_str(&format!("# Gait Monitor Data Export\n"));
+  csv_content.push_str(&format!("# Session: {}\n", session_name));
+  csv_content.push_str(&format!("# Subject: {}\n", subject_id));
+  csv_content.push_str(&format!("# Notes: {}\n", notes));
+  csv_content.push_str(&format!("# Export Time: {}\n", 
+    chrono::DateTime::from_timestamp(timestamp as i64, 0)
+      .unwrap()
+      .format("%Y-%m-%d %H:%M:%S UTC")
+  ));
+  csv_content.push_str(&format!("# Data Points: {}\n", data.len()));
+  
+  // Get unique devices
+  let devices: std::collections::HashSet<String> = data.iter()
+    .map(|d| d.device_id.clone())
+    .collect();
+  csv_content.push_str(&format!("# Devices: {}\n", devices.iter().cloned().collect::<Vec<_>>().join(", ")));
+  csv_content.push_str("#\n");
+  
+  // CSV column headers
+  csv_content.push_str("device_id,timestamp,r1,r2,r3,x,y,z\n");
+  
+  // Data rows
+  for row in &data {
+    csv_content.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+      row.device_id,
+      row.timestamp,
+      row.r1,
+      row.r2,
+      row.r3,
+      row.x,
+      row.y,
+      row.z
+    ));
+  }
+
+  // Write file
+  fs::write(&file_path, csv_content)
+    .map_err(|e| format!("Failed to write file: {}", e))?;
+
+  // Save session metadata
+  let session_id = uuid::Uuid::new_v4().to_string();
+  let metadata = SessionMetadata {
+    id: session_id.clone(),
+    session_name,
+    subject_id,
+    notes,
+    timestamp,
+    data_points: data.len(),
+    file_path: file_path.to_string_lossy().to_string(),
+    devices: devices.into_iter().collect(),
+  };
+
+  save_session_metadata(&base_path, &metadata).await?;
+
+  Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn get_sessions() -> Result<Vec<SessionMetadata>, String> {
+  // Try to load from default location first
+  let possible_paths = vec![
+    dirs::document_dir().map(|p| p.join("GaitMonitor")),
+    Some(std::env::current_dir().unwrap().join("gait_data")),
+  ];
+
+  for path_opt in possible_paths {
+    if let Some(path) = path_opt {
+      if path.exists() {
+        match load_sessions_from_path(&path).await {
+          Ok(sessions) => return Ok(sessions),
+          Err(_) => continue,
+        }
+      }
+    }
+  }
+
+  // Return empty list if no sessions found
+  Ok(vec![])
+}
+
+#[tauri::command]
+async fn delete_session(session_id: String) -> Result<(), String> {
+  let sessions = get_sessions().await?;
+  
+  if let Some(session) = sessions.iter().find(|s| s.id == session_id).cloned() {
+    // Delete the data file
+    if Path::new(&session.file_path).exists() {
+      std::fs::remove_file(&session.file_path)
+        .map_err(|e| format!("Failed to delete data file: {}", e))?;
+    }
+    
+    // Remove from metadata
+    let base_path = Path::new(&session.file_path).parent()
+      .ok_or("Invalid file path")?;
+    
+    let remaining_sessions: Vec<SessionMetadata> = sessions
+      .into_iter()
+      .filter(|s| s.id != session_id)
+      .collect();
+    
+    save_sessions_metadata(base_path, &remaining_sessions).await?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+async fn choose_storage_directory(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+  use tauri_plugin_dialog::DialogExt;
+  
+  // Use a blocking approach with a channel to handle the callback
+  let (tx, rx) = std::sync::mpsc::channel();
+  
+  // Use the dialog plugin to show a folder picker
+  app_handle
+    .dialog()
+    .file()
+    .set_title("Choose Storage Directory for Gait Data")
+    .set_directory(&dirs::document_dir().unwrap_or_else(|| std::env::current_dir().unwrap()))
+    .pick_folder(move |folder_path| {
+      let result = match folder_path {
+        Some(path) => {
+          let path_str = path.to_string();
+          println!("📁 User selected storage directory: {}", path_str);
+          Some(path_str)
+        }
+        None => {
+          println!("📁 User cancelled directory selection");
+          None
+        }
+      };
+      let _ = tx.send(result);
+    });
+  
+  // Wait for the callback to complete
+  rx.recv().map_err(|e| format!("Dialog callback failed: {}", e))
+}
+
+#[tauri::command]
+async fn export_to_downloads(session_id: String) -> Result<String, String> {
+  // Get session metadata
+  let sessions = get_sessions().await?;
+  let session = sessions.iter()
+    .find(|s| s.id == session_id)
+    .ok_or("Session not found")?;
+    
+  // Get Downloads directory
+  let downloads_dir = dirs::download_dir()
+    .ok_or("Could not find Downloads directory")?;
+    
+  // Read the original file
+  let source_path = std::path::Path::new(&session.file_path);
+  if !source_path.exists() {
+    return Err("Source file no longer exists".to_string());
+  }
+  
+  // Create destination filename
+  let original_filename = source_path.file_name()
+    .ok_or("Invalid source filename")?
+    .to_string_lossy();
+  let dest_path = downloads_dir.join(original_filename.as_ref());
+  
+  // Copy file to Downloads
+  std::fs::copy(&source_path, &dest_path)
+    .map_err(|e| format!("Failed to copy file to Downloads: {}", e))?;
+    
+  Ok(dest_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn export_all_to_downloads() -> Result<Vec<String>, String> {
+  let sessions = get_sessions().await?;
+  let downloads_dir = dirs::download_dir()
+    .ok_or("Could not find Downloads directory")?;
+    
+  let mut exported_files = Vec::new();
+  
+  for session in sessions {
+    let source_path = std::path::Path::new(&session.file_path);
+    if source_path.exists() {
+      let original_filename = source_path.file_name()
+        .ok_or("Invalid source filename")?
+        .to_string_lossy();
+      let dest_path = downloads_dir.join(original_filename.as_ref());
+      
+      match std::fs::copy(&source_path, &dest_path) {
+        Ok(_) => exported_files.push(dest_path.to_string_lossy().to_string()),
+        Err(e) => println!("Failed to copy {}: {}", source_path.display(), e),
+      }
+    }
+  }
+  
+  if exported_files.is_empty() {
+    Err("No files were exported".to_string())
+  } else {
+    Ok(exported_files)
+  }
+}
+
+// Helper functions for session metadata management
+async fn save_session_metadata(base_path: &str, metadata: &SessionMetadata) -> Result<(), String> {
+  let metadata_path = Path::new(base_path).join("sessions_index.json");
+  
+  // Load existing sessions
+  let mut sessions = if metadata_path.exists() {
+    let content = std::fs::read_to_string(&metadata_path)
+      .map_err(|e| format!("Failed to read sessions index: {}", e))?;
+    serde_json::from_str::<Vec<SessionMetadata>>(&content)
+      .unwrap_or_else(|_| vec![])
+  } else {
+    vec![]
+  };
+  
+  // Add new session
+  sessions.push(metadata.clone());
+  
+  // Save updated sessions
+  save_sessions_metadata(Path::new(base_path), &sessions).await
+}
+
+async fn save_sessions_metadata(base_path: &Path, sessions: &[SessionMetadata]) -> Result<(), String> {
+  let metadata_path = base_path.join("sessions_index.json");
+  let content = serde_json::to_string_pretty(sessions)
+    .map_err(|e| format!("Failed to serialize sessions: {}", e))?;
+  
+  std::fs::write(&metadata_path, content)
+    .map_err(|e| format!("Failed to write sessions index: {}", e))?;
+  
+  Ok(())
+}
+
+async fn load_sessions_from_path(base_path: &Path) -> Result<Vec<SessionMetadata>, String> {
+  let metadata_path = base_path.join("sessions_index.json");
+  
+  if !metadata_path.exists() {
+    return Ok(vec![]);
+  }
+  
+  let content = std::fs::read_to_string(&metadata_path)
+    .map_err(|e| format!("Failed to read sessions index: {}", e))?;
+  
+  let sessions: Vec<SessionMetadata> = serde_json::from_str(&content)
+    .map_err(|e| format!("Failed to parse sessions index: {}", e))?;
+  
+  // Filter out sessions with missing files
+  let valid_sessions: Vec<SessionMetadata> = sessions
+    .into_iter()
+    .filter(|s| Path::new(&s.file_path).exists())
+    .collect();
+  
+  Ok(valid_sessions)
+}
+
 fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
   if data.len() != 24 {
     return Err(format!("Invalid data length: {} (expected 24)", data.len()));
@@ -732,11 +1053,13 @@ fn main() {
   let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
   
   tauri::Builder::default()
+    .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_dialog::init())
     .manage(connected_devices)
     .manage(discovered_devices)
     .manage(bt_manager)
     .manage(active_notifications)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, export_to_downloads, export_all_to_downloads])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

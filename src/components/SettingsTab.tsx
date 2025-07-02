@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 
 interface Props {
   darkMode: boolean
@@ -69,16 +70,36 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     }
   }
 
-  const handleChooseStoragePath = () => {
-    // TODO: Implement file picker using Tauri's file dialog
-    alert('File picker would open here in a full implementation')
+  const handleChooseStoragePath = async () => {
+    try {
+      const result = await invoke<string | null>('choose_storage_directory')
+      if (result) {
+        handleSettingChange('defaultStoragePath', result)
+        alert(`Storage path updated to: ${result}`)
+      }
+    } catch (error) {
+      console.error('Failed to choose storage path:', error)
+      alert(`Failed to choose storage path: ${error}`)
+    }
   }
 
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
       if (confirm('This will delete all saved sessions and logs. Are you absolutely sure?')) {
-        // TODO: Clear all data
-        alert('All data would be cleared in a full implementation')
+        try {
+          // Get all sessions first
+          const sessions = await invoke<any[]>('get_sessions')
+          
+          // Delete each session
+          for (const session of sessions) {
+            await invoke('delete_session', { sessionId: session.id })
+          }
+          
+          alert(`Successfully deleted ${sessions.length} session(s) and their data files.`)
+        } catch (error) {
+          console.error('Failed to clear data:', error)
+          alert(`Failed to clear data: ${error}`)
+        }
       }
     }
   }
