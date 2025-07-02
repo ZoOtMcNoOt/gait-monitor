@@ -1369,3 +1369,69 @@ input:checked + .toggle-slider:before {
   padding: 40px 20px;
   color: var(--text-secondary);
 }
+
+/* Device connection status styling */
+.device-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: 16px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.device-connection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.device-connection.connected {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #059669;
+}
+
+.device-connection.timeout {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #d97706;
+}
+
+.device-connection.disconnected {
+  background: rgba(107, 114, 128, 0.1);
+  border-color: rgba(107, 114, 128, 0.3);
+  color: #6b7280;
+}
+
+.device-name {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.connection-indicator {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.heartbeat-info {
+  font-size: 10px;
+  opacity: 0.7;
+  font-family: 'Courier New', monospace;
+}
+
+.gait-info {
+  font-size: 10px;
+  opacity: 0.7;
+  font-family: 'Courier New', monospace;
+  margin-left: 4px;
+}

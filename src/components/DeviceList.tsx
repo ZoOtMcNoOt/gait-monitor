@@ -1,153 +1,87 @@
-import { invoke } from '@tauri-apps/api/core'
-import { useState, useEffect } from 'react'
-
-interface BLEInfo { 
-  id: string; 
-  name: string;
-  rssi?: number;
-  connectable: boolean;
-  address_type: string;
-  services: string[];
-  manufacturer_data: string[];
-  service_data: string[];
-}
+import { useEffect } from 'react'
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 export default function DeviceList() {
-  const [devices, setDevices] = useState<BLEInfo[]>([])
-  const [connectedDevices, setConnectedDevices] = useState<string[]>([])
-  const [connecting, setConnecting] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
+  // Use global device connection context exclusively
+  const { 
+    scannedDevices,
+    connectedDevices, 
+    connectionStatus, 
+    deviceHeartbeats,
+    isScanning,
+    isConnecting,
+    scanDevices,
+    connectDevice,
+    disconnectDevice,
+    refreshConnectedDevices
+  } = useDeviceConnection()
 
   // Load connected devices on component mount
   useEffect(() => {
-    loadConnectedDevices()
-  }, [])
+    refreshConnectedDevices()
+  }, [refreshConnectedDevices])
 
-  async function loadConnectedDevices() {
-    try {
-      const connected: string[] = await invoke('get_connected_devices')
-      setConnectedDevices(connected)
-    } catch (e) {
-      console.error('Failed to load connected devices', e)
-    }
-  }
+  const isConnected = (deviceId: string) => connectedDevices.includes(deviceId)
 
-  async function scan() {
-    setScanning(true)
+  const handleConnect = async (deviceId: string) => {
     try {
-      const list: BLEInfo[] = await invoke('scan_devices')
-      
-      // Sort devices: known devices first (reverse alphabetically), then unknown devices (by RSSI descending - strongest first)
-      const sortedDevices = list.sort((a, b) => {
-        const aHasName = a.name && a.name.trim() !== '' && a.name !== 'Unknown'
-        const bHasName = b.name && b.name.trim() !== '' && b.name !== 'Unknown'
-        
-        // If both have names or both don't have names, sort appropriately
-        if (aHasName === bHasName) {
-          if (aHasName) {
-            // Both have names - sort reverse alphabetically (Z to A)
-            return b.name.localeCompare(a.name)
-          } else {
-            // Both are unknown - sort by RSSI descending (stronger signal first)
-            return (b.rssi || -100) - (a.rssi || -100)
-          }
-        }
-        
-        // One has name, one doesn't - named devices come first
-        return aHasName ? -1 : 1
-      })
-      
-      setDevices(sortedDevices)
-      await loadConnectedDevices() // Refresh connection status
-    } catch (e) {
-      console.error('scan failed', e)
-    } finally {
-      setScanning(false)
-    }
-  }
-
-  async function connect(deviceId: string) {
-    setConnecting(deviceId)
-    try {
-      console.log(`Attempting to connect to device: ${deviceId}`)
-      const result: string = await invoke('connect_device', { deviceId })
-      console.log('Connection result:', result)
-      await loadConnectedDevices() // Refresh connection status
-      
+      await connectDevice(deviceId)
       // Show success message
-      const device = devices.find(d => d.id === deviceId);
-      const deviceName = device?.name || 'Unknown Device';
-      alert(`Successfully connected to ${deviceName}!`);
-    } catch (e) {
-      console.error('Connection failed:', e)
-      
-      // Show detailed error message
-      const device = devices.find(d => d.id === deviceId);
-      let errorMessage = `Failed to connect to ${device?.name || 'device'}:\n\n${e}`;
-      
-      if (typeof e === 'string') {
-        if (e.includes('not connectable')) {
-          errorMessage += '\n\nThis device may not support connections or may be in a non-connectable mode.';
-        } else if (e.includes('not found')) {
-          errorMessage += '\n\nThe device may have moved out of range. Try scanning again.';
-        } else if (e.includes('timeout') || e.includes('failed after')) {
-          errorMessage += '\n\nConnection timeout. The device may be busy, already connected to another device, or out of range.';
-        } else if (e.includes('Connection refused') || e.includes('refused')) {
-          errorMessage += '\n\nThe device refused the connection. It may be paired with another device or in a non-connectable state.';
-        }
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setConnecting(null)
+      const device = scannedDevices.find(d => d.id === deviceId)
+      const deviceName = device?.name || 'Unknown Device'
+      alert(`Successfully connected to ${deviceName}!`)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : `Connection failed: ${error}`)
     }
   }
 
-  async function disconnect(deviceId: string) {
-    setConnecting(deviceId)
+  const handleDisconnect = async (deviceId: string) => {
     try {
-      const result: string = await invoke('disconnect_device', { deviceId })
-      console.log(result)
-      await loadConnectedDevices() // Refresh connection status
-    } catch (e) {
-      console.error('Disconnection failed', e)
-      alert(`Disconnection failed: ${e}`)
-    } finally {
-      setConnecting(null)
+      await disconnectDevice(deviceId)
+    } catch (error) {
+      alert(`Disconnection failed: ${error}`)
     }
   }
 
-  async function debugServices(deviceId: string) {
+  const handleScan = async () => {
+    try {
+      await scanDevices()
+    } catch (error) {
+      console.error('Scan failed:', error)
+    }
+  }
+
+  const debugServices = async (deviceId: string) => {
     try {
       console.log(`Debug: Getting services for device: ${deviceId}`)
+      // This functionality would need to be moved to context if needed
+      // For now, keeping the direct invoke call
+      const { invoke } = await import('@tauri-apps/api/core')
       const services: string[] = await invoke('debug_device_services', { deviceId })
       console.log('Debug: Services found:', services)
       
-      const device = devices.find(d => d.id === deviceId);
-      const deviceName = device?.name || 'Unknown Device';
+      const device = scannedDevices.find(d => d.id === deviceId)
+      const deviceName = device?.name || 'Unknown Device'
       
-      alert(`Services for ${deviceName}:\n\n${services.join('\n')}`);
+      alert(`Services for ${deviceName}:\n\n${services.join('\n')}`)
     } catch (e) {
       console.error('Debug services failed:', e)
       alert(`Debug services failed: ${e}`)
     }
   }
 
-  const isConnected = (deviceId: string) => connectedDevices.includes(deviceId)
-  const isConnecting = (deviceId: string) => connecting === deviceId
-
   return (
     <section className="card">
       <h2>Bluetooth Devices</h2>
-      <button onClick={scan} disabled={scanning}>
-        {scanning ? 'Scanning...' : 'Scan for Devices'}
+      <button onClick={handleScan} disabled={isScanning}>
+        {isScanning ? 'Scanning...' : 'Scan for Devices'}
       </button>
       
-      {devices.length > 0 && (
+      {scannedDevices.length > 0 && (
         <div>
-          <h3>Available Devices ({devices.length})</h3>
+          <h3>Available Devices ({scannedDevices.length})</h3>
           <ul>
-            {devices.map(d => (
+            {scannedDevices.map(d => (
               <li key={d.id} className={`device-list-item ${isConnected(d.id) ? 'connected' : ''}`}>
                 <div className="device-info">
                   <div className="device-name">{d.name}</div>
@@ -173,9 +107,36 @@ export default function DeviceList() {
                     </div>
                   )}
                   {isConnected(d.id) && (
-                    <span className="device-status">
-                      ● Connected
-                    </span>
+                    <div className="device-connection-status">
+                      <span className="device-status">
+                        ● Connected
+                      </span>
+                      {/* Show heartbeat status if available */}
+                      {(() => {
+                        const status = connectionStatus.get(d.id)
+                        const heartbeat = deviceHeartbeats.get(d.id)
+                        if (status || heartbeat) {
+                          return (
+                            <div className={`device-heartbeat-status ${status || 'unknown'}`}>
+                              <span className={`heartbeat-indicator ${status || 'unknown'}`}>
+                                {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                              </span>
+                              {heartbeat && (
+                                <span className="heartbeat-details" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
+                                  #{heartbeat.sequence}
+                                </span>
+                              )}
+                              {status && (
+                                <span className="connection-status-text">
+                                  {status === 'connected' ? 'Live' : status === 'timeout' ? 'Timeout' : 'Lost'}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
                   )}
                 </div>
                 
@@ -183,11 +144,11 @@ export default function DeviceList() {
                   {isConnected(d.id) ? (
                     <>
                       <button 
-                        onClick={() => disconnect(d.id)}
-                        disabled={isConnecting(d.id)}
+                        onClick={() => handleDisconnect(d.id)}
+                        disabled={isConnecting === d.id}
                         className="btn-disconnect"
                       >
-                        {isConnecting(d.id) ? 'Disconnecting...' : 'Disconnect'}
+                        {isConnecting === d.id ? 'Disconnecting...' : 'Disconnect'}
                       </button>
                       <button 
                         onClick={() => debugServices(d.id)}
@@ -199,12 +160,12 @@ export default function DeviceList() {
                     </>
                   ) : (
                     <button 
-                      onClick={() => connect(d.id)}
-                      disabled={isConnecting(d.id) || !d.connectable}
+                      onClick={() => handleConnect(d.id)}
+                      disabled={isConnecting === d.id || !d.connectable}
                       className="btn-connect"
                       title={!d.connectable ? 'Device is not connectable' : ''}
                     >
-                      {isConnecting(d.id) ? 'Connecting...' : 'Connect'}
+                      {isConnecting === d.id ? 'Connecting...' : 'Connect'}
                     </button>
                   )}
                 </div>
@@ -227,7 +188,7 @@ export default function DeviceList() {
         </div>
       )}
 
-      {devices.length === 0 && !scanning && (
+      {scannedDevices.length === 0 && !isScanning && (
         <p className="no-devices-message">
           No devices found. Click "Scan for Devices" to search for Bluetooth devices.
         </p>

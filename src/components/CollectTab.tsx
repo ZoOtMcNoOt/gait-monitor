@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { useState } from 'react'
 import MetadataForm from './MetadataForm'
 import LiveChart from './LiveChart'
 import MultiDeviceSelector from './MultiDeviceSelector'
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 type CollectStep = 'metadata' | 'live' | 'review'
 
@@ -15,49 +14,18 @@ interface CollectedData {
   timestamp: Date
 }
 
-interface BLEFunctions {
-  setupNotifications: (characteristic: BluetoothRemoteGATTCharacteristic) => Promise<void>
-  cleanupNotifications: (characteristic: BluetoothRemoteGATTCharacteristic) => void
-}
-
 export default function CollectTab() {
   const [currentStep, setCurrentStep] = useState<CollectStep>('metadata')
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null)
   const [isCollecting, setIsCollecting] = useState(false)
-  const [bleFunctions, setBLEFunctions] = useState<BLEFunctions | null>(null)
-  const [connectedDevices, setConnectedDevices] = useState<string[]>([])
-  const [activeCollectingDevices, setActiveCollectingDevices] = useState<string[]>([])
-  const [activeCharacteristic, setActiveCharacteristic] = useState<BluetoothRemoteGATTCharacteristic | null>(null)
   const [isUsingRealData, setIsUsingRealData] = useState(false)
 
-  // Load connected devices when component mounts
-  useEffect(() => {
-    loadConnectedDevices()
-  }, [])
-
-  // Set up BLE data listener
-  useEffect(() => {
-    if (isCollecting && isUsingRealData) {
-      const unlisten = listen('gait-data', (event) => {
-        // The real BLE data is automatically handled by the LiveChart component
-        // through the Tauri event system
-        console.log('Received real BLE data:', event.payload)
-      })
-      
-      return () => {
-        unlisten.then(fn => fn())
-      }
-    }
-  }, [isCollecting, isUsingRealData])
-
-  async function loadConnectedDevices() {
-    try {
-      const connected: string[] = await invoke('get_connected_devices')
-      setConnectedDevices(connected)
-    } catch (e) {
-      console.error('Failed to load connected devices', e)
-    }
-  }
+  // Use global device connection context
+  const { 
+    connectedDevices, 
+    startDeviceCollection,
+    stopDeviceCollection 
+  } = useDeviceConnection()
 
   const steps = [
     { id: 'metadata', label: 'Metadata', number: 1 },
@@ -76,20 +44,17 @@ export default function CollectTab() {
 
   const handleStartCollection = async () => {
     try {
-      // Check if we have connected devices
-      await loadConnectedDevices()
-      
       if (connectedDevices.length === 0) {
         alert('No connected devices found. Please connect to a device first in the Connect tab.')
         return
       }
 
-      // Try to start real BLE notifications
-      const deviceId = connectedDevices[0] // Use first connected device
+      // Try to start real BLE notifications on the first connected device
+      const deviceId = connectedDevices[0]
       
       try {
-        const result = await invoke('start_gait_notifications', { deviceId })
-        console.log('✅ Started real BLE data collection:', result)
+        await startDeviceCollection(deviceId)
+        console.log('✅ Started real BLE data collection:', deviceId)
         setIsUsingRealData(true)
         setIsCollecting(true)
       } catch (bleError) {
@@ -108,14 +73,9 @@ export default function CollectTab() {
     try {
       if (isUsingRealData && connectedDevices.length > 0) {
         const deviceId = connectedDevices[0]
-        await invoke('stop_gait_notifications', { deviceId })
+        await stopDeviceCollection(deviceId)
         console.log('🔄 Stopped real BLE data collection')
         setIsUsingRealData(false)
-      }
-      
-      if (activeCharacteristic && bleFunctions) {
-        bleFunctions.cleanupNotifications(activeCharacteristic)
-        setActiveCharacteristic(null)
       }
       
       setIsCollecting(false)
@@ -140,19 +100,6 @@ export default function CollectTab() {
   const handleDiscardData = () => {
     setCurrentStep('metadata')
     setCollectedData(null)
-  }
-
-  // Handle multi-device collection toggle
-  const handleDeviceToggle = (deviceId: string, isCollecting: boolean) => {
-    if (isCollecting) {
-      setActiveCollectingDevices(prev => [...prev, deviceId])
-      setIsUsingRealData(true)
-    } else {
-      setActiveCollectingDevices(prev => prev.filter(id => id !== deviceId))
-    }
-    
-    // Update overall collection state
-    setIsCollecting(activeCollectingDevices.length > 0 || isCollecting)
   }
 
   return (
@@ -219,11 +166,8 @@ export default function CollectTab() {
             </div>
             <LiveChart 
               isCollecting={isCollecting} 
-              onBLEFunctionsReady={setBLEFunctions}
             />
-            <MultiDeviceSelector 
-              onDeviceToggle={handleDeviceToggle}
-            />
+            <MultiDeviceSelector />
           </div>
         )}
 

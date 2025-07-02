@@ -4,6 +4,7 @@ import ConnectTab from './components/ConnectTab'
 import CollectTab from './components/CollectTab'
 import LogsTab from './components/LogsTab'
 import SettingsTab from './components/SettingsTab'
+import { DeviceConnectionProvider } from './contexts/DeviceConnectionContext'
 
 type Page = 'connect' | 'collect' | 'logs' | 'settings'
 
@@ -35,14 +36,16 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <Sidebar page={page} onChange={setPage} />
-      <main className="content">
-        {page === 'connect' && <ConnectTab />}
-        {page === 'collect' && <CollectTab />}
-        {page === 'logs' && <LogsTab />}
-        {page === 'settings' && <SettingsTab darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />}
-      </main>
-    </div>
+    <DeviceConnectionProvider>
+      <div className="app">
+        <Sidebar page={page} onChange={setPage} />
+        <main className="content">
+          {page === 'connect' && <ConnectTab />}
+          {page === 'collect' && <CollectTab />}
+          {page === 'logs' && <LogsTab />}
+          {page === 'settings' && <SettingsTab darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />}
+        </main>
+      </div>
+    </DeviceConnectionProvider>
   )
 }

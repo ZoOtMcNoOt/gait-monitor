@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { listen } from '@tauri-apps/api/event'
 import { 
   Chart, 
   LineController, 
@@ -11,15 +10,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
-
-// Web Bluetooth API types
-declare global {
-  interface BluetoothRemoteGATTCharacteristic extends EventTarget {
-    value: DataView | null
-    startNotifications(): Promise<BluetoothRemoteGATTCharacteristic>
-    stopNotifications(): Promise<BluetoothRemoteGATTCharacteristic>
-  }
-}
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 Chart.register(
   LineController, 
@@ -34,16 +25,10 @@ Chart.register(
 
 interface Props {
   isCollecting?: boolean
-  onBLEFunctionsReady?: (functions: BLEFunctions) => void
-}
-
-interface BLEFunctions {
-  setupNotifications: (characteristic: BluetoothRemoteGATTCharacteristic) => Promise<void>
-  cleanupNotifications: (characteristic: BluetoothRemoteGATTCharacteristic) => void
 }
 
 interface GaitData {
-  device_id: string  // Add device identification
+  device_id: string
   R1: number
   R2: number
   R3: number
@@ -53,14 +38,10 @@ interface GaitData {
   timestamp: number
 }
 
-interface BLEPayload {
-  device_id: string  // Add device identification
-  r1: number
-  r2: number
-  r3: number
-  x: number
-  y: number
-  z: number
+interface GaitDataPayload {
+  device_id: string,
+  r1: number, r2: number, r3: number,
+  x: number, y: number, z: number,
   timestamp: number
 }
 
@@ -69,32 +50,42 @@ const CHART_COLORS = {
   R2: '#f97316', // orange
   R3: '#eab308', // yellow
   X: '#22c55e',  // green
-  Y: '#3b82f6',  // blue
+  Y: '#3b82f6',  // blue  
   Z: '#8b5cf6'   // purple
 } as const
 
-export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }: Props) {
+export default function LiveChart({ isCollecting = false }: Props) {
+  // Chart state
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
-  const [availableDevices, setAvailableDevices] = useState<string[]>([])
   
-  // Store data per device
+  // Use global device connection context
+  const { 
+    connectedDevices, 
+    activeCollectingDevices,
+    connectionStatus, 
+    deviceHeartbeats,
+    subscribeToGaitData
+  } = useDeviceConnection()
+  
+  // Store data per device and timing reference
   const deviceDataBuffers = useRef<Map<string, GaitData[]>>(new Map())
+  const baseTimestamp = useRef<number | null>(null)
 
-  // Function to parse BLE data packet (24 bytes = 6 floats)
-  const parseBLEData = (dataView: DataView, deviceId: string = 'unknown'): GaitData => {
+  // Convert Tauri payload to internal format
+  const convertPayloadToGaitData = useCallback((payload: GaitDataPayload): GaitData => {
     return {
-      device_id: deviceId,
-      R1: dataView.getFloat32(0, true),  // little endian
-      R2: dataView.getFloat32(4, true),
-      R3: dataView.getFloat32(8, true),
-      X: dataView.getFloat32(12, true),
-      Y: dataView.getFloat32(16, true),
-      Z: dataView.getFloat32(20, true),
-      timestamp: Date.now() / 1000
+      device_id: payload.device_id,
+      R1: payload.r1,
+      R2: payload.r2,
+      R3: payload.r3,
+      X: payload.x,
+      Y: payload.y,
+      Z: payload.z,
+      timestamp: payload.timestamp
     }
-  }
+  }, [])
 
   // Function to update chart datasets for a specific device
   const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
@@ -134,9 +125,11 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
           data: [],
           borderColor: finalColor,
           backgroundColor: finalColor + '20',
+          borderWidth: 2,
+          fill: false,
           tension: 0.1,
           pointRadius: 0,
-          borderWidth: 2
+          pointHoverRadius: 4
         }
         chart.data.datasets.push(dataset)
       }
@@ -144,231 +137,87 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
       return dataset
     }
 
-    // Update datasets based on current mode
-    if (chartMode === 'all' || chartMode === 'resistance') {
-      const r1Dataset = findOrCreateDataset(CHART_COLORS.R1, 'R1 (Resistance)')
-      const r2Dataset = findOrCreateDataset(CHART_COLORS.R2, 'R2 (Resistance)')
-      const r3Dataset = findOrCreateDataset(CHART_COLORS.R3, 'R3 (Resistance)')
-      
-      r1Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R1 })
-      r2Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R2 })
-      r3Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R3 })
-    }
-    
-    if (chartMode === 'all' || chartMode === 'acceleration') {
-      const xDataset = findOrCreateDataset(CHART_COLORS.X, 'X (Accel)')
-      const yDataset = findOrCreateDataset(CHART_COLORS.Y, 'Y (Accel)')
-      const zDataset = findOrCreateDataset(CHART_COLORS.Z, 'Z (Accel)')
-      
-      xDataset.data.push({ x: gaitData.timestamp, y: gaitData.X })
-      yDataset.data.push({ x: gaitData.timestamp, y: gaitData.Y })
-      zDataset.data.push({ x: gaitData.timestamp, y: gaitData.Z })
+    // Set base timestamp for all devices on first data point
+    if (baseTimestamp.current === null) {
+      baseTimestamp.current = gaitData.timestamp
     }
 
-    // Keep only last 5 seconds of data for performance
+    // Calculate relative time in seconds
+    const relativeTime = gaitData.timestamp - baseTimestamp.current!
+
+    // Add data points based on chart mode
+    if (chartMode === 'all' || chartMode === 'resistance') {
+      const r1Dataset = findOrCreateDataset(CHART_COLORS.R1, 'R1')
+      const r2Dataset = findOrCreateDataset(CHART_COLORS.R2, 'R2')  
+      const r3Dataset = findOrCreateDataset(CHART_COLORS.R3, 'R3')
+      
+      r1Dataset.data.push({ x: relativeTime, y: gaitData.R1 })
+      r2Dataset.data.push({ x: relativeTime, y: gaitData.R2 })
+      r3Dataset.data.push({ x: relativeTime, y: gaitData.R3 })
+    }
+
+    if (chartMode === 'all' || chartMode === 'acceleration') {
+      const xDataset = findOrCreateDataset(CHART_COLORS.X, 'X')
+      const yDataset = findOrCreateDataset(CHART_COLORS.Y, 'Y')
+      const zDataset = findOrCreateDataset(CHART_COLORS.Z, 'Z')
+      
+      xDataset.data.push({ x: relativeTime, y: gaitData.X })
+      yDataset.data.push({ x: relativeTime, y: gaitData.Y })
+      zDataset.data.push({ x: relativeTime, y: gaitData.Z })
+    }
+
+    // Keep only last 500 points per dataset to prevent memory issues
     chart.data.datasets.forEach(dataset => {
       if (dataset.data.length > 500) {
-        dataset.data.shift()
+        dataset.data = dataset.data.slice(-500)
       }
     })
 
     chart.update('none')
   }, [chartMode])
 
-  // Function to add real BLE data to chart
-  const addBLEDataToChart = useCallback((gaitData: GaitData) => {
-    const deviceId = gaitData.device_id
-    
-    // Get or create device buffer
-    if (!deviceDataBuffers.current.has(deviceId)) {
-      deviceDataBuffers.current.set(deviceId, [])
-      setAvailableDevices(prev => [...prev, deviceId])
-    }
-    
-    const deviceBuffer = deviceDataBuffers.current.get(deviceId)!
-    deviceBuffer.push(gaitData)
-    
-    // Keep only last 5 seconds at 100Hz per device
-    if (deviceBuffer.length > 500) {
-      deviceBuffer.shift()
-    }
-    
-    if (chartRef.current) {
-      updateChartForDevice(deviceId, gaitData)
-    }
-  }, [updateChartForDevice])
-
-  // BLE characteristic event handler
-  const handleBLECharacteristicChange = useCallback((event: Event) => {
-    const target = event.target as BluetoothRemoteGATTCharacteristic
-    const dataView = target.value
-    
-    if (dataView && dataView.byteLength === 24) { // 6 floats * 4 bytes each
-      try {
-        const gaitData = parseBLEData(dataView)
-        addBLEDataToChart(gaitData)
-      } catch (error) {
-        console.error('Error parsing BLE data:', error)
-      }
-    } else {
-      console.warn('Received BLE data with unexpected length:', dataView?.byteLength)
-    }
-  }, [addBLEDataToChart])
-
-  // Function to setup BLE characteristic notifications
-  const setupBLENotifications = useCallback(async (characteristic: BluetoothRemoteGATTCharacteristic) => {
-    try {
-      await characteristic.startNotifications()
-      characteristic.addEventListener('characteristicvaluechanged', handleBLECharacteristicChange)
-      console.log('✅ BLE notifications setup successfully')
-    } catch (error) {
-      console.error('❌ Failed to setup BLE notifications:', error)
-      throw error
-    }
-  }, [handleBLECharacteristicChange])
-
-  // Function to cleanup BLE notifications
-  const cleanupBLENotifications = useCallback((characteristic: BluetoothRemoteGATTCharacteristic) => {
-    try {
-      characteristic.removeEventListener('characteristicvaluechanged', handleBLECharacteristicChange)
-      characteristic.stopNotifications()
-      console.log('🔄 BLE notifications cleaned up')
-    } catch (error) {
-      console.error('⚠️ Error cleaning up BLE notifications:', error)
-    }
-  }, [handleBLECharacteristicChange])
-
-  // Expose BLE functions to parent component
-  useEffect(() => {
-    if (onBLEFunctionsReady) {
-      onBLEFunctionsReady({
-        setupNotifications: setupBLENotifications,
-        cleanupNotifications: cleanupBLENotifications
-      })
-    }
-  }, [onBLEFunctionsReady, setupBLENotifications, cleanupBLENotifications])
-
+  // Initialize chart
   useEffect(() => {
     if (!canvasRef.current) return
-    
-    const datasets = []
-    
-    if (chartMode === 'all' || chartMode === 'resistance') {
-      datasets.push(
-        { 
-          label: 'R1 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R1,
-          backgroundColor: CHART_COLORS.R1 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R2 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R2,
-          backgroundColor: CHART_COLORS.R2 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R3 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R3,
-          backgroundColor: CHART_COLORS.R3 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
-    
-    if (chartMode === 'all' || chartMode === 'acceleration') {
-      datasets.push(
-        { 
-          label: 'X (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.X,
-          backgroundColor: CHART_COLORS.X + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Y (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Y,
-          backgroundColor: CHART_COLORS.Y + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Z (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Z,
-          backgroundColor: CHART_COLORS.Z + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
-    
-    chartRef.current = new Chart(canvasRef.current, {
+
+    const ctx = canvasRef.current.getContext('2d')
+    if (!ctx) return
+
+    chartRef.current = new Chart(ctx, {
       type: 'line',
-      data: { datasets },
-      options: { 
+      data: {
+        datasets: []
+      },
+      options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
         interaction: {
           intersect: false,
-          mode: 'index'
         },
-        scales: { 
-          x: { 
+        plugins: {
+          title: {
+            display: true,
+            text: 'Live Gait Data'
+          },
+          legend: {
+            display: true,
+            position: 'top'
+          }
+        },
+        scales: {
+          x: {
             type: 'linear',
+            position: 'bottom',
             title: {
               display: true,
               text: 'Time (seconds)'
-            },
-            grid: {
-              color: 'rgba(0,0,0,0.1)'
             }
           },
           y: {
             title: {
               display: true,
-              text: chartMode === 'resistance' ? 'Resistance Values' : 
-                    chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
-                    'Sensor Values'
-            },
-            grid: {
-              color: 'rgba(0,0,0,0.1)'
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              pointStyle: 'line'
-            }
-          },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            callbacks: {
-              label: function(context) {
-                const label = context.dataset.label || ''
-                const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
-                return `${label}: ${value}`
-              }
+              text: 'Value'
             }
           }
         }
@@ -381,142 +230,114 @@ export default function LiveChart({ isCollecting = false, onBLEFunctionsReady }:
         chartRef.current = null
       }
     }
-  }, [chartMode])
+  }, [])
 
+  // Subscribe to gait data from context
   useEffect(() => {
-    if (isCollecting && chartRef.current) {
-      const startTime = Date.now()
-      let simulationInterval: number | null = null
-      let bleListener: (() => void) | null = null
+    const unsubscribe = subscribeToGaitData((payload: GaitDataPayload) => {
+      const gaitData = convertPayloadToGaitData(payload)
       
-      // Set up real BLE data listener
-      const setupBLEListener = async () => {
-        try {
-          const unlisten = await listen('gait-data', (event: { payload: BLEPayload }) => {
-            const payload = event.payload as {
-              device_id: string,
-              r1: number, r2: number, r3: number,
-              x: number, y: number, z: number,
-              timestamp: number
-            }
-            
-            const gaitData: GaitData = {
-              device_id: payload.device_id,
-              R1: payload.r1,
-              R2: payload.r2,
-              R3: payload.r3,
-              X: payload.x,
-              Y: payload.y,
-              Z: payload.z,
-              timestamp: (payload.timestamp - startTime) / 1000 // Convert to seconds relative to start
-            }
-            
-            console.log('📡 Received real BLE data:', gaitData)
-            addBLEDataToChart(gaitData)
-          })
-          
-          bleListener = unlisten
-          console.log('✅ BLE data listener setup complete')
-        } catch (error) {
-          console.warn('Failed to setup BLE listener, using simulation:', error)
-          startSimulation()
-        }
+      // Store data in buffer for this device
+      if (!deviceDataBuffers.current.has(gaitData.device_id)) {
+        deviceDataBuffers.current.set(gaitData.device_id, [])
       }
       
-      const startSimulation = () => {
-        console.log('🔄 Starting simulation mode')
-        simulationInterval = setInterval(() => {
-          const now = Date.now()
-          const timeSeconds = (now - startTime) / 1000
-          
-          // Simulate realistic gait data
-          const walkCycle = Math.sin(timeSeconds * 2 * Math.PI) // 1 Hz walking cycle
-          const noise = () => (Math.random() - 0.5) * 2
-          
-          const gaitData: GaitData = {
-            device_id: 'simulation',
-            R1: 10.0 + walkCycle * 5 + noise(), // Resistance values with walking pattern
-            R2: 11.0 + walkCycle * 4 + noise(),
-            R3: 12.0 + walkCycle * 3 + noise(),
-            X: walkCycle * 2 + noise(), // Acceleration data
-            Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
-            Z: 9.8 + walkCycle * 0.5 + noise(), // Gravity + movement
-            timestamp: timeSeconds
-          }
-          
-          addBLEDataToChart(gaitData)
-        }, 10) // 100Hz to match Arduino
+      const buffer = deviceDataBuffers.current.get(gaitData.device_id)!
+      buffer.push(gaitData)
+      
+      // Keep only last 1000 data points per device
+      if (buffer.length > 1000) {
+        deviceDataBuffers.current.set(gaitData.device_id, buffer.slice(-1000))
       }
       
-      // Try BLE first, fallback to simulation
-      setupBLEListener()
-      
-      // If no BLE data received within 2 seconds, start simulation
-      const fallbackTimeout = setTimeout(() => {
-        if (!bleListener) {
-          startSimulation()
-        }
-      }, 2000)
-      
-      // Cleanup function
-      return () => {
-        clearTimeout(fallbackTimeout)
-        if (bleListener) {
-          bleListener()
-        }
-        if (simulationInterval) {
-          clearInterval(simulationInterval)
-        }
+      // Update chart
+      updateChartForDevice(gaitData.device_id, gaitData)
+    })
+
+    return unsubscribe
+  }, [subscribeToGaitData, convertPayloadToGaitData, updateChartForDevice])
+
+  // Generate simulation data when collecting but no real data
+  useEffect(() => {
+    if (!isCollecting || activeCollectingDevices.length > 0) return
+
+    const interval = setInterval(() => {
+      const now = Date.now() / 1000
+      const simulationData: GaitData = {
+        device_id: 'simulation',
+        R1: 12 + Math.sin(now * 2) * 3 + Math.random() * 0.5,
+        R2: 15 + Math.cos(now * 1.5) * 2 + Math.random() * 0.3,
+        R3: 18 + Math.sin(now * 0.8) * 4 + Math.random() * 0.4,
+        X: Math.sin(now * 3) * 2 + Math.random() * 0.2,
+        Y: Math.cos(now * 2.5) * 1.5 + Math.random() * 0.15,
+        Z: 9.8 + Math.sin(now * 1.2) * 0.5 + Math.random() * 0.1,
+        timestamp: now
       }
+      
+      updateChartForDevice('simulation', simulationData)
+    }, 50) // 20 Hz simulation
+
+    return () => clearInterval(interval)
+  }, [isCollecting, activeCollectingDevices.length, updateChartForDevice])
+
+  // Clear chart when stopping collection
+  useEffect(() => {
+    if (!isCollecting && chartRef.current) {
+      chartRef.current.data.datasets = []
+      chartRef.current.update()
+      deviceDataBuffers.current.clear()
+      baseTimestamp.current = null
     }
-  }, [isCollecting, chartMode, addBLEDataToChart])
+  }, [isCollecting])
 
   return (
-    <section className="card">
-      <div className="chart-header">
-        <h2>Live Gait Data</h2>
-        <div className="chart-controls">
-          <div className="chart-status">
-            <span className={`status-indicator ${isCollecting ? 'collecting' : 'idle'}`}>
-              {isCollecting ? '● Recording' : '○ Idle'}
-            </span>
-          </div>
-          <div className="chart-mode-selector">
-            <button 
-              className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
-              onClick={() => setChartMode('all')}
-            >
-              All Channels
-            </button>
-            <button 
-              className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
-              onClick={() => setChartMode('resistance')}
-            >
-              Resistance (R1-R3)
-            </button>
-            <button 
-              className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
-              onClick={() => setChartMode('acceleration')}
-            >
-              Acceleration (XYZ)
-            </button>
-          </div>
+    <div className="live-chart-container">
+      <div className="chart-controls">
+        <div className="chart-mode-selector">
+          <label>Chart Mode:</label>
+          <select 
+            value={chartMode} 
+            onChange={(e) => setChartMode(e.target.value as 'all' | 'resistance' | 'acceleration')}
+            title="Select chart display mode"
+          >
+            <option value="all">All Channels</option>
+            <option value="resistance">Resistance Only</option>
+            <option value="acceleration">Acceleration Only</option>
+          </select>
+        </div>
+        
+        <div className="connection-status">
+          <h4>Device Status</h4>
+          {connectedDevices.length === 0 ? (
+            <p>No devices connected</p>
+          ) : (
+            <ul>
+              {connectedDevices.map(deviceId => {
+                const status = connectionStatus.get(deviceId)
+                const heartbeat = deviceHeartbeats.get(deviceId)
+                const isCollecting = activeCollectingDevices.includes(deviceId)
+                
+                return (
+                  <li key={deviceId} className={`device-status ${status}`}>
+                    <span className="device-id">{deviceId.slice(-8)}</span>
+                    <span className={`status-indicator ${status}`}>
+                      {status === 'connected' ? '🟢' : status === 'timeout' ? '🟡' : '🔴'}
+                    </span>
+                    {heartbeat && (
+                      <span className="heartbeat-info">♥{heartbeat.sequence}</span>
+                    )}
+                    {isCollecting && <span className="collecting-indicator">📊</span>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       </div>
-      <div className="chart-container">
+      
+      <div className="chart-wrapper">
         <canvas ref={canvasRef} />
       </div>
-      <div className="chart-info">
-        <div className="data-info">
-          <span>Sample Rate: 100 Hz</span>
-          <span>•</span>
-          <span>Devices: {availableDevices.length}</span>
-          <span>•</span>
-          <span>Total Samples: {Array.from(deviceDataBuffers.current.values()).reduce((sum, buffer) => sum + buffer.length, 0)}</span>
-          <span>•</span>
-          <span>Channels: R1, R2, R3, X, Y, Z</span>
-        </div>
-      </div>
-    </section>
+    </div>
   )
 }

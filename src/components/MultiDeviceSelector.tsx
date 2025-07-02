@@ -1,9 +1,5 @@
-import { useState, useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
-
-interface MultiDeviceSelectorProps {
-  onDeviceToggle: (deviceId: string, isCollecting: boolean) => void
-}
+import { useState, useEffect, useCallback } from 'react'
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 interface DeviceStatus {
   id: string
@@ -12,26 +8,44 @@ interface DeviceStatus {
   isCollecting: boolean
 }
 
-export default function MultiDeviceSelector({ onDeviceToggle }: MultiDeviceSelectorProps) {
+export default function MultiDeviceSelector() {
   const [devices, setDevices] = useState<DeviceStatus[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // Use global device connection context
+  const { 
+    connectedDevices, 
+    connectionStatus, 
+    deviceHeartbeats,
+    startDeviceCollection,
+    stopDeviceCollection,
+    getActiveCollectingDevices
+  } = useDeviceConnection()
 
-  const loadDeviceStatuses = async () => {
+  const loadDeviceStatuses = useCallback(async () => {
     setLoading(true)
     try {
-      // Get connected devices
-      const connectedIds: string[] = await invoke('get_connected_devices')
+      // Use connected devices from global context
+      const connectedIds = connectedDevices
       
-      // Get which devices are actively collecting
-      const activeIds: string[] = await invoke('get_active_notifications')
+      // Get which devices are actively collecting using context method
+      const activeIds = await getActiveCollectingDevices()
       
-      // Create device status objects
-      const deviceStatuses: DeviceStatus[] = connectedIds.map(id => ({
-        id,
-        name: `Device ${id.slice(-6)}`, // Show last 6 chars of device ID
-        isConnected: true,
-        isCollecting: activeIds.includes(id)
-      }))
+      // Create device status objects with heartbeat info
+      const deviceStatuses: DeviceStatus[] = connectedIds.map(id => {
+        const status = connectionStatus.get(id)
+        const heartbeat = deviceHeartbeats.get(id)
+        const displayName = heartbeat ? 
+          `Device ${id.slice(-6)} (♥${heartbeat.sequence})` : 
+          `Device ${id.slice(-6)}`
+        
+        return {
+          id,
+          name: displayName,
+          isConnected: status === 'connected',
+          isCollecting: activeIds.includes(id)
+        }
+      })
       
       setDevices(deviceStatuses)
     } catch (error) {
@@ -39,22 +53,19 @@ export default function MultiDeviceSelector({ onDeviceToggle }: MultiDeviceSelec
     } finally {
       setLoading(false)
     }
-  }
+  }, [connectedDevices, connectionStatus, deviceHeartbeats, getActiveCollectingDevices])
 
   const handleToggleCollection = async (deviceId: string, currentlyCollecting: boolean) => {
     try {
       if (currentlyCollecting) {
-        // Stop collection
-        await invoke('stop_gait_notifications', { deviceId })
+        // Stop collection using context method
+        await stopDeviceCollection(deviceId)
         console.log(`Stopped collection for device: ${deviceId}`)
       } else {
-        // Start collection
-        await invoke('start_gait_notifications', { deviceId })
+        // Start collection using context method
+        await startDeviceCollection(deviceId)
         console.log(`Started collection for device: ${deviceId}`)
       }
-      
-      // Notify parent component
-      onDeviceToggle(deviceId, !currentlyCollecting)
       
       // Reload device statuses
       await loadDeviceStatuses()
@@ -70,7 +81,7 @@ export default function MultiDeviceSelector({ onDeviceToggle }: MultiDeviceSelec
     // Refresh device statuses every 3 seconds
     const interval = setInterval(loadDeviceStatuses, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadDeviceStatuses])
 
   if (loading && devices.length === 0) {
     return (
