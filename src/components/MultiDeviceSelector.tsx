@@ -15,7 +15,6 @@ export default function MultiDeviceSelector() {
   // Use global device connection context
   const { 
     connectedDevices, 
-    connectionStatus, 
     deviceHeartbeats,
     startDeviceCollection,
     stopDeviceCollection,
@@ -33,7 +32,6 @@ export default function MultiDeviceSelector() {
       
       // Create device status objects with heartbeat info
       const deviceStatuses: DeviceStatus[] = connectedIds.map(id => {
-        const status = connectionStatus.get(id)
         const heartbeat = deviceHeartbeats.get(id)
         const displayName = heartbeat ? 
           `Device ${id.slice(-6)} (♥${heartbeat.sequence})` : 
@@ -42,7 +40,7 @@ export default function MultiDeviceSelector() {
         return {
           id,
           name: displayName,
-          isConnected: status === 'connected',
+          isConnected: true, // If it's in connectedDevices, it's BLE connected
           isCollecting: activeIds.includes(id)
         }
       })
@@ -53,7 +51,7 @@ export default function MultiDeviceSelector() {
     } finally {
       setLoading(false)
     }
-  }, [connectedDevices, connectionStatus, deviceHeartbeats, getActiveCollectingDevices])
+  }, [connectedDevices, deviceHeartbeats, getActiveCollectingDevices])
 
   const handleToggleCollection = async (deviceId: string, currentlyCollecting: boolean) => {
     try {

@@ -12,6 +12,15 @@ use uuid::Uuid;
 use futures::stream::StreamExt;
 use tauri::Emitter;
 
+// Add heartbeat data structure
+#[derive(Debug, serde::Serialize)]
+struct HeartbeatData {
+  device_id: String,
+  device_timestamp: u32,
+  sequence: u32,
+  received_timestamp: u64,
+}
+
 // Global state for devices and connections - using different wrapper structs to avoid type conflicts
 #[derive(Clone)]
 pub struct ConnectedDevicesState(Arc<Mutex<HashMap<String, Peripheral>>>);
@@ -51,19 +60,6 @@ struct GaitData {
   z: f32,
   timestamp: u64,
 }
-
-// Add heartbeat data structure
-#[derive(Clone, Serialize)]
-struct HeartbeatData {
-  device_id: String,
-  device_timestamp: u32,
-  sequence: u32,
-  received_timestamp: u64,
-}
-
-// Add heartbeat monitoring state
-#[derive(Clone)]
-pub struct HeartbeatState(Arc<Mutex<HashMap<String, HeartbeatData>>>);
 
 #[tauri::command]
 async fn scan_devices(
@@ -637,12 +633,56 @@ async fn debug_device_services(
   Ok(service_info)
 }
 
+#[tauri::command]
+async fn check_connection_status(
+  connected_devices: tauri::State<'_, ConnectedDevicesState>,
+  app_handle: tauri::AppHandle,
+) -> Result<Vec<String>, String> {
+  use btleplug::api::Peripheral;
+  
+  let mut actually_connected = Vec::new();
+  let mut devices_to_remove = Vec::new();
+  
+  {
+    let mut connected = connected_devices.0.lock().await;
+    
+    // Check each device's actual connection status
+    for (device_id, peripheral) in connected.iter() {
+      match peripheral.is_connected().await {
+        Ok(true) => {
+          actually_connected.push(device_id.clone());
+        }
+        Ok(false) => {
+          println!("🔌 Device {} is no longer connected", device_id);
+          devices_to_remove.push(device_id.clone());
+        }
+        Err(e) => {
+          println!("❌ Error checking connection status for {}: {}", device_id, e);
+          devices_to_remove.push(device_id.clone());
+        }
+      }
+    }
+    
+    // Remove disconnected devices
+    for device_id in &devices_to_remove {
+      connected.remove(device_id);
+    }
+  }
+  
+  // Emit connection status update to frontend
+  if !devices_to_remove.is_empty() {
+    let _ = app_handle.emit("connection-status-update", &actually_connected);
+  }
+  
+  Ok(actually_connected)
+}
+
 fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
   if data.len() != 24 {
     return Err(format!("Invalid data length: {} (expected 24)", data.len()));
   }
   
-  // Parse 6 floats in little-endian format (matching Arduino)
+  // Parse 6 floats in little-endian format
   let r1 = f32::from_le_bytes([data[0], data[1], data[2], data[3]]);
   let r2 = f32::from_le_bytes([data[4], data[5], data[6], data[7]]);
   let r3 = f32::from_le_bytes([data[8], data[9], data[10], data[11]]);
@@ -690,15 +730,13 @@ fn main() {
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let bt_manager = BluetoothManagerState(Arc::new(Mutex::new(None)));
   let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
-  let heartbeat_state = HeartbeatState(Arc::new(Mutex::new(HashMap::new())));
   
   tauri::Builder::default()
     .manage(connected_devices)
     .manage(discovered_devices)
     .manage(bt_manager)
     .manage(active_notifications)
-    .manage(heartbeat_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

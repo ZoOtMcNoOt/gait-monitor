@@ -1,7 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 export default function DeviceList() {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [devicesPerPage, setDevicesPerPage] = useState(5)
+
   // Use global device connection context exclusively
   const { 
     scannedDevices,
@@ -13,7 +17,8 @@ export default function DeviceList() {
     scanDevices,
     connectDevice,
     disconnectDevice,
-    refreshConnectedDevices
+    refreshConnectedDevices,
+    removeScannedDevice // Add manual device removal
   } = useDeviceConnection()
 
   // Load connected devices on component mount
@@ -21,7 +26,64 @@ export default function DeviceList() {
     refreshConnectedDevices()
   }, [refreshConnectedDevices])
 
+  // Sort devices function
+  const getSortedDevices = () => {
+    return scannedDevices
+      .sort((a, b) => {
+        // Sort GaitBLE devices to the top
+        const aIsGaitBLE = (a.name || '').toLowerCase().startsWith('gaitble');
+        const bIsGaitBLE = (b.name || '').toLowerCase().startsWith('gaitble');
+        
+        if (aIsGaitBLE && !bIsGaitBLE) return -1;
+        if (!aIsGaitBLE && bIsGaitBLE) return 1;
+        
+        // If both are GaitBLE or both are not, sort alphabetically by name
+        const aName = a.name || 'Unknown Device';
+        const bName = b.name || 'Unknown Device';
+        return aName.localeCompare(bName);
+      })
+  }
+
+  // Pagination calculations
+  const sortedDevices = getSortedDevices()
+  const totalPages = Math.ceil(sortedDevices.length / devicesPerPage)
+  const startIndex = (currentPage - 1) * devicesPerPage
+  const endIndex = startIndex + devicesPerPage
+  const currentDevices = sortedDevices.slice(startIndex, endIndex)
+
+  // Reset to first page when devices change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
+
+  const handleDevicesPerPageChange = (newValue: number) => {
+    setDevicesPerPage(newValue)
+    setCurrentPage(1) // Reset to first page
+  }
+
   const isConnected = (deviceId: string) => connectedDevices.includes(deviceId)
+
+  const handleRemoveDevice = async (deviceId: string) => {
+    if (confirm('Are you sure you want to remove this device from the list? You will need to scan again to find it.')) {
+      try {
+        // First disconnect if connected
+        if (isConnected(deviceId)) {
+          await disconnectDevice(deviceId)
+        }
+        // Then remove from scanned device list
+        removeScannedDevice(deviceId)
+      } catch (error) {
+        console.error('Failed to remove device:', error)
+        alert(`Failed to remove device: ${error}`)
+      }
+    }
+  }
 
   const handleConnect = async (deviceId: string) => {
     try {
@@ -71,128 +133,365 @@ export default function DeviceList() {
   }
 
   return (
-    <section className="card">
+    <section className="card device-list-card">
       <h2>Bluetooth Devices</h2>
       <button onClick={handleScan} disabled={isScanning}>
         {isScanning ? 'Scanning...' : 'Scan for Devices'}
       </button>
       
-      {scannedDevices.length > 0 && (
-        <div>
-          <h3>Available Devices ({scannedDevices.length})</h3>
-          <ul>
-            {scannedDevices.map(d => (
-              <li key={d.id} className={`device-list-item ${isConnected(d.id) ? 'connected' : ''}`}>
-                <div className="device-info">
-                  <div className="device-name">{d.name}</div>
-                  <div className="device-id">{d.id}</div>
-                  <div className="device-details">
-                    {d.rssi !== undefined && (
-                      <span className="device-rssi">RSSI: {d.rssi}dBm</span>
-                    )}
-                    <span className={`device-connectable ${d.connectable ? 'connectable' : 'not-connectable'}`}>
-                      {d.connectable ? '✓ Connectable' : '✗ Not Connectable'}
-                    </span>
-                    <span className="device-type">Type: {d.address_type}</span>
+      {/* Device list area - always present to prevent layout shift */}
+      <div className="device-list-container">        
+        {/* Connected Devices Section - Show first */}
+        {connectedDevices.length > 0 && (
+          <div className="connected-devices-section">
+            <h3>Connected Devices ({connectedDevices.length})</h3>
+            <ul>
+              {connectedDevices.map(deviceId => {
+                // Find device info from scanned devices
+                const deviceInfo = scannedDevices.find(d => d.id === deviceId)
+                const status = connectionStatus.get(deviceId)
+                const heartbeat = deviceHeartbeats.get(deviceId)
+                
+                return (
+                  <li key={deviceId} className={`device-card connected gaitble-device`}>
+                    <div className="device-header">
+                      <div className="device-name-section">
+                        <h4 className="device-name">{deviceInfo?.name || 'Unknown Device'}</h4>
+                        <div className="device-id">{deviceId}</div>
+                      </div>
+                    </div>
+
+                    <div className="device-body">
+                      <div className="device-info-grid">
+                        <div className="device-info-section">
+                          <div className="info-row">
+                            <span className="info-label">Signal:</span>
+                            <span className={`info-value ${deviceInfo?.rssi !== undefined ? 'rssi-value' : ''}`}>
+                              {deviceInfo?.rssi !== undefined ? `${deviceInfo.rssi}dBm` : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="info-row">
+                            <span className="info-label">Status:</span>
+                            <span className="info-value device-connectable connectable">
+                              ✓ Connected
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Connection status */}
+                      <div className="device-heartbeat-section">
+                        <div className="heartbeat-status ble-connected">
+                          <span className="heartbeat-icon ble-connected">🔗</span>
+                          <span className="heartbeat-text">BLE Connected</span>
+                        </div>
+                        
+                        {(status || heartbeat) && (
+                          <div className={`data-status ${status || 'unknown'}`}>
+                            <span className={`data-icon ${status || 'unknown'}`}>
+                              {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                            </span>
+                            <span className="data-text">
+                              {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
+                            </span>
+                            {heartbeat && (
+                              <span className="heartbeat-sequence" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
+                                #{heartbeat.sequence}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="device-footer">
+                      <div className="device-connection-status">
+                        <span className="connected-badge">● Connected</span>
+                      </div>
+                      
+                      <div className="device-actions">
+                        <div className="action-buttons">
+                          <button 
+                            onClick={() => handleDisconnect(deviceId)}
+                            disabled={isConnecting === deviceId}
+                            className="btn btn-disconnect"
+                          >
+                            {isConnecting === deviceId ? 'Disconnecting...' : 'Disconnect'}
+                          </button>
+                          <button 
+                            onClick={() => debugServices(deviceId)}
+                            className="btn btn-debug"
+                            title="Debug: List all services on this device"
+                          >
+                            Debug Services
+                          </button>
+                          <button 
+                            onClick={() => handleRemoveDevice(deviceId)}
+                            className="btn btn-remove"
+                            title="Remove this device from the list"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+
+        {isScanning && scannedDevices.length === 0 && (
+          <div className="scanning-message">
+            <p>🔍 Scanning for devices...</p>
+          </div>
+        )}
+        
+        {scannedDevices.length > 0 && (
+          <div>
+            <div className="device-list-header">
+              <h3>Available Devices ({scannedDevices.length})</h3>
+              <div className="pagination-controls">
+                <label>
+                  Devices per page:
+                  <select 
+                    value={devicesPerPage} 
+                    onChange={(e) => handleDevicesPerPageChange(Number(e.target.value))}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="pagination-info">
+                <span>
+                  Showing {startIndex + 1}-{Math.min(endIndex, scannedDevices.length)} of {scannedDevices.length} devices
+                  (Page {currentPage} of {totalPages})
+                </span>
+              </div>
+            )}
+            
+            <ul>
+              {currentDevices.map(d => (
+                <li key={d.id} className={`device-card ${isConnected(d.id) ? 'connected' : ''} ${(d.name || '').toLowerCase().startsWith('gaitble') ? 'gaitble-device' : ''}`}>
+                  <div className="device-header">
+                    <div className="device-name-section">
+                      <h4 className="device-name">{d.name || 'Unknown Device'}</h4>
+                      <div className="device-id">{d.id}</div>
+                    </div>
                   </div>
-                  {d.services.length > 0 && (
-                    <div className="device-services">
-                      <strong>Services:</strong> {d.services.slice(0, 3).join(', ')}
-                      {d.services.length > 3 && ` (+${d.services.length - 3} more)`}
+
+                  <div className="device-body">
+                    <div className="device-info-grid">
+                      <div className="device-info-section">
+                        <div className="info-row">
+                          <span className="info-label">Signal:</span>
+                          <span className={`info-value ${d.rssi !== undefined ? 'rssi-value' : ''}`}>
+                            {d.rssi !== undefined ? `${d.rssi}dBm` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Status:</span>
+                          <span className={`info-value device-connectable ${d.connectable ? 'connectable' : 'not-connectable'}`}>
+                            {d.connectable ? '✓ Connectable' : '✗ Not Connectable'}
+                          </span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-label">Type:</span>
+                          <span className="info-value device-type">{d.address_type}</span>
+                        </div>
+                      </div>
+
+                      {(d.services.length > 0 || d.manufacturer_data.length > 0) && (
+                        <div className="device-additional-info">
+                          {d.services.length > 0 && (
+                            <div className="info-row">
+                              <span className="info-label">Services:</span>
+                              <span className="info-value device-services">
+                                {d.services.slice(0, 2).join(', ')}
+                                {d.services.length > 2 && ` (+${d.services.length - 2} more)`}
+                              </span>
+                            </div>
+                          )}
+                          {d.manufacturer_data.length > 0 && (
+                            <div className="info-row">
+                              <span className="info-label">Manufacturer:</span>
+                              <span className="info-value device-manufacturer">{d.manufacturer_data[0]}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {d.manufacturer_data.length > 0 && (
-                    <div className="device-manufacturer">
-                      <strong>Manufacturer:</strong> {d.manufacturer_data[0]}
-                    </div>
-                  )}
-                  {isConnected(d.id) && (
-                    <div className="device-connection-status">
-                      <span className="device-status">
-                        ● Connected
-                      </span>
-                      {/* Show heartbeat status if available */}
-                      {(() => {
-                        const status = connectionStatus.get(d.id)
-                        const heartbeat = deviceHeartbeats.get(d.id)
-                        if (status || heartbeat) {
-                          return (
-                            <div className={`device-heartbeat-status ${status || 'unknown'}`}>
-                              <span className={`heartbeat-indicator ${status || 'unknown'}`}>
+
+                    {/* Connection status for all devices */}
+                    {(() => {
+                      const status = connectionStatus.get(d.id)
+                      const heartbeat = deviceHeartbeats.get(d.id)
+                      const isConnectedDevice = isConnected(d.id)
+                      
+                      return (
+                        <div className="device-heartbeat-section">
+                          <div className={`heartbeat-status ${isConnectedDevice ? 'ble-connected' : 'ble-disconnected'}`}>
+                            <span className={`heartbeat-icon ${isConnectedDevice ? 'ble-connected' : 'ble-disconnected'}`}>
+                              {isConnectedDevice ? '🔗' : '❌'}
+                            </span>
+                            <span className="heartbeat-text">
+                              {isConnectedDevice ? 'BLE Connected' : 'BLE Disconnected'}
+                            </span>
+                          </div>
+                          
+                          {isConnectedDevice && (status || heartbeat) && (
+                            <div className={`data-status ${status || 'unknown'}`}>
+                              <span className={`data-icon ${status || 'unknown'}`}>
                                 {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
                               </span>
+                              <span className="data-text">
+                                {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
+                              </span>
                               {heartbeat && (
-                                <span className="heartbeat-details" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
+                                <span className="heartbeat-sequence" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
                                   #{heartbeat.sequence}
                                 </span>
                               )}
-                              {status && (
-                                <span className="connection-status-text">
-                                  {status === 'connected' ? 'Live' : status === 'timeout' ? 'Timeout' : 'Lost'}
-                                </span>
-                              )}
                             </div>
-                          )
-                        }
-                        return null
-                      })()}
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  <div className="device-footer">
+                    <div className="device-connection-status">
+                      {isConnected(d.id) && (
+                        <span className="connected-badge">
+                          ● Connected
+                        </span>
+                      )}
                     </div>
-                  )}
+                    
+                    <div className="device-actions">
+                    {isConnected(d.id) ? (
+                      <div className="action-buttons">
+                        <button 
+                          onClick={() => handleDisconnect(d.id)}
+                          disabled={isConnecting === d.id}
+                          className="btn btn-disconnect"
+                        >
+                          {isConnecting === d.id ? 'Disconnecting...' : 'Disconnect'}
+                        </button>
+                        <button 
+                          onClick={() => debugServices(d.id)}
+                          className="btn btn-debug"
+                          title="Debug: List all services on this device"
+                        >
+                          Debug Services
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveDevice(d.id)}
+                          className="btn btn-remove"
+                          title="Remove this device from the list"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="action-buttons">
+                        <button 
+                          onClick={() => handleConnect(d.id)}
+                          disabled={isConnecting === d.id || !d.connectable}
+                          className="btn btn-connect"
+                          title={!d.connectable ? 'Device is not connectable' : ''}
+                        >
+                          {isConnecting === d.id ? 'Connecting...' : 'Connect'}
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveDevice(d.id)}
+                          className="btn btn-remove"
+                          title="Remove this device from the list"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="device-actions">
-                  {isConnected(d.id) ? (
-                    <>
-                      <button 
-                        onClick={() => handleDisconnect(d.id)}
-                        disabled={isConnecting === d.id}
-                        className="btn-disconnect"
-                      >
-                        {isConnecting === d.id ? 'Disconnecting...' : 'Disconnect'}
-                      </button>
-                      <button 
-                        onClick={() => debugServices(d.id)}
-                        className="btn-debug"
-                        title="Debug: List all services on this device"
-                      >
-                        Debug Services
-                      </button>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={() => handleConnect(d.id)}
-                      disabled={isConnecting === d.id || !d.connectable}
-                      className="btn-connect"
-                      title={!d.connectable ? 'Device is not connectable' : ''}
+                </li>
+            ))}
+          </ul>
+          
+          {totalPages > 1 && (
+            <div className="pagination-navigation">
+              <button 
+                onClick={() => goToPage(1)} 
+                disabled={currentPage === 1}
+                className="pagination-btn"
+              >
+                First
+              </button>
+              <button 
+                onClick={() => goToPage(currentPage - 1)} 
+                disabled={currentPage === 1}
+                className="pagination-btn"
+              >
+                Previous
+              </button>
+              
+              <div className="pagination-pages">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => goToPage(pageNum)}
+                      className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
                     >
-                      {isConnecting === d.id ? 'Connecting...' : 'Connect'}
+                      {pageNum}
                     </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                  );
+                })}
+              </div>
+              
+              <button 
+                onClick={() => goToPage(currentPage + 1)} 
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+              >
+                Next
+              </button>
+              <button 
+                onClick={() => goToPage(totalPages)} 
+                disabled={currentPage === totalPages}
+                className="pagination-btn"
+              >
+                Last
+              </button>
+            </div>
+          )}
         </div>
-      )}
+        )}
 
-      {connectedDevices.length > 0 && (
-        <div className="connected-devices-section">
-          <h3>Connected Devices ({connectedDevices.length})</h3>
-          <ul>
-            {connectedDevices.map(deviceId => (
-              <li key={deviceId} className="connected-device-item">
-                ● {deviceId}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {scannedDevices.length === 0 && !isScanning && (
-        <p className="no-devices-message">
-          No devices found. Click "Scan for Devices" to search for Bluetooth devices.
-        </p>
-      )}
+        {scannedDevices.length === 0 && !isScanning && (
+          <div className="no-devices-message">
+            <p>No devices found. Click "Scan for Devices" to search for Bluetooth devices.</p>
+          </div>
+        )}
+      </div>
     </section>
   )
 }

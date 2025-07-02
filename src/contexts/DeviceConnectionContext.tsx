@@ -55,6 +55,7 @@ interface DeviceConnectionState {
   // Actions - Device Management
   addDevice: (deviceId: string) => void
   removeDevice: (deviceId: string) => void
+  removeScannedDevice: (deviceId: string) => void
   updateGaitDataTime: (deviceId: string) => void
   markDeviceAsExpected: (deviceId: string) => void
   unmarkDeviceAsExpected: (deviceId: string) => void
@@ -108,7 +109,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   const gaitDataSubscribers = React.useRef<Set<(data: GaitDataPayload) => void>>(new Set())
 
   // Actions - Device Management
-  const addDevice = (deviceId: string) => {
+  const addDevice = useCallback((deviceId: string) => {
     setAvailableDevices(prev => {
       if (!prev.includes(deviceId)) {
         console.log('📱 Adding device to global state:', deviceId)
@@ -125,7 +126,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       }
       return newMap
     })
-  }
+  }, [])
 
   const removeDevice = (deviceId: string) => {
     console.log('🗑️ Removing device from global state:', deviceId)
@@ -136,6 +137,9 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       newSet.delete(deviceId)
       return newSet
     })
+    
+    // Also remove from scanned devices
+    setScannedDevices(prev => prev.filter(device => device.id !== deviceId))
     
     // Clean up all device data
     setConnectionStatus(prev => {
@@ -157,13 +161,18 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     })
   }
 
-  const updateGaitDataTime = (deviceId: string) => {
+  const removeScannedDevice = useCallback((deviceId: string) => {
+    console.log('🗑️ Removing scanned device:', deviceId)
+    setScannedDevices(prev => prev.filter(device => device.id !== deviceId))
+  }, [])
+
+  const updateGaitDataTime = useCallback((deviceId: string) => {
     setLastGaitDataTime(prev => {
       const newMap = new Map(prev)
       newMap.set(deviceId, Date.now())
       return newMap
     })
-  }
+  }, [])
 
   const markDeviceAsExpected = (deviceId: string) => {
     setExpectedDevices(prev => new Set([...prev, deviceId]))
@@ -208,10 +217,18 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   // Actions - Scanning & Connection
   const refreshConnectedDevices = useCallback(async () => {
     try {
-      const connected: string[] = await invoke('get_connected_devices')
+      // Use the new check_connection_status function for more accurate status
+      const connected: string[] = await invoke('check_connection_status')
       setConnectedDevices(connected)
     } catch (error) {
       console.error('Failed to refresh connected devices:', error)
+      // Fallback to the old method
+      try {
+        const connected: string[] = await invoke('get_connected_devices')
+        setConnectedDevices(connected)
+      } catch (fallbackError) {
+        console.error('Fallback refresh also failed:', fallbackError)
+      }
     }
   }, [setConnectedDevices])
 
@@ -345,9 +362,17 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   useEffect(() => {
     let unlistenHeartbeat: (() => void) | null = null
     let unlistenGaitData: (() => void) | null = null
+    let unlistenConnectionStatus: (() => void) | null = null
 
     const setupEventListeners = async () => {
       try {
+        // Connection status update listener
+        unlistenConnectionStatus = await listen('connection-status-update', (event: { payload: string[] }) => {
+          const connectedIds = event.payload as string[]
+          console.log('🔌 Connection status update received:', connectedIds)
+          setConnectedDevices(connectedIds)
+        })
+
         // Heartbeat listener
         unlistenHeartbeat = await listen('heartbeat-data', (event: { payload: HeartbeatPayload }) => {
           const payload = event.payload as HeartbeatPayload
@@ -404,21 +429,31 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       if (unlistenGaitData) {
         unlistenGaitData()
       }
+      if (unlistenConnectionStatus) {
+        unlistenConnectionStatus()
+      }
     }
-  }, [])
+  }, [addDevice, updateGaitDataTime, setConnectedDevices])
 
-  // Load initial connected devices
+  // Load initial connected devices and set up periodic refresh
   useEffect(() => {
     refreshConnectedDevices()
+    
+    // Refresh connection status every 10 seconds
+    const interval = setInterval(() => {
+      refreshConnectedDevices()
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [refreshConnectedDevices])
 
-  // Heartbeat monitoring - check for timeouts every 2 seconds
+  // Heartbeat monitoring - check for timeouts every 5 seconds
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       const now = Date.now()
-      const HEARTBEAT_TIMEOUT = 3000 // 3 seconds (3x heartbeat interval)
-      const GAIT_DATA_TIMEOUT = 5000 // 5 seconds without gait data
-      const DISCONNECT_CLEANUP_TIME = 30000 // 30 seconds
+      const HEARTBEAT_TIMEOUT = 15000 // 15 seconds (more lenient timeout)
+      const GAIT_DATA_TIMEOUT = 10000 // 10 seconds without gait data
+      // Removed automatic device cleanup - let users manually manage devices
       
       setConnectionStatus(prev => {
         const newMap = new Map(prev)
@@ -427,41 +462,47 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
         availableDevices.forEach(deviceId => {
           const heartbeat = deviceHeartbeats.get(deviceId)
           const lastGait = lastGaitDataTime.get(deviceId)
+          const isActuallyConnected = connectedDevices.includes(deviceId)
           let deviceStatus: ConnectionStatus = 'disconnected'
           
-          // Check heartbeat status
-          if (!heartbeat) {
-            // No heartbeat ever received
-            if (lastGait && (now - lastGait) < GAIT_DATA_TIMEOUT) {
-              // Still receiving gait data recently, consider connected but no heartbeat
-              deviceStatus = 'connected'
-              console.log(`📡 Device ${deviceId}: No heartbeat but gait data is fresh`)
-            } else if (connectedDevices.includes(deviceId)) {
-              // Device is in connected list but no heartbeat/gait data
-              deviceStatus = 'connected'
-            } else {
-              deviceStatus = 'disconnected'
-              if (prev.get(deviceId) !== 'disconnected') {
-                console.warn(`⚠️ Device ${deviceId}: No heartbeat and no recent gait data - marking as disconnected`)
-              }
+          // Prioritize actual BLE connection status over heartbeat status
+          if (!isActuallyConnected) {
+            // If not BLE connected, mark as disconnected regardless of heartbeat
+            deviceStatus = 'disconnected'
+            if (prev.get(deviceId) !== 'disconnected') {
+              console.log(`🔌 Device ${deviceId}: Not BLE connected - marking as disconnected`)
             }
           } else {
-            const timeSinceLastHeartbeat = now - heartbeat.received_timestamp
-            const timeSinceGaitData = lastGait ? (now - lastGait) : Infinity
-            
-            if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
-              if (timeSinceGaitData < GAIT_DATA_TIMEOUT) {
-                // Heartbeat timeout but gait data is still coming - partial connection issue
-                deviceStatus = 'timeout'
-                console.warn(`⚠️ Device ${deviceId}: Heartbeat timeout (${timeSinceLastHeartbeat}ms) but gait data is fresh`)
+            // Device is BLE connected, now check heartbeat/data status
+            if (!heartbeat) {
+              // No heartbeat ever received
+              if (lastGait && (now - lastGait) < GAIT_DATA_TIMEOUT) {
+                // Still receiving gait data recently, consider connected
+                deviceStatus = 'connected'
+                console.log(`📡 Device ${deviceId}: BLE connected, no heartbeat but gait data is fresh`)
               } else {
-                // Both heartbeat and gait data are stale
-                deviceStatus = 'disconnected'
-                console.warn(`⚠️ Device ${deviceId}: Both heartbeat (${timeSinceLastHeartbeat}ms) and gait data (${timeSinceGaitData}ms) are stale - disconnected`)
+                // Device is BLE connected but no data/heartbeat - could be starting up
+                deviceStatus = 'connected'
+                console.log(`🔗 Device ${deviceId}: BLE connected but no data yet`)
               }
             } else {
-              // Heartbeat is fresh
-              deviceStatus = 'connected'
+              const timeSinceLastHeartbeat = now - heartbeat.received_timestamp
+              const timeSinceGaitData = lastGait ? (now - lastGait) : Infinity
+              
+              if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
+                if (timeSinceGaitData < GAIT_DATA_TIMEOUT) {
+                  // Heartbeat timeout but gait data is still coming
+                  deviceStatus = 'timeout'
+                  console.warn(`⚠️ Device ${deviceId}: Heartbeat timeout (${Math.round(timeSinceLastHeartbeat/1000)}s) but gait data is fresh`)
+                } else {
+                  // Both heartbeat and gait data are stale, but still BLE connected
+                  deviceStatus = 'timeout'
+                  console.warn(`⚠️ Device ${deviceId}: Both heartbeat (${Math.round(timeSinceLastHeartbeat/1000)}s) and gait data (${Math.round(timeSinceGaitData/1000)}s) are stale`)
+                }
+              } else {
+                // Heartbeat is fresh
+                deviceStatus = 'connected'
+              }
             }
           }
           
@@ -471,31 +512,10 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
         return newMap
       })
       
-      // Clean up devices that have been disconnected for a long time
-      const devicesToRemove: string[] = []
-      availableDevices.forEach(deviceId => {
-        const status = connectionStatus.get(deviceId)
-        if (status === 'disconnected') {
-          const lastGait = lastGaitDataTime.get(deviceId)
-          const heartbeat = deviceHeartbeats.get(deviceId)
-          const lastActivity = Math.max(
-            lastGait || 0,
-            heartbeat?.received_timestamp || 0
-          )
-          
-          if (lastActivity > 0 && (now - lastActivity) > DISCONNECT_CLEANUP_TIME) {
-            devicesToRemove.push(deviceId)
-          }
-        }
-      })
+      // Note: Removed automatic device cleanup to prevent unwanted device removal
+      // Users should manually remove devices they no longer want to track
       
-      // Remove stale devices
-      devicesToRemove.forEach(deviceId => {
-        console.log(`🗑️ Auto-removing stale device: ${deviceId}`)
-        removeDevice(deviceId)
-      })
-      
-    }, 2000)
+    }, 5000) // Check every 5 seconds instead of 2
     
     return () => clearInterval(heartbeatInterval)
   }, [availableDevices, connectedDevices, deviceHeartbeats, lastGaitDataTime, connectionStatus])
@@ -518,6 +538,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     // Actions - Device Management
     addDevice,
     removeDevice,
+    removeScannedDevice,
     updateGaitDataTime,
     markDeviceAsExpected,
     unmarkDeviceAsExpected,
