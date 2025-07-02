@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 
 interface LogEntry {
   id: string
-  sessionName: string
-  subjectId: string
-  timestamp: Date
-  dataPoints: number
-  filePath: string
+  session_name: string
+  subject_id: string
+  timestamp: number
+  data_points: number
+  file_path: string
   notes?: string
+  devices: string[]
+}
+
+interface SessionMetadata {
+  id: string
+  session_name: string
+  subject_id: string
+  notes: string
+  timestamp: number
+  data_points: number
+  file_path: string
+  devices: string[]
 }
 
 export default function LogsTab() {
@@ -23,55 +36,74 @@ export default function LogsTab() {
     loadLogs()
   }, [])
 
-  const loadLogs = () => {
-    // TODO: Load from actual storage (localStorage, IndexedDB, or filesystem)
-    const mockLogs: LogEntry[] = [
-      {
-        id: '1',
-        sessionName: 'Morning Walk Test',
-        subjectId: 'SUBJ001',
-        timestamp: new Date('2025-06-29T10:30:00'),
-        dataPoints: 1250,
-        filePath: 'gait_data_20250629_103000.csv',
-        notes: 'Normal walking pace, clear day'
-      },
-      {
-        id: '2',
-        sessionName: 'Evening Jog',
-        subjectId: 'SUBJ001',
-        timestamp: new Date('2025-06-29T18:15:00'),
-        dataPoints: 3500,
-        filePath: 'gait_data_20250629_181500.csv',
-        notes: 'Faster pace, some fatigue noted'
-      }
-    ]
-    
-    setLogs(mockLogs)
-    
-    // Calculate stats
-    const totalSessions = mockLogs.length
-    const totalDataPoints = mockLogs.reduce((sum, log) => sum + log.dataPoints, 0)
-    const lastSession = mockLogs.length > 0 
-      ? new Date(Math.max(...mockLogs.map(log => log.timestamp.getTime())))
-      : null
+  const loadLogs = async () => {
+    try {
+      // Load real sessions from backend
+      const sessions: SessionMetadata[] = await invoke('get_sessions')
       
-    setStats({ totalSessions, totalDataPoints, lastSession })
+      // Convert to LogEntry format
+      const logEntries: LogEntry[] = sessions.map(session => ({
+        id: session.id,
+        session_name: session.session_name,
+        subject_id: session.subject_id,
+        timestamp: session.timestamp,
+        data_points: session.data_points,
+        file_path: session.file_path,
+        notes: session.notes,
+        devices: session.devices
+      }))
+      
+      setLogs(logEntries)
+      
+      // Calculate stats
+      const totalSessions = logEntries.length
+      const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
+      const lastSession = logEntries.length > 0 
+        ? new Date(Math.max(...logEntries.map(log => log.timestamp * 1000))) // Convert to ms
+        : null
+        
+      setStats({ totalSessions, totalDataPoints, lastSession })
+      
+    } catch (error) {
+      console.error('Failed to load sessions:', error)
+      
+      // Fallback to empty state
+      setLogs([])
+      setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
+    }
   }
 
   const handleViewLog = (log: LogEntry) => {
     // TODO: Implement in-app data viewer
-    alert(`Viewing log: ${log.sessionName}\nData points: ${log.dataPoints}`)
+    alert(`Viewing log: ${log.session_name}\nData points: ${log.data_points}`)
   }
 
-  const handleDownloadLog = (log: LogEntry) => {
-    // TODO: Implement file download
-    alert(`Downloading: ${log.filePath}`)
+  const handleDownloadLog = async (log: LogEntry) => {
+    try {
+      // Copy the file to Downloads folder with a user-friendly name
+      const result = await invoke('copy_file_to_downloads', { 
+        filePath: log.file_path,
+        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp * 1000).toISOString().split('T')[0]}.csv`
+      })
+      alert(`File exported to Downloads folder successfully!\nFile: ${result}`)
+    } catch (error) {
+      console.error('Failed to export file:', error)
+      // Fallback: show file location
+      alert(`File location: ${log.file_path}\n\nNote: You can manually copy this file to your desired location.`)
+    }
   }
 
-  const handleDeleteLog = (logId: string) => {
+  const handleDeleteLog = async (logId: string) => {
     if (confirm('Are you sure you want to delete this log? This action cannot be undone.')) {
-      setLogs(logs.filter(log => log.id !== logId))
-      // TODO: Delete from actual storage
+      try {
+        await invoke('delete_session', { sessionId: logId })
+        // Reload logs after deletion
+        await loadLogs()
+        alert('Session deleted successfully!')
+      } catch (error) {
+        console.error('Failed to delete session:', error)
+        alert(`Failed to delete session: ${error}`)
+      }
     }
   }
 
@@ -114,7 +146,16 @@ export default function LogsTab() {
 
       {/* Logs Table */}
       <div className="card">
-        <h2>Session Logs</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2>Session Logs</h2>
+          <button 
+            className="btn-secondary" 
+            onClick={loadLogs}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            🔄 Refresh
+          </button>
+        </div>
         {logs.length === 0 ? (
           <div className="empty-state">
             <p>No data logs found.</p>
@@ -137,11 +178,11 @@ export default function LogsTab() {
               <tbody>
                 {logs.map(log => (
                   <tr key={log.id}>
-                    <td className="session-name">{log.sessionName}</td>
-                    <td>{log.subjectId}</td>
-                    <td>{log.timestamp.toLocaleString()}</td>
-                    <td>{log.dataPoints.toLocaleString()}</td>
-                    <td>{formatFileSize(log.dataPoints)}</td>
+                    <td className="session-name">{log.session_name}</td>
+                    <td>{log.subject_id}</td>
+                    <td>{new Date(log.timestamp * 1000).toLocaleString()}</td>
+                    <td>{log.data_points.toLocaleString()}</td>
+                    <td>{formatFileSize(log.data_points)}</td>
                     <td className="notes-cell">
                       {log.notes ? (
                         <span title={log.notes}>

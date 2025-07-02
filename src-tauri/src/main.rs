@@ -883,67 +883,6 @@ async fn choose_storage_directory(app_handle: tauri::AppHandle) -> Result<Option
   rx.recv().map_err(|e| format!("Dialog callback failed: {}", e))
 }
 
-#[tauri::command]
-async fn export_to_downloads(session_id: String) -> Result<String, String> {
-  // Get session metadata
-  let sessions = get_sessions().await?;
-  let session = sessions.iter()
-    .find(|s| s.id == session_id)
-    .ok_or("Session not found")?;
-    
-  // Get Downloads directory
-  let downloads_dir = dirs::download_dir()
-    .ok_or("Could not find Downloads directory")?;
-    
-  // Read the original file
-  let source_path = std::path::Path::new(&session.file_path);
-  if !source_path.exists() {
-    return Err("Source file no longer exists".to_string());
-  }
-  
-  // Create destination filename
-  let original_filename = source_path.file_name()
-    .ok_or("Invalid source filename")?
-    .to_string_lossy();
-  let dest_path = downloads_dir.join(original_filename.as_ref());
-  
-  // Copy file to Downloads
-  std::fs::copy(&source_path, &dest_path)
-    .map_err(|e| format!("Failed to copy file to Downloads: {}", e))?;
-    
-  Ok(dest_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-async fn export_all_to_downloads() -> Result<Vec<String>, String> {
-  let sessions = get_sessions().await?;
-  let downloads_dir = dirs::download_dir()
-    .ok_or("Could not find Downloads directory")?;
-    
-  let mut exported_files = Vec::new();
-  
-  for session in sessions {
-    let source_path = std::path::Path::new(&session.file_path);
-    if source_path.exists() {
-      let original_filename = source_path.file_name()
-        .ok_or("Invalid source filename")?
-        .to_string_lossy();
-      let dest_path = downloads_dir.join(original_filename.as_ref());
-      
-      match std::fs::copy(&source_path, &dest_path) {
-        Ok(_) => exported_files.push(dest_path.to_string_lossy().to_string()),
-        Err(e) => println!("Failed to copy {}: {}", source_path.display(), e),
-      }
-    }
-  }
-  
-  if exported_files.is_empty() {
-    Err("No files were exported".to_string())
-  } else {
-    Ok(exported_files)
-  }
-}
-
 // Helper functions for session metadata management
 async fn save_session_metadata(base_path: &str, metadata: &SessionMetadata) -> Result<(), String> {
   let metadata_path = Path::new(base_path).join("sessions_index.json");
@@ -1046,6 +985,29 @@ fn parse_heartbeat_data(data: &[u8], device_id: &str) -> Result<HeartbeatData, S
   })
 }
 
+#[tauri::command]
+async fn copy_file_to_downloads(file_path: String, file_name: String) -> Result<String, String> {
+  use std::fs;
+  use std::path::Path;
+  
+  // Get the Downloads directory
+  let downloads_dir = dirs::download_dir()
+    .ok_or("Could not find Downloads directory")?;
+  
+  let source_path = Path::new(&file_path);
+  if !source_path.exists() {
+    return Err("Source file does not exist".to_string());
+  }
+  
+  let dest_path = downloads_dir.join(&file_name);
+  
+  // Copy the file
+  fs::copy(source_path, &dest_path)
+    .map_err(|e| format!("Failed to copy file: {}", e))?;
+  
+  Ok(dest_path.to_string_lossy().to_string())
+}
+
 fn main() {
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
@@ -1059,7 +1021,7 @@ fn main() {
     .manage(discovered_devices)
     .manage(bt_manager)
     .manage(active_notifications)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, export_to_downloads, export_all_to_downloads])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
