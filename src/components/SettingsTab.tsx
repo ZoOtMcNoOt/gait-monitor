@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import type { SessionMetadata } from '../types'
 
 interface Props {
   darkMode: boolean
@@ -88,7 +89,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       if (confirm('This will delete all saved sessions and logs. Are you absolutely sure?')) {
         try {
           // Get all sessions first
-          const sessions = await invoke<any[]>('get_sessions')
+          const sessions = await invoke<SessionMetadata[]>('get_sessions')
           
           // Delete each session
           for (const session of sessions) {

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { openDB } from 'idb'
+import type { LegacySession } from '../types'
 
 export default function LogsTable() {
-  const [logs, setLogs] = useState<any[]>([])
+  const [logs, setLogs] = useState<LegacySession[]>([])
 
   useEffect(() => {
     (async () => {

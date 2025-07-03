@@ -2053,7 +2053,7 @@ input:checked + .toggle-slider:before {
 
 .modal-details p {
   margin: 0.5rem 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .modal-warning {
@@ -2106,4 +2106,207 @@ input:checked + .toggle-slider:before {
 
 .dark .modal-details {
   background: rgba(255, 255, 255, 0.05);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.spinner {
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-left: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.w-4 { width: 1rem; height: 1rem; }
+.h-4 { width: 1rem; height: 1rem; }
+.w-8 { width: 2rem; height: 2rem; }
+.h-8 { width: 2rem; height: 2rem; }
+.w-12 { width: 3rem; height: 3rem; }
+.h-12 { width: 3rem; height: 3rem; }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Error Boundary Styles */
+.error-boundary {
+  padding: 2rem;
+  text-align: center;
+  background: var(--error-bg);
+  border: 1px solid var(--error-color);
+  border-radius: var(--radius);
+  margin: 1rem;
+}
+
+.error-boundary-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.error-boundary h2 {
+  color: var(--error-color);
+  margin-bottom: 1rem;
+}
+
+.error-boundary details {
+  margin: 1rem 0;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  border-radius: var(--radius);
+}
+
+.error-boundary pre {
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-boundary button {
+  margin: 0.5rem;
+}
+
+/* Dark mode loading spinner */
+.dark .spinner {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-left: 2px solid var(--color-primary-light);
+}
+
+.dark .loading-message {
+  color: var(--color-text-light);
+}
+
+/* Dark mode error boundary */
+.dark .error-boundary {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: var(--error-color);
+}
+
+.dark .error-boundary details {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .error-boundary h2 {
+  color: #fca5a5;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+.toast {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 1rem;
+  border-left: 4px solid;
+  animation: slideIn 0.3s ease-out;
+  min-width: 300px;
+}
+
+.toast-success { border-left-color: var(--success-color); }
+.toast-error { border-left-color: var(--error-color); }
+.toast-warning { border-left-color: #f59e0b; }
+.toast-info { border-left-color: var(--color-primary); }
+
+.toast-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toast-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toast-icon {
+  font-size: 1.2rem;
+}
+
+.toast-title {
+  font-weight: 600;
+  flex: 1;
+  color: var(--text-color);
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  min-height: auto;
+  min-width: auto;
+}
+
+.toast-close:hover {
+  color: var(--text-color);
+}
+
+.toast-message {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-left: 1.7rem;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Dark mode toast styles */
+.dark .toast {
+  background: var(--color-card-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dark .toast-title {
+  color: var(--color-text-light);
+}
+
+.dark .toast-message {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .toast-close {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .toast-close:hover {
+  color: var(--color-text-light);
 }
