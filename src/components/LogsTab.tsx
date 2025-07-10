@@ -49,12 +49,7 @@ function LogsTabContent() {
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
 
-  // Load logs from storage
-  useEffect(() => {
-    loadLogs()
-  }, [showError, showInfo]) // Add dependencies
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       // Load real sessions from backend
       const sessions: SessionMetadata[] = await invoke('get_sessions')
@@ -97,7 +92,12 @@ function LogsTabContent() {
       setLogs([])
       setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
     }
-  }
+  }, [showError, showInfo])
+
+  // Load logs from storage
+  useEffect(() => {
+    loadLogs()
+  }, [loadLogs])
 
   const handleViewLog = (log: LogEntry) => {
     // Open the data viewer with the selected session
