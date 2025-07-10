@@ -118,11 +118,23 @@ export default function CollectTab() {
   }
 
   const handleStopCollectionRequest = () => {
+    // Prevent multiple stop requests
+    if (isStopping) {
+      console.log('⚠️ Stop collection already in progress, ignoring request')
+      return
+    }
     setShowStopConfirmation(true)
   }
 
   const handleConfirmStopCollection = async () => {
+    // Prevent multiple stop calls
+    if (isStopping) {
+      console.log('⚠️ Stop collection already in progress, ignoring confirmation')
+      return
+    }
+    
     console.log('🛑 User confirmed stop collection')
+    setIsStopping(true)
     setShowStopConfirmation(false)
     
     try {
