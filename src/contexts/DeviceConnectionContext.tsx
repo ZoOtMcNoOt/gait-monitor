@@ -520,6 +520,57 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     return () => clearInterval(heartbeatInterval)
   }, [availableDevices, connectedDevices, deviceHeartbeats, lastGaitDataTime, connectionStatus])
 
+  // Memory monitoring and cleanup for Maps to prevent memory leaks
+  useEffect(() => {
+    const memoryMonitoringInterval = setInterval(() => {
+      // Monitor Map sizes and warn if they grow too large
+      const heartbeatCount = deviceHeartbeats.size
+      const statusCount = connectionStatus.size
+      const dataTimeCount = lastGaitDataTime.size
+      
+      if (heartbeatCount > 50 || statusCount > 50 || dataTimeCount > 50) {
+        console.warn(`🚨 Memory warning - Large Maps detected:`, {
+          heartbeats: heartbeatCount,
+          statuses: statusCount,
+          dataTimes: dataTimeCount
+        })
+      }
+      
+      // Clean up stale entries for devices that haven't been seen in 5 minutes
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
+      const staleDevices: string[] = []
+      
+      deviceHeartbeats.forEach((heartbeat, deviceId) => {
+        if (heartbeat.received_timestamp < fiveMinutesAgo && !connectedDevices.includes(deviceId)) {
+          staleDevices.push(deviceId)
+        }
+      })
+      
+      if (staleDevices.length > 0) {
+        console.log(`🧹 Cleaning up stale device data for ${staleDevices.length} devices`)
+        setDeviceHeartbeats(prev => {
+          const newMap = new Map(prev)
+          staleDevices.forEach(deviceId => newMap.delete(deviceId))
+          return newMap
+        })
+        
+        setConnectionStatus(prev => {
+          const newMap = new Map(prev)
+          staleDevices.forEach(deviceId => newMap.delete(deviceId))
+          return newMap
+        })
+        
+        setLastGaitDataTime(prev => {
+          const newMap = new Map(prev)
+          staleDevices.forEach(deviceId => newMap.delete(deviceId))
+          return newMap
+        })
+      }
+    }, 60000) // Check every minute
+
+    return () => clearInterval(memoryMonitoringInterval)
+  }, [deviceHeartbeats, connectionStatus, lastGaitDataTime, connectedDevices])
+
   const contextValue: DeviceConnectionState = {
     // Device tracking
     availableDevices,

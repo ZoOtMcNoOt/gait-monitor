@@ -430,6 +430,89 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length])
 
+  // Cleanup datasets for disconnected devices to prevent memory leaks
+  useEffect(() => {
+    if (!chartRef.current) return
+
+    const chart = chartRef.current
+    const connectedDeviceIds = new Set(connectedDevices)
+    
+    // Remove datasets for devices that are no longer connected
+    chart.data.datasets = chart.data.datasets.filter(dataset => {
+      if (!dataset.label) return true
+      
+      // Keep simulation datasets
+      if (dataset.label.includes('Sim -')) return true
+      
+      // Check if this dataset belongs to a connected device
+      const belongsToConnectedDevice = connectedDevices.some(deviceId => 
+        dataset.label!.includes(`Device ${deviceId.slice(-4)}`)
+      )
+      
+      if (!belongsToConnectedDevice) {
+        console.log(`🗑️ Removing dataset for disconnected device: ${dataset.label}`)
+        return false
+      }
+      
+      return true
+    })
+    
+    // Clean up device data buffers for disconnected devices
+    const disconnectedDevices = Array.from(deviceDataBuffers.current.keys()).filter(
+      deviceId => !connectedDeviceIds.has(deviceId) && deviceId !== 'simulation'
+    )
+    
+    disconnectedDevices.forEach(deviceId => {
+      console.log(`🗑️ Cleaning up data buffer for disconnected device: ${deviceId}`)
+      deviceDataBuffers.current.delete(deviceId)
+    })
+    
+    if (disconnectedDevices.length > 0) {
+      chart.update('none')
+    }
+  }, [connectedDevices])
+
+  // Memory monitoring and aggressive cleanup for long sessions
+  useEffect(() => {
+    if (!isCollecting) return
+
+    const memoryCleanupInterval = setInterval(() => {
+      if (!chartRef.current) return
+
+      const chart = chartRef.current
+      const now = Date.now()
+      const MEMORY_CLEANUP_THRESHOLD = 5000 // Clean up if more than 5000 total data points
+      
+      // Count total data points across all datasets
+      const totalDataPoints = chart.data.datasets.reduce(
+        (total, dataset) => total + dataset.data.length, 0
+      )
+      
+      if (totalDataPoints > MEMORY_CLEANUP_THRESHOLD) {
+        console.log(`🧹 Memory cleanup triggered: ${totalDataPoints} total data points`)
+        
+        // More aggressive cleanup - keep only last 5 seconds of data
+        chart.data.datasets.forEach(dataset => {
+          const cutoffTime = now / 1000 - 5 // 5 seconds ago
+          dataset.data = (dataset.data as Array<{ x: number; y: number }>)
+            .filter(point => point.x >= cutoffTime)
+        })
+        
+        // Clean up device buffers more aggressively
+        deviceDataBuffers.current.forEach((buffer, deviceId) => {
+          if (buffer.length > 500) { // Keep only 500 most recent points per device
+            buffer.splice(0, buffer.length - 500)
+            console.log(`🧹 Trimmed buffer for device ${deviceId} to 500 points`)
+          }
+        })
+        
+        chart.update('none')
+      }
+    }, 30000) // Check every 30 seconds
+
+    return () => clearInterval(memoryCleanupInterval)
+  }, [isCollecting])
+
   return (
     <section className="card">
       <div className="chart-header">
