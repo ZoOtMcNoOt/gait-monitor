@@ -4,6 +4,7 @@ import LiveChart from './LiveChart'
 import MultiDeviceSelector from './MultiDeviceSelector'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { invoke } from '@tauri-apps/api/core'
+import ErrorBoundary from './ErrorBoundary'
 
 type CollectStep = 'metadata' | 'live' | 'review'
 
@@ -297,12 +298,26 @@ export default function CollectTab() {
             {/* Two-column layout for live collection */}
             <div className="collection-layout">
               <div className="main-collection-area">
-                <LiveChart 
-                  isCollecting={isCollecting} 
-                />
+                <ErrorBoundary fallback={
+                  <div className="chart-error-fallback">
+                    <h3>Chart Error</h3>
+                    <p>The live chart component encountered an error. Please refresh the page.</p>
+                  </div>
+                }>
+                  <LiveChart 
+                    isCollecting={isCollecting} 
+                  />
+                </ErrorBoundary>
               </div>
               <div className="collection-sidebar">
-                <MultiDeviceSelector />
+                <ErrorBoundary fallback={
+                  <div className="device-selector-error-fallback">
+                    <h3>Device Selector Error</h3>
+                    <p>The device selector encountered an error. Please refresh the page.</p>
+                  </div>
+                }>
+                  <MultiDeviceSelector />
+                </ErrorBoundary>
               </div>
             </div>
           </div>

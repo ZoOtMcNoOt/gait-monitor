@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useToast } from '../contexts/ToastContext'
+import { useConfirmation } from '../hooks/useConfirmation'
+import ConfirmationModal from './ConfirmationModal'
+import ErrorBoundary from './ErrorBoundary'
 
 export default function DeviceList() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [devicesPerPage, setDevicesPerPage] = useState(5)
+  
+  // Add hooks for proper error handling
+  const { showSuccess, showError, showInfo } = useToast()
+  const { confirmationState, showConfirmation } = useConfirmation()
 
   // Use global device connection context exclusively
   const { 
@@ -70,7 +78,15 @@ export default function DeviceList() {
   const isConnected = (deviceId: string) => connectedDevices.includes(deviceId)
 
   const handleRemoveDevice = async (deviceId: string) => {
-    if (confirm('Are you sure you want to remove this device from the list? You will need to scan again to find it.')) {
+    const confirmed = await showConfirmation({
+      title: 'Remove Device',
+      message: 'Are you sure you want to remove this device from the list? You will need to scan again to find it.',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'warning'
+    })
+    
+    if (confirmed) {
       try {
         // First disconnect if connected
         if (isConnected(deviceId)) {
@@ -78,9 +94,10 @@ export default function DeviceList() {
         }
         // Then remove from scanned device list
         removeScannedDevice(deviceId)
+        showSuccess('Device Removed', 'The device has been removed from the list.')
       } catch (error) {
         console.error('Failed to remove device:', error)
-        alert(`Failed to remove device: ${error}`)
+        showError('Remove Failed', `Failed to remove device: ${error}`)
       }
     }
   }
@@ -91,17 +108,18 @@ export default function DeviceList() {
       // Show success message
       const device = scannedDevices.find(d => d.id === deviceId)
       const deviceName = device?.name || 'Unknown Device'
-      alert(`Successfully connected to ${deviceName}!`)
+      showSuccess('Device Connected', `Successfully connected to ${deviceName}!`)
     } catch (error) {
-      alert(error instanceof Error ? error.message : `Connection failed: ${error}`)
+      showError('Connection Failed', error instanceof Error ? error.message : `Connection failed: ${error}`)
     }
   }
 
   const handleDisconnect = async (deviceId: string) => {
     try {
       await disconnectDevice(deviceId)
+      showSuccess('Device Disconnected', 'Device has been disconnected successfully.')
     } catch (error) {
-      alert(`Disconnection failed: ${error}`)
+      showError('Disconnection Failed', `Disconnection failed: ${error}`)
     }
   }
 
@@ -125,10 +143,13 @@ export default function DeviceList() {
       const device = scannedDevices.find(d => d.id === deviceId)
       const deviceName = device?.name || 'Unknown Device'
       
-      alert(`Services for ${deviceName}:\n\n${services.join('\n')}`)
+      showInfo(
+        `Services for ${deviceName}`,
+        `Available services:\n\n${services.join('\n')}`
+      )
     } catch (e) {
       console.error('Debug services failed:', e)
-      alert(`Debug services failed: ${e}`)
+      showError('Debug Failed', `Debug services failed: ${e}`)
     }
   }
 
@@ -492,6 +513,18 @@ export default function DeviceList() {
           </div>
         )}
       </div>
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        confirmText={confirmationState.confirmText}
+        cancelText={confirmationState.cancelText}
+        onConfirm={confirmationState.onConfirm}
+        onCancel={confirmationState.onCancel}
+        type={confirmationState.type}
+      />
     </section>
   )
 }

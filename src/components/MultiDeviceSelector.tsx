@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useToast } from '../contexts/ToastContext'
 
 interface DeviceStatus {
   id: string
@@ -11,6 +12,9 @@ interface DeviceStatus {
 export default function MultiDeviceSelector() {
   const [devices, setDevices] = useState<DeviceStatus[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // Add toast for error handling
+  const { showError, showSuccess } = useToast()
   
   // Use global device connection context
   const { 
@@ -67,9 +71,18 @@ export default function MultiDeviceSelector() {
       
       // Reload device statuses
       await loadDeviceStatuses()
+      
+      // Show success message
+      showSuccess(
+        `Collection ${currentlyCollecting ? 'Stopped' : 'Started'}`,
+        `Data collection has been ${currentlyCollecting ? 'stopped' : 'started'} for the selected device.`
+      )
     } catch (error) {
       console.error(`Failed to toggle collection for device ${deviceId}:`, error)
-      alert(`Failed to ${currentlyCollecting ? 'stop' : 'start'} collection: ${error}`)
+      showError(
+        `Collection ${currentlyCollecting ? 'Stop' : 'Start'} Failed`,
+        `Failed to ${currentlyCollecting ? 'stop' : 'start'} collection: ${error}`
+      )
     }
   }
 

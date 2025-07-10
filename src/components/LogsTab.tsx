@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToast } from '../contexts/ToastContext'
+import { useConfirmation } from '../hooks/useConfirmation'
+import ConfirmationModal from './ConfirmationModal'
+import ErrorBoundary from './ErrorBoundary'
 
 interface LogEntry {
   id: string
@@ -24,12 +28,24 @@ interface SessionMetadata {
 }
 
 export default function LogsTab() {
+  return (
+    <ErrorBoundary>
+      <LogsTabContent />
+    </ErrorBoundary>
+  )
+}
+
+function LogsTabContent() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalDataPoints: 0,
     lastSession: null as Date | null
   })
+  
+  // Add hooks for proper error handling
+  const { showSuccess, showError, showInfo } = useToast()
+  const { confirmationState, showConfirmation } = useConfirmation()
 
   // Load logs from storage
   useEffect(() => {
@@ -75,7 +91,10 @@ export default function LogsTab() {
 
   const handleViewLog = (log: LogEntry) => {
     // TODO: Implement in-app data viewer
-    alert(`Viewing log: ${log.session_name}\nData points: ${log.data_points}`)
+    showInfo(
+      'Data Viewer Coming Soon', 
+      `Session: ${log.session_name}\nSubject: ${log.subject_id}\nData points: ${log.data_points}\n\nNote: In-app data viewer is not yet implemented. You can download the file to view the data.`
+    )
   }
 
   const handleDownloadLog = async (log: LogEntry) => {
@@ -85,24 +104,38 @@ export default function LogsTab() {
         filePath: log.file_path,
         fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp * 1000).toISOString().split('T')[0]}.csv`
       })
-      alert(`File exported to Downloads folder successfully!\nFile: ${result}`)
+      showSuccess(
+        'File Exported Successfully',
+        `File exported to Downloads folder: ${result}`
+      )
     } catch (error) {
       console.error('Failed to export file:', error)
       // Fallback: show file location
-      alert(`File location: ${log.file_path}\n\nNote: You can manually copy this file to your desired location.`)
+      showInfo(
+        'Export Failed - Manual Copy Available',
+        `File location: ${log.file_path}\n\nNote: You can manually copy this file to your desired location.`
+      )
     }
   }
 
   const handleDeleteLog = async (logId: string) => {
-    if (confirm('Are you sure you want to delete this log? This action cannot be undone.')) {
+    const confirmed = await showConfirmation({
+      title: 'Delete Session',
+      message: 'Are you sure you want to delete this session? This action cannot be undone and will permanently remove all associated data.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    })
+    
+    if (confirmed) {
       try {
         await invoke('delete_session', { sessionId: logId })
         // Reload logs after deletion
         await loadLogs()
-        alert('Session deleted successfully!')
+        showSuccess('Session Deleted', 'The session has been successfully deleted.')
       } catch (error) {
         console.error('Failed to delete session:', error)
-        alert(`Failed to delete session: ${error}`)
+        showError('Delete Failed', `Failed to delete session: ${error}`)
       }
     }
   }
@@ -222,6 +255,18 @@ export default function LogsTab() {
           </div>
         )}
       </div>
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        confirmText={confirmationState.confirmText}
+        cancelText={confirmationState.cancelText}
+        onConfirm={confirmationState.onConfirm}
+        onCancel={confirmationState.onCancel}
+        type={confirmationState.type}
+      />
     </div>
   )
 }

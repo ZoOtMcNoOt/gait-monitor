@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import type { SessionMetadata } from '../types'
+import { useToast } from '../contexts/ToastContext'
+import { useConfirmation } from '../hooks/useConfirmation'
+import ConfirmationModal from './ConfirmationModal'
+import ErrorBoundary from './ErrorBoundary'
 
 interface Props {
   darkMode: boolean
@@ -25,6 +29,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   })
 
   const [isModified, setIsModified] = useState(false)
+  
+  // Add hooks for proper error handling
+  const { showSuccess, showError, showInfo } = useToast()
+  const { confirmationState, showConfirmation } = useConfirmation()
 
   // Load settings from localStorage
   useEffect(() => {
@@ -51,14 +59,22 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     try {
       localStorage.setItem('appSettings', JSON.stringify(settings))
       setIsModified(false)
-      alert('Settings saved successfully!')
+      showSuccess('Settings Saved', 'Your settings have been saved successfully!')
     } catch (e) {
-      alert('Failed to save settings: ' + e)
+      showError('Save Failed', `Failed to save settings: ${e}`)
     }
   }
 
-  const handleResetSettings = () => {
-    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+  const handleResetSettings = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Reset Settings',
+      message: 'Are you sure you want to reset all settings to their default values? This action cannot be undone.',
+      confirmText: 'Reset',
+      cancelText: 'Cancel',
+      type: 'warning'
+    })
+    
+    if (confirmed) {
       const defaultSettings: SettingsData = {
         defaultStoragePath: './gait_data',
         dataRetentionDays: 90,
@@ -68,6 +84,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       }
       setSettings(defaultSettings)
       setIsModified(true)
+      showInfo('Settings Reset', 'All settings have been reset to their default values.')
     }
   }
 
@@ -76,17 +93,33 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       const result = await invoke<string | null>('choose_storage_directory')
       if (result) {
         handleSettingChange('defaultStoragePath', result)
-        alert(`Storage path updated to: ${result}`)
+        showSuccess('Storage Path Updated', `Storage path has been updated to: ${result}`)
       }
     } catch (error) {
       console.error('Failed to choose storage path:', error)
-      alert(`Failed to choose storage path: ${error}`)
+      showError('Path Selection Failed', `Failed to choose storage path: ${error}`)
     }
   }
 
   const handleClearAllData = async () => {
-    if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
-      if (confirm('This will delete all saved sessions and logs. Are you absolutely sure?')) {
+    const firstConfirmed = await showConfirmation({
+      title: 'Clear All Data',
+      message: 'Are you sure you want to clear all data? This action cannot be undone and will permanently delete all saved sessions and logs.',
+      confirmText: 'Continue',
+      cancelText: 'Cancel',
+      type: 'danger'
+    })
+    
+    if (firstConfirmed) {
+      const finalConfirmed = await showConfirmation({
+        title: 'Final Confirmation',
+        message: 'This will delete ALL saved sessions and logs permanently. This action cannot be undone. Are you absolutely sure?',
+        confirmText: 'Delete All Data',
+        cancelText: 'Cancel',
+        type: 'danger'
+      })
+      
+      if (finalConfirmed) {
         try {
           // Get all sessions first
           const sessions = await invoke<SessionMetadata[]>('get_sessions')
@@ -96,10 +129,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
             await invoke('delete_session', { sessionId: session.id })
           }
           
-          alert(`Successfully deleted ${sessions.length} session(s) and their data files.`)
+          showSuccess('Data Cleared', `Successfully deleted ${sessions.length} session(s) and their data files.`)
         } catch (error) {
           console.error('Failed to clear data:', error)
-          alert(`Failed to clear data: ${error}`)
+          showError('Clear Data Failed', `Failed to clear data: ${error}`)
         }
       }
     }
@@ -284,6 +317,18 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           <p className="unsaved-changes">You have unsaved changes</p>
         </div>
       )}
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        confirmText={confirmationState.confirmText}
+        cancelText={confirmationState.cancelText}
+        onConfirm={confirmationState.onConfirm}
+        onCancel={confirmationState.onCancel}
+        type={confirmationState.type}
+      />
     </div>
   )
 }
