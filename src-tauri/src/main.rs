@@ -1513,8 +1513,13 @@ async fn load_session_data(
     0.0
   };
 
+  // Calculate actual sample rate based on unique timestamps, not total data points
+  // Since each timestamp can have multiple sensor values (r1,r2,r3,x,y,z), we need to count unique timestamps
+  let unique_timestamps: std::collections::HashSet<u64> = data_points.iter().map(|p| p.timestamp).collect();
+  let actual_sample_count = unique_timestamps.len() as f64;
+  
   let sample_rate = if duration > 0.0 {
-    data_points.len() as f64 / duration
+    actual_sample_count / duration
   } else {
     0.0
   };

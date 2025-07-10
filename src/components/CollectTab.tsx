@@ -50,8 +50,22 @@ export default function CollectTab() {
   // Subscribe to gait data during collection
   useEffect(() => {
     if (isCollecting) {
+      console.log('🔔 Setting up gait data subscription')
+      const lastTimestamps = new Map<string, number>() // Track last timestamp per device
+      
       const unsubscribe = subscribeToGaitData((data) => {
+        // Deduplication: skip if we already received this exact timestamp from this device
+        const deviceLastTimestamp = lastTimestamps.get(data.device_id)
+        if (deviceLastTimestamp === data.timestamp) {
+          console.log('🔄 Skipping duplicate data point:', data.device_id, data.timestamp)
+          return
+        }
+        
+        // Update last timestamp for this device
+        lastTimestamps.set(data.device_id, data.timestamp)
+        
         // Add data to buffer
+        console.log('📦 Received gait data:', data.device_id, data.timestamp)
         dataBuffer.current.push({
           device_id: data.device_id,
           r1: data.r1,
@@ -64,9 +78,12 @@ export default function CollectTab() {
         })
       })
 
-      return unsubscribe
+      return () => {
+        console.log('🔕 Cleaning up gait data subscription')
+        unsubscribe()
+      }
     }
-  }, [isCollecting, subscribeToGaitData])
+  }, [isCollecting]) // eslint-disable-line react-hooks/exhaustive-deps -- subscribeToGaitData should be stable, excluding to prevent re-subscriptions
 
   const steps = [
     { id: 'metadata', label: 'Metadata', number: 1 },

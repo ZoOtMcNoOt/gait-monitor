@@ -310,7 +310,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         <div className="data-viewer-header">
           <div className="session-info">
             <h2>📊 {sessionData.session_name}</h2>
-            <p>Subject: {sessionData.subject_id} | Duration: {Math.round(sessionData.metadata.duration)}s | Sample Rate: {sessionData.metadata.sample_rate}Hz</p>
+            <p>Subject: {sessionData.subject_id} | Duration: {Math.round(sessionData.metadata.duration)}s | Sample Rate: {Math.round(sessionData.metadata.sample_rate * 10) / 10}Hz | Total Points: {sessionData.data.length.toLocaleString()}</p>
           </div>
           <button className="btn-close" onClick={onClose}>
             ✕
