@@ -204,11 +204,15 @@ export default function CollectTab() {
       }
       
       setCurrentStep('review')
+    } finally {
+      // Always reset the stopping state
+      setIsStopping(false)
     }
   }
 
   const handleCancelStopCollection = () => {
     setShowStopConfirmation(false)
+    // Don't reset isStopping here as user cancelled
   }
 
   const handleSaveData = async () => {
@@ -311,8 +315,12 @@ export default function CollectTab() {
                     Start Collection
                   </button>
                 ) : (
-                  <button className="btn-secondary" onClick={handleStopCollectionRequest}>
-                    Stop Collection
+                  <button 
+                    className="btn-secondary" 
+                    onClick={handleStopCollectionRequest}
+                    disabled={isStopping}
+                  >
+                    {isStopping ? 'Stopping...' : 'Stop Collection'}
                   </button>
                 )}
                 <button className="btn-tertiary" onClick={() => setCurrentStep('metadata')}>
