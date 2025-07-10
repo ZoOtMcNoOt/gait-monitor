@@ -12,6 +12,7 @@ use btleplug::platform::{Peripheral, Manager};
 use uuid::Uuid;
 use futures::stream::StreamExt;
 use tauri::Emitter;
+use std::time::{Duration, Instant};
 
 // Add heartbeat data structure
 #[derive(Debug, serde::Serialize)]
@@ -62,12 +63,70 @@ struct GaitData {
   timestamp: u64,
 }
 
+// Rate limiting structure
+#[derive(Clone)]
+struct RateLimiter {
+  last_operation: Instant,
+  min_interval: Duration,
+}
+
+impl RateLimiter {
+  fn new(min_interval_ms: u64) -> Self {
+    Self {
+      last_operation: Instant::now() - Duration::from_millis(min_interval_ms + 1),
+      min_interval: Duration::from_millis(min_interval_ms),
+    }
+  }
+
+  fn can_proceed(&mut self) -> bool {
+    let now = Instant::now();
+    if now.duration_since(self.last_operation) >= self.min_interval {
+      self.last_operation = now;
+      true
+    } else {
+      false
+    }
+  }
+
+  fn time_until_next(&self) -> Duration {
+    let elapsed = Instant::now().duration_since(self.last_operation);
+    if elapsed >= self.min_interval {
+      Duration::from_millis(0)
+    } else {
+      self.min_interval - elapsed
+    }
+  }
+}
+
+// Rate limiting state for different operations
+#[derive(Clone)]
+pub struct RateLimitingState(Arc<Mutex<HashMap<String, RateLimiter>>>);
+
+impl RateLimitingState {
+  fn new() -> Self {
+    Self(Arc::new(Mutex::new(HashMap::new())))
+  }
+}
+
 #[tauri::command]
 async fn scan_devices(
   discovered_devices: tauri::State<'_, DiscoveredDevicesState>,
-  bt_manager: tauri::State<'_, BluetoothManagerState>
+  bt_manager: tauri::State<'_, BluetoothManagerState>,
+  rate_limiting: tauri::State<'_, RateLimitingState>
 ) -> Result<Vec<BluetoothDeviceInfo>, String> {
   use btleplug::api::{Central, Manager as _, Peripheral, ScanFilter};
+  
+  // Rate limiting check for scan operations (minimum 2 seconds between scans)
+  {
+    let mut limiters = rate_limiting.0.lock().await;
+    let limiter = limiters.entry("scan_devices".to_string())
+      .or_insert_with(|| RateLimiter::new(2000)); // 2 second minimum interval
+    
+    if !limiter.can_proceed() {
+      let wait_time = limiter.time_until_next();
+      return Err(format!("Rate limited: Please wait {} ms before scanning again", wait_time.as_millis()));
+    }
+  }
   
   println!("Starting Bluetooth scan...");
   
@@ -206,9 +265,22 @@ async fn scan_devices(
 async fn connect_device(
   device_id: String, 
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
-  discovered_devices: tauri::State<'_, DiscoveredDevicesState>
+  discovered_devices: tauri::State<'_, DiscoveredDevicesState>,
+  rate_limiting: tauri::State<'_, RateLimitingState>
 ) -> Result<String, String> {
   use btleplug::api::Peripheral;
+  
+  // Rate limiting check for connect operations (minimum 1 second between connections)
+  {
+    let mut limiters = rate_limiting.0.lock().await;
+    let limiter = limiters.entry(format!("connect_{}", device_id))
+      .or_insert_with(|| RateLimiter::new(1000)); // 1 second minimum interval per device
+    
+    if !limiter.can_proceed() {
+      let wait_time = limiter.time_until_next();
+      return Err(format!("Rate limited: Please wait {} ms before connecting to this device again", wait_time.as_millis()));
+    }
+  }
   
   println!("Attempting to connect to device: {}", device_id);
   
@@ -703,19 +775,57 @@ async fn save_session_data(
   use std::fs;
   use std::path::Path;
   
+  // Input validation
   if data.is_empty() {
     return Err("No data to save".to_string());
   }
+  
+  if session_name.trim().is_empty() {
+    return Err("Session name cannot be empty".to_string());
+  }
+  
+  if subject_id.trim().is_empty() {
+    return Err("Subject ID cannot be empty".to_string());
+  }
 
-  // Determine storage directory
-  let base_path = storage_path.unwrap_or_else(|| {
+  // Validate and sanitize storage path if provided
+  let base_path = if let Some(user_path) = storage_path {
+    // Validate the user-provided path
+    let path = Path::new(&user_path);
+    
+    // Security checks for path traversal
+    if user_path.contains("..") || user_path.contains("~") {
+      return Err("Invalid path: Path traversal not allowed".to_string());
+    }
+    
+    // Ensure path is absolute or convert to absolute
+    let canonical_path = path.canonicalize()
+      .map_err(|_| "Invalid path: Cannot resolve path".to_string())?;
+    
+    // Check if path is within allowed directories (Documents, Downloads, Desktop)
+    let allowed_bases = [
+      dirs::document_dir(),
+      dirs::download_dir(), 
+      dirs::desktop_dir(),
+    ];
+    
+    let path_allowed = allowed_bases.iter()
+      .filter_map(|base| base.as_ref())
+      .any(|base| canonical_path.starts_with(base));
+    
+    if !path_allowed {
+      return Err("Invalid path: Path must be within Documents, Downloads, or Desktop directories".to_string());
+    }
+    
+    canonical_path.to_string_lossy().to_string()
+  } else {
     // Default to Documents/GaitMonitor or current directory
     dirs::document_dir()
       .map(|p| p.join("GaitMonitor"))
       .unwrap_or_else(|| std::env::current_dir().unwrap().join("gait_data"))
       .to_string_lossy()
       .to_string()
-  });
+  };
 
   // Create directory if it doesn't exist
   fs::create_dir_all(&base_path)
@@ -1013,6 +1123,7 @@ fn main() {
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let bt_manager = BluetoothManagerState(Arc::new(Mutex::new(None)));
   let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
+  let rate_limiting_state = RateLimitingState::new();
   
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
@@ -1021,6 +1132,7 @@ fn main() {
     .manage(discovered_devices)
     .manage(bt_manager)
     .manage(active_notifications)
+    .manage(rate_limiting_state)
     .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
