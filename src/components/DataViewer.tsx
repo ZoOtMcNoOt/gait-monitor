@@ -228,9 +228,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       
       // Then copy it to Downloads folder using the working copy function
       try {
+        // Get CSRF token first
+        const csrfToken = await invoke('get_csrf_token')
+        
         const result = await invoke('copy_file_to_downloads', { 
           filePath: savedPath,
-          fileName: fileName
+          fileName: fileName,
+          csrfToken
         })
         
         showSuccess(

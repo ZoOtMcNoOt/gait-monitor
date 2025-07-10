@@ -106,10 +106,14 @@ function LogsTabContent() {
 
   const handleDownloadLog = async (log: LogEntry) => {
     try {
+      // Get CSRF token first
+      const csrfToken = await invoke('get_csrf_token')
+      
       // Copy the file to Downloads folder with a user-friendly name
       const result = await invoke('copy_file_to_downloads', { 
         filePath: log.file_path,
-        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp * 1000).toISOString().split('T')[0]}.csv`
+        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp * 1000).toISOString().split('T')[0]}.csv`,
+        csrfToken
       })
       showSuccess(
         'File Exported Successfully',

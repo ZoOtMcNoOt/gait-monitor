@@ -100,18 +100,38 @@ mod path_manager {
         }
 
         pub fn is_path_allowed(&self, path: &Path) -> bool {
-            // Resolve the path to its canonical form
-            let canonical_path = match path.canonicalize() {
-                Ok(p) => p,
-                Err(_) => return false,
+            // For non-existent files, check if the parent directory is allowed
+            let check_path = if path.exists() {
+                match path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => return false,
+                }
+            } else {
+                // For non-existent files, check the parent directory
+                let parent = match path.parent() {
+                    Some(p) => p,
+                    None => return false,
+                };
+                
+                // If parent exists, canonicalize it and append the filename
+                if parent.exists() {
+                    match parent.canonicalize() {
+                        Ok(canonical_parent) => canonical_parent.join(path.file_name().unwrap_or_default()),
+                        Err(_) => path.to_path_buf(),
+                    }
+                } else {
+                    // If parent doesn't exist either, use the path as-is
+                    path.to_path_buf()
+                }
             };
 
             // Check against allowed base directories
             self.allowed_base_dirs.iter().any(|base| {
                 if let Ok(canonical_base) = base.canonicalize() {
-                    canonical_path.starts_with(canonical_base)
+                    check_path.starts_with(canonical_base)
                 } else {
-                    false
+                    // Fallback: check if the paths are similar without canonicalization
+                    check_path.starts_with(base)
                 }
             })
         }
@@ -1524,22 +1544,22 @@ async fn save_filtered_data(
 ) -> Result<String, String> {
   let config = path_config.0.lock().await;
   
-  // Use app data directory instead of Downloads to avoid permission issues
-  let target_dir = &config.app_data_dir;
+  // Use sessions subdirectory within app data directory for consistency
+  let sessions_dir = config.app_data_dir.join("sessions");
 
-  println!("🔍 Target directory: {:?}", target_dir);
+  println!("🔍 Sessions directory: {:?}", sessions_dir);
   println!("🔍 Allowed base dirs: {:?}", config.allowed_base_dirs);
 
-  // Ensure the target directory exists
-  if !target_dir.exists() {
-    tokio::fs::create_dir_all(target_dir).await
-      .map_err(|e| format!("Failed to create directory: {}", e))?;
+  // Ensure the sessions directory exists
+  if !sessions_dir.exists() {
+    tokio::fs::create_dir_all(&sessions_dir).await
+      .map_err(|e| format!("Failed to create sessions directory: {}", e))?;
   }
 
-  let file_path = target_dir.join(&file_name);
+  let file_path = sessions_dir.join(&file_name);
   println!("🔍 Full file path: {:?}", file_path);
   
-  // Validate the file path (should always work for app_data_dir)
+  // Validate the file path
   if !config.is_path_allowed(&file_path) {
     return Err(format!("File path is not allowed: {:?}. Allowed directories: {:?}", file_path, config.allowed_base_dirs));
   }
@@ -1548,6 +1568,7 @@ async fn save_filtered_data(
   tokio::fs::write(&file_path, content).await
     .map_err(|e| format!("Failed to save file: {}", e))?;
 
+  println!("✅ Successfully saved filtered data to: {:?}", file_path);
   Ok(file_path.to_string_lossy().to_string())
 }
 
