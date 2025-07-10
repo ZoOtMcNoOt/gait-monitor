@@ -217,14 +217,24 @@ export default function CollectTab() {
 
   const handleSaveData = async () => {
     if (!collectedData) {
+      console.error('❌ No collected data to save')
       alert('No data to save!')
       return
     }
 
     if (collectedData.dataPoints.length === 0) {
+      console.error('❌ No data points to save')
       alert('No data points collected. Please collect some data before saving.')
       return
     }
+
+    console.log('💾 Starting to save data...')
+    console.log('Data to save:', {
+      sessionName: collectedData.sessionName,
+      subjectId: collectedData.subjectId,
+      dataPointsLength: collectedData.dataPoints.length,
+      sampleDataPoints: collectedData.dataPoints.slice(0, 3)
+    })
 
     setIsSaving(true)
     
@@ -246,8 +256,9 @@ export default function CollectTab() {
       dataBuffer.current = []
       
     } catch (error) {
-      console.error('Failed to save data:', error)
-      alert(`Failed to save data: ${error}`)
+      console.error('❌ Failed to save data:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`Failed to save data: ${errorMessage}\n\nPlease check the console for more details and try again.`)
     } finally {
       setIsSaving(false)
     }
