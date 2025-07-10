@@ -140,7 +140,10 @@ function LogsTabContent() {
     
     if (confirmed) {
       try {
-        await invoke('delete_session', { sessionId: logId })
+        // Get CSRF token first
+        const csrfToken = await invoke('get_csrf_token')
+        
+        await invoke('delete_session', { sessionId: logId, csrfToken })
         // Reload logs after deletion
         await loadLogs()
         showSuccess('Session Deleted', 'The session has been successfully deleted.')
