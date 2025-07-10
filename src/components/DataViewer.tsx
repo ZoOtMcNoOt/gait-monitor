@@ -106,6 +106,17 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     loadSessionData()
   }, [loadSessionData])
 
+  // Helper function to generate consistent colors for device/data type combinations
+  const getDeviceColor = (device: string, dataType: string, alpha: number = 1) => {
+    const hash = (device + dataType).split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0)
+      return a & a
+    }, 0)
+    
+    const hue = Math.abs(hash) % 360
+    return `hsla(${hue}, 70%, 50%, ${alpha})`
+  }
+
   // Filter data based on selected devices, data types, and time range
   const filteredData = useMemo(() => {
     if (!sessionData) return []
@@ -192,17 +203,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   const reloadData = () => {
     loadSessionData()
-  }
-
-  const getDeviceColor = (device: string, dataType: string, alpha: number = 1) => {
-    // Generate consistent colors for device/data type combinations
-    const hash = (device + dataType).split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0)
-      return a & a
-    }, 0)
-    
-    const hue = Math.abs(hash) % 360
-    return `hsla(${hue}, 70%, 50%, ${alpha})`
   }
 
   const exportFilteredData = async () => {
