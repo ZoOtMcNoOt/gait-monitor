@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
@@ -52,12 +52,14 @@ function LogsTabContent() {
   // Load logs from storage
   useEffect(() => {
     loadLogs()
-  }, [])
+  }, [showError, showInfo]) // Add dependencies
 
   const loadLogs = async () => {
     try {
       // Load real sessions from backend
       const sessions: SessionMetadata[] = await invoke('get_sessions')
+      
+      console.log('📊 Loaded sessions from backend:', sessions.length)
       
       // Convert to LogEntry format
       const logEntries: LogEntry[] = sessions.map(session => ({
@@ -82,8 +84,14 @@ function LogsTabContent() {
         
       setStats({ totalSessions, totalDataPoints, lastSession })
       
+      if (logEntries.length === 0) {
+        showInfo('No Sessions', 'No saved sessions found. Complete the data collection process to create sessions.')
+      }
+      
     } catch (error) {
       console.error('Failed to load sessions:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      showError('Load Error', `Failed to load sessions: ${errorMessage}`)
       
       // Fallback to empty state
       setLogs([])

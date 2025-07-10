@@ -269,6 +269,12 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
+        {/* Storage Information */}
+        <div className="card">
+          <h2>Storage Information</h2>
+          <StorageInfo />
+        </div>
+
         {/* Advanced Settings */}
         <div className="card">
           <h2>Advanced</h2>
@@ -328,6 +334,55 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
       />
+    </div>
+  )
+}
+
+// Storage Information Component
+function StorageInfo() {
+  const [storagePath, setStoragePath] = useState<string>('')
+  const [sessionCount, setSessionCount] = useState<number>(0)
+  const [loading, setLoading] = useState(true)
+  const { showError } = useToast()
+
+  useEffect(() => {
+    const loadStorageInfo = async () => {
+      try {
+        setLoading(true)
+        
+        // Get storage path
+        const path = await invoke<string>('get_storage_path')
+        setStoragePath(path)
+        
+        // Get session count
+        const sessions = await invoke<SessionMetadata[]>('get_sessions')
+        setSessionCount(sessions.length)
+        
+      } catch (error) {
+        console.error('Failed to load storage info:', error)
+        showError('Storage Info Error', `Failed to load storage information: ${error}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStorageInfo()
+  }, [showError])
+
+  if (loading) {
+    return <div>Loading storage information...</div>
+  }
+
+  return (
+    <div className="storage-info">
+      <div className="setting-group">
+        <label>Storage Location:</label>
+        <p className="storage-path">{storagePath}</p>
+      </div>
+      <div className="setting-group">
+        <label>Saved Sessions:</label>
+        <p>{sessionCount} session(s)</p>
+      </div>
     </div>
   )
 }

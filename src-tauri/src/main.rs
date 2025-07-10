@@ -22,43 +22,28 @@ mod path_manager {
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct PathConfig {
         pub app_data_dir: PathBuf,
-        pub user_documents_dir: Option<PathBuf>,
-        pub user_downloads_dir: Option<PathBuf>,
-        pub user_desktop_dir: Option<PathBuf>,
+        pub user_downloads_dir: Option<PathBuf>, // Keep for download functionality
         pub allowed_base_dirs: Vec<PathBuf>,
     }
 
     impl PathConfig {
         pub fn new() -> Result<Self, String> {
             let app_data_dir = Self::get_app_data_directory()?;
-            let user_documents_dir = dirs::document_dir();
             let user_downloads_dir = dirs::download_dir();
-            let user_desktop_dir = dirs::desktop_dir();
             
-            // Build list of allowed base directories
+            // Build list of allowed base directories - primarily app_data_dir
             let mut allowed_base_dirs = vec![app_data_dir.clone()];
             
-            // Add user directories if they exist and are writable
-            for dir_opt in [&user_documents_dir, &user_downloads_dir, &user_desktop_dir] {
-                if let Some(dir) = dir_opt {
-                    if dir.exists() && Self::is_directory_writable(dir) {
-                        allowed_base_dirs.push(dir.clone());
-                    }
-                }
-            }
-            
-            // Add current working directory as fallback
-            if let Ok(cwd) = std::env::current_dir() {
-                if Self::is_directory_writable(&cwd) {
-                    allowed_base_dirs.push(cwd);
+            // Add downloads directory if it exists (for file export functionality)
+            if let Some(downloads_dir) = &user_downloads_dir {
+                if downloads_dir.exists() && Self::is_directory_writable(downloads_dir) {
+                    allowed_base_dirs.push(downloads_dir.clone());
                 }
             }
 
             Ok(PathConfig {
                 app_data_dir,
-                user_documents_dir,
                 user_downloads_dir,
-                user_desktop_dir,
                 allowed_base_dirs,
             })
         }
@@ -1110,28 +1095,15 @@ async fn get_sessions(
 ) -> Result<Vec<SessionMetadata>, String> {
   let config = path_config.0.lock().await;
   
-  // Try to load from configured paths
-  let mut possible_paths = vec![
-    config.get_default_storage_path(),
-    config.app_data_dir.clone(),
-  ];
-
-  // Add user directories if they exist
-  if let Some(ref docs) = config.user_documents_dir {
-    possible_paths.push(docs.join("GaitMonitor"));
+  // Only use the default storage path (AppData/Roaming/GaitMonitor/sessions)
+  let storage_path = config.get_default_storage_path();
+  
+  if storage_path.exists() {
+    load_sessions_from_path(&storage_path).await
+  } else {
+    // Return empty list if storage directory doesn't exist yet
+    Ok(vec![])
   }
-
-  for path in possible_paths {
-    if path.exists() {
-      match load_sessions_from_path(&path).await {
-        Ok(sessions) => return Ok(sessions),
-        Err(_) => continue,
-      }
-    }
-  }
-
-  // Return empty list if no sessions found
-  Ok(vec![])
 }
 
 #[tauri::command]
@@ -1180,12 +1152,8 @@ async fn choose_storage_directory(
   // Use a blocking approach with a channel to handle the callback
   let (tx, rx) = std::sync::mpsc::channel();
   
-  // Determine initial directory for dialog
-  let initial_dir = config.user_documents_dir
-    .as_ref()
-    .or(config.user_desktop_dir.as_ref())
-    .cloned()
-    .unwrap_or_else(|| config.app_data_dir.clone());
+  // Determine initial directory for dialog - use app data directory as default
+  let initial_dir = config.app_data_dir.clone();
   
   // Use the dialog plugin to show a folder picker
   app_handle
@@ -1559,6 +1527,15 @@ async fn save_filtered_data(
   Ok(file_path.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+async fn get_storage_path(
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<String, String> {
+  let config = path_config.0.lock().await;
+  let storage_path = config.get_default_storage_path();
+  Ok(storage_path.to_string_lossy().to_string())
+}
+
 fn main() {
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
@@ -1578,7 +1555,7 @@ fn main() {
     .manage(rate_limiting_state)
     .manage(csrf_token_state)
     .manage(path_config_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data, get_storage_path])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

@@ -2622,3 +2622,33 @@ input:checked + .toggle-slider:before {
 .logs-refresh-btn {
   padding: 0.5rem 1rem;
 }
+
+/* Storage Information Styles */
+.storage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.storage-info .setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.storage-info .setting-group label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.875rem;
+}
+
+.storage-path {
+  font-family: 'Courier New', monospace;
+  background: var(--bg-secondary);
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  word-break: break-all;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
