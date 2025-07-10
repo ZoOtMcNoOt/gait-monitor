@@ -228,8 +228,8 @@ export default function CollectTab() {
       return
     }
 
-    console.log('💾 Starting to save data...')
-    console.log('Data to save:', {
+    console.log('💾 Starting to save session...')
+    console.log('Session data to save:', {
       sessionName: collectedData.sessionName,
       subjectId: collectedData.subjectId,
       dataPointsLength: collectedData.dataPoints.length,
@@ -239,16 +239,23 @@ export default function CollectTab() {
     setIsSaving(true)
     
     try {
+      // Get CSRF token first
+      console.log('🔐 Getting CSRF token...')
+      const csrfToken = await invoke<string>('get_csrf_token')
+      console.log('✅ CSRF token obtained')
+
+      // Save session data with CSRF token
       const filePath = await invoke<string>('save_session_data', {
         sessionName: collectedData.sessionName,
         subjectId: collectedData.subjectId,
         notes: collectedData.notes,
         data: collectedData.dataPoints,
-        storagePath: null // Use default path for now
+        storagePath: null, // Use default path for now
+        csrfToken: csrfToken
       })
 
-      console.log('✅ Data saved successfully to:', filePath)
-      alert(`Data saved successfully!\n\nFile: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
+      console.log('✅ Session saved successfully to:', filePath)
+      alert(`Session saved successfully!\n\nFile: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
       
       // Reset wizard
       setCurrentStep('metadata')
@@ -256,9 +263,9 @@ export default function CollectTab() {
       dataBuffer.current = []
       
     } catch (error) {
-      console.error('❌ Failed to save data:', error)
+      console.error('❌ Failed to save session:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      alert(`Failed to save data: ${errorMessage}\n\nPlease check the console for more details and try again.`)
+      alert(`Failed to save session: ${errorMessage}\n\nPlease check the console for more details and try again.`)
     } finally {
       setIsSaving(false)
     }
