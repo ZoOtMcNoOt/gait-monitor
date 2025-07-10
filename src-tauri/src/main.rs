@@ -14,6 +14,48 @@ use futures::stream::StreamExt;
 use tauri::Emitter;
 use std::time::{Duration, Instant};
 
+// CSRF Protection - Simple token-based validation
+#[derive(Clone)]
+pub struct CSRFTokenState(Arc<Mutex<Option<String>>>);
+
+impl CSRFTokenState {
+  fn new() -> Self {
+    // Generate initial CSRF token
+    let token = uuid::Uuid::new_v4().to_string();
+    Self(Arc::new(Mutex::new(Some(token))))
+  }
+
+  async fn validate_token(&self, provided_token: &str) -> bool {
+    let token_guard = self.0.lock().await;
+    if let Some(ref current_token) = *token_guard {
+      current_token == provided_token
+    } else {
+      false
+    }
+  }
+
+  async fn get_token(&self) -> Option<String> {
+    let token_guard = self.0.lock().await;
+    token_guard.clone()
+  }
+
+  async fn refresh_token(&self) -> String {
+    let new_token = uuid::Uuid::new_v4().to_string();
+    let mut token_guard = self.0.lock().await;
+    *token_guard = Some(new_token.clone());
+    new_token
+  }
+}
+
+// Macro to validate CSRF token for protected commands
+macro_rules! validate_csrf {
+  ($csrf_state:expr, $token:expr) => {
+    if !$csrf_state.validate_token($token).await {
+      return Err("Invalid CSRF token".to_string());
+    }
+  };
+}
+
 // Add heartbeat data structure
 #[derive(Debug, serde::Serialize)]
 struct HeartbeatData {
@@ -771,8 +813,13 @@ async fn save_session_data(
   notes: String,
   data: Vec<GaitData>,
   storage_path: Option<String>,
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>
 ) -> Result<String, String> {
-  use std::fs;
+  // CSRF Protection
+  validate_csrf!(csrf_state, &csrf_token);
+  
+  use tokio::fs;
   use std::path::Path;
   
   // Input validation
@@ -828,7 +875,7 @@ async fn save_session_data(
   };
 
   // Create directory if it doesn't exist
-  fs::create_dir_all(&base_path)
+  fs::create_dir_all(&base_path).await
     .map_err(|e| format!("Failed to create directory: {}", e))?;
 
   // Generate filename with timestamp
@@ -890,8 +937,8 @@ async fn save_session_data(
     ));
   }
 
-  // Write file
-  fs::write(&file_path, csv_content)
+  // Write file asynchronously
+  fs::write(&file_path, csv_content).await
     .map_err(|e| format!("Failed to write file: {}", e))?;
 
   // Save session metadata
@@ -936,13 +983,20 @@ async fn get_sessions() -> Result<Vec<SessionMetadata>, String> {
 }
 
 #[tauri::command]
-async fn delete_session(session_id: String) -> Result<(), String> {
-  let sessions = get_sessions().await?;
+async fn delete_session(
+  session_id: String,
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>
+) -> Result<(), String> {
+  // CSRF Protection
+  validate_csrf!(csrf_state, &csrf_token);
   
+  let sessions = get_sessions().await?;
+
   if let Some(session) = sessions.iter().find(|s| s.id == session_id).cloned() {
-    // Delete the data file
+    // Delete the data file asynchronously
     if Path::new(&session.file_path).exists() {
-      std::fs::remove_file(&session.file_path)
+      tokio::fs::remove_file(&session.file_path).await
         .map_err(|e| format!("Failed to delete data file: {}", e))?;
     }
     
@@ -997,9 +1051,9 @@ async fn choose_storage_directory(app_handle: tauri::AppHandle) -> Result<Option
 async fn save_session_metadata(base_path: &str, metadata: &SessionMetadata) -> Result<(), String> {
   let metadata_path = Path::new(base_path).join("sessions_index.json");
   
-  // Load existing sessions
+  // Load existing sessions asynchronously
   let mut sessions = if metadata_path.exists() {
-    let content = std::fs::read_to_string(&metadata_path)
+    let content = tokio::fs::read_to_string(&metadata_path).await
       .map_err(|e| format!("Failed to read sessions index: {}", e))?;
     serde_json::from_str::<Vec<SessionMetadata>>(&content)
       .unwrap_or_else(|_| vec![])
@@ -1015,11 +1069,10 @@ async fn save_session_metadata(base_path: &str, metadata: &SessionMetadata) -> R
 }
 
 async fn save_sessions_metadata(base_path: &Path, sessions: &[SessionMetadata]) -> Result<(), String> {
-  let metadata_path = base_path.join("sessions_index.json");
-  let content = serde_json::to_string_pretty(sessions)
+  let metadata_path = base_path.join("sessions_index.json");  let content = serde_json::to_string_pretty(sessions)
     .map_err(|e| format!("Failed to serialize sessions: {}", e))?;
-  
-  std::fs::write(&metadata_path, content)
+
+  tokio::fs::write(&metadata_path, content).await
     .map_err(|e| format!("Failed to write sessions index: {}", e))?;
   
   Ok(())
@@ -1032,7 +1085,7 @@ async fn load_sessions_from_path(base_path: &Path) -> Result<Vec<SessionMetadata
     return Ok(vec![]);
   }
   
-  let content = std::fs::read_to_string(&metadata_path)
+  let content = tokio::fs::read_to_string(&metadata_path).await
     .map_err(|e| format!("Failed to read sessions index: {}", e))?;
   
   let sessions: Vec<SessionMetadata> = serde_json::from_str(&content)
@@ -1096,26 +1149,80 @@ fn parse_heartbeat_data(data: &[u8], device_id: &str) -> Result<HeartbeatData, S
 }
 
 #[tauri::command]
-async fn copy_file_to_downloads(file_path: String, file_name: String) -> Result<String, String> {
-  use std::fs;
-  use std::path::Path;
+async fn copy_file_to_downloads(
+  file_path: String,
+  file_name: String,
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>
+) -> Result<String, String> {
+  // CSRF Protection
+  validate_csrf!(csrf_state, &csrf_token);
   
+  use tokio::fs;
+  use std::path::Path;
+
+  // Input validation
+  if file_name.is_empty() || file_name.contains("..") || file_name.contains("/") || file_name.contains("\\") {
+    return Err("Invalid file name".to_string());
+  }
+  
+  if file_path.contains("..") {
+    return Err("Invalid file path: Path traversal not allowed".to_string());
+  }
+
   // Get the Downloads directory
   let downloads_dir = dirs::download_dir()
     .ok_or("Could not find Downloads directory")?;
-  
+
   let source_path = Path::new(&file_path);
-  if !source_path.exists() {
-    return Err("Source file does not exist".to_string());
+  
+  // Enhanced security: Verify source path is within allowed directories
+  let canonical_source = source_path.canonicalize()
+    .map_err(|_| "Source file path cannot be resolved".to_string())?;
+  
+  // Check if source is within allowed directories
+  let allowed_bases = [
+    dirs::document_dir(),
+    dirs::download_dir(), 
+    dirs::desktop_dir(),
+  ];
+  
+  let source_allowed = allowed_bases.iter()
+    .filter_map(|base| base.as_ref())
+    .any(|base| canonical_source.starts_with(base));
+  
+  if !source_allowed {
+    return Err("Source file must be within Documents, Downloads, or Desktop directories".to_string());
   }
   
+  if !canonical_source.exists() {
+    return Err("Source file does not exist".to_string());
+  }
+
   let dest_path = downloads_dir.join(&file_name);
   
-  // Copy the file
-  fs::copy(source_path, &dest_path)
+  // Prevent overwriting existing files without confirmation
+  if dest_path.exists() {
+    return Err("Destination file already exists".to_string());
+  }
+
+  // Copy the file asynchronously
+  fs::copy(&canonical_source, &dest_path).await
     .map_err(|e| format!("Failed to copy file: {}", e))?;
   
   Ok(dest_path.to_string_lossy().to_string())
+}
+
+// CSRF Protection Commands
+#[tauri::command]
+async fn get_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
+  csrf_state.get_token().await
+    .ok_or_else(|| "CSRF token not initialized".to_string())
+}
+
+#[tauri::command]
+async fn refresh_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
+  Ok(csrf_state.refresh_token().await)
 }
 
 fn main() {
@@ -1124,6 +1231,7 @@ fn main() {
   let bt_manager = BluetoothManagerState(Arc::new(Mutex::new(None)));
   let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
   let rate_limiting_state = RateLimitingState::new();
+  let csrf_token_state = CSRFTokenState::new();
   
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
@@ -1133,7 +1241,8 @@ fn main() {
     .manage(bt_manager)
     .manage(active_notifications)
     .manage(rate_limiting_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads])
+    .manage(csrf_token_state)
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
