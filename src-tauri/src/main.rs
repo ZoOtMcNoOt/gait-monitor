@@ -767,10 +767,30 @@ async fn start_gait_notifications(
       }
       
       if data.uuid == characteristic_uuid && data.value.len() == 24 {
+        let parse_start = std::time::Instant::now();
+        
+        // Debug: Log raw packet data to detect duplicates at BLE level
+        let data_hash = format!("{:02x}{:02x}{:02x}{:02x}", 
+          data.value[0], data.value[1], data.value[2], data.value[3]);
+        
         // Parse the 24-byte packet (6 floats)
         if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
+          let parse_duration = parse_start.elapsed();
+          
+          let emit_start = std::time::Instant::now();
           // Emit to frontend with device ID
           let _ = app_handle_clone.emit("gait-data", &gait_data);
+          let emit_duration = emit_start.elapsed();
+          
+          // Log timing every 100th packet to avoid spam (thread-safe)
+          use std::sync::atomic::{AtomicU32, Ordering};
+          static PACKET_COUNT: AtomicU32 = AtomicU32::new(0);
+          
+          let count = PACKET_COUNT.fetch_add(1, Ordering::Relaxed);
+          if count % 5 == 0 {  // More frequent logging to catch duplicates
+            println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Parse: {:?}, Emit: {:?}", 
+              count, data_hash, gait_data.timestamp, parse_duration, emit_duration);
+          }
         }
       } else if data.uuid == heartbeat_uuid_clone && data.value.len() == 8 {
         // Parse the 8-byte heartbeat packet (timestamp + sequence)

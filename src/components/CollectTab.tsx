@@ -52,8 +52,12 @@ export default function CollectTab() {
     if (isCollecting) {
       console.log('🔔 Setting up gait data subscription')
       const lastTimestamps = new Map<string, number>() // Track last timestamp per device
+      const lastReceiveTimes = new Map<string, number>() // Track frontend receive times
+      const packetCounts = new Map<string, number>() // Track packet counts per device
       
       const unsubscribe = subscribeToGaitData((data) => {
+        const receiveTime = performance.now()
+        
         // Deduplication: skip if we already received this exact timestamp from this device
         const deviceLastTimestamp = lastTimestamps.get(data.device_id)
         if (deviceLastTimestamp === data.timestamp) {
@@ -63,6 +67,21 @@ export default function CollectTab() {
         
         // Update last timestamp for this device
         lastTimestamps.set(data.device_id, data.timestamp)
+        
+        // Calculate intervals for performance monitoring
+        const lastReceiveTime = lastReceiveTimes.get(data.device_id) || receiveTime
+        const interval = receiveTime - lastReceiveTime
+        lastReceiveTimes.set(data.device_id, receiveTime)
+        
+        // Log timing every 100th packet
+        packetCounts.set(data.device_id, (packetCounts.get(data.device_id) || 0) + 1)
+        const count = packetCounts.get(data.device_id) || 0
+        
+        if (count % 100 === 0) {
+          const avgInterval = interval > 0 ? interval : 0
+          const estimatedHz = avgInterval > 0 ? 1000 / avgInterval : 0
+          console.log(`📊 Frontend timing [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`)
+        }
         
         // Add data to buffer
         console.log('📦 Received gait data:', data.device_id, data.timestamp)
