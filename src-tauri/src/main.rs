@@ -1405,6 +1405,160 @@ async fn validate_path(
   Ok(config.is_path_allowed(path))
 }
 
+// Data structures for session data parsing
+#[derive(Serialize, Clone)]
+struct DataPoint {
+    timestamp: u64,
+    device_id: String,
+    data_type: String,
+    value: f64,
+    unit: String,
+}
+
+#[derive(Serialize)]
+struct SessionData {
+    session_name: String,
+    subject_id: String,
+    start_time: u64,
+    end_time: u64,
+    data: Vec<DataPoint>,
+    metadata: SessionDataMetadata,
+}
+
+#[derive(Serialize)]
+struct SessionDataMetadata {
+    devices: Vec<String>,
+    data_types: Vec<String>,
+    sample_rate: f64,
+    duration: f64,
+}
+
+#[tauri::command]
+async fn load_session_data(
+  session_id: String,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<SessionData, String> {
+  // Get the session metadata first
+  let sessions = get_sessions(path_config.clone()).await?;
+  let session_metadata = sessions.iter()
+    .find(|s| s.id == session_id)
+    .ok_or("Session not found")?;
+
+  // Parse the CSV file to load actual data
+  let file_path = &session_metadata.file_path;
+  if !std::path::Path::new(file_path).exists() {
+    return Err("Data file not found".to_string());
+  }
+
+  let content = tokio::fs::read_to_string(file_path).await
+    .map_err(|e| format!("Failed to read data file: {}", e))?;
+
+  let mut data_points = Vec::new();
+  let mut devices = std::collections::HashSet::new();
+  let mut data_types = std::collections::HashSet::new();
+  let mut min_timestamp = u64::MAX;
+  let mut max_timestamp = 0u64;
+
+  // Parse CSV content (skip header)
+  for (line_num, line) in content.lines().enumerate() {
+    if line_num == 0 || line.trim().is_empty() {
+      continue; // Skip header or empty lines
+    }
+
+    let parts: Vec<&str> = line.split(',').collect();
+    if parts.len() >= 5 {
+      // Expected format: timestamp,device_id,data_type,value,unit
+      if let (Ok(timestamp), value_str, unit) = (
+        parts[0].parse::<u64>(),
+        parts[3],
+        parts.get(4).unwrap_or(&"")
+      ) {
+        if let Ok(value) = value_str.parse::<f64>() {
+          let device_id = parts[1].to_string();
+          let data_type = parts[2].to_string();
+          
+          devices.insert(device_id.clone());
+          data_types.insert(data_type.clone());
+          min_timestamp = min_timestamp.min(timestamp);
+          max_timestamp = max_timestamp.max(timestamp);
+
+          data_points.push(DataPoint {
+            timestamp,
+            device_id,
+            data_type,
+            value,
+            unit: unit.to_string(),
+          });
+        }
+      }
+    }
+  }
+
+  if data_points.is_empty() {
+    return Err("No valid data points found in file".to_string());
+  }
+
+  // Calculate metadata
+  let duration = if max_timestamp > min_timestamp {
+    (max_timestamp - min_timestamp) as f64 / 1000.0 // Convert ms to seconds
+  } else {
+    0.0
+  };
+
+  let sample_rate = if duration > 0.0 {
+    data_points.len() as f64 / duration
+  } else {
+    0.0
+  };
+
+  let session_data = SessionData {
+    session_name: session_metadata.session_name.clone(),
+    subject_id: session_metadata.subject_id.clone(),
+    start_time: min_timestamp,
+    end_time: max_timestamp,
+    data: data_points,
+    metadata: SessionDataMetadata {
+      devices: devices.into_iter().collect(),
+      data_types: data_types.into_iter().collect(),
+      sample_rate,
+      duration,
+    },
+  };
+
+  Ok(session_data)
+}
+
+#[tauri::command]
+async fn save_filtered_data(
+  file_name: String,
+  content: String,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<String, String> {
+  let config = path_config.0.lock().await;
+  
+  // Use downloads directory if available, otherwise app data directory
+  let target_dir = config.user_downloads_dir
+    .as_ref()
+    .unwrap_or(&config.app_data_dir);
+
+  if !config.is_path_allowed(target_dir) {
+    return Err("Target directory is not allowed".to_string());
+  }
+
+  let file_path = target_dir.join(&file_name);
+  
+  // Validate the file path
+  if !config.is_path_allowed(&file_path) {
+    return Err("File path is not allowed".to_string());
+  }
+
+  // Write the file asynchronously
+  tokio::fs::write(&file_path, content).await
+    .map_err(|e| format!("Failed to save file: {}", e))?;
+
+  Ok(file_path.to_string_lossy().to_string())
+}
+
 fn main() {
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
@@ -1424,7 +1578,7 @@ fn main() {
     .manage(rate_limiting_state)
     .manage(csrf_token_state)
     .manage(path_config_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path])
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

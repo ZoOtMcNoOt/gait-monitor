@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
 import ErrorBoundary from './ErrorBoundary'
+import DataViewer from './DataViewer'
 
 interface LogEntry {
   id: string
@@ -42,6 +43,7 @@ function LogsTabContent() {
     totalDataPoints: 0,
     lastSession: null as Date | null
   })
+  const [viewingSession, setViewingSession] = useState<LogEntry | null>(null)
   
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
@@ -90,11 +92,8 @@ function LogsTabContent() {
   }
 
   const handleViewLog = (log: LogEntry) => {
-    // TODO: Implement in-app data viewer
-    showInfo(
-      'Data Viewer Coming Soon', 
-      `Session: ${log.session_name}\nSubject: ${log.subject_id}\nData points: ${log.data_points}\n\nNote: In-app data viewer is not yet implemented. You can download the file to view the data.`
-    )
+    // Open the data viewer with the selected session
+    setViewingSession(log)
   }
 
   const handleDownloadLog = async (log: LogEntry) => {
@@ -179,12 +178,11 @@ function LogsTabContent() {
 
       {/* Logs Table */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div className="logs-header">
           <h2>Session Logs</h2>
           <button 
-            className="btn-secondary" 
+            className="btn-secondary logs-refresh-btn" 
             onClick={loadLogs}
-            style={{ padding: '0.5rem 1rem' }}
           >
             🔄 Refresh
           </button>
@@ -267,6 +265,15 @@ function LogsTabContent() {
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
       />
+      
+      {/* Data Viewer Modal */}
+      {viewingSession && (
+        <DataViewer
+          sessionId={viewingSession.id}
+          sessionName={viewingSession.session_name}
+          onClose={() => setViewingSession(null)}
+        />
+      )}
     </div>
   )
 }
