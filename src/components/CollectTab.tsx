@@ -126,8 +126,18 @@ export default function CollectTab() {
     
     try {
       console.log('🛑 Stopping data collection...')
-      console.log('Current state:', { isCollecting, isUsingRealData, connectedDevices: connectedDevices.length })
+      console.log('Current state:', { 
+        isCollecting, 
+        isUsingRealData, 
+        connectedDevices: connectedDevices.length,
+        dataBufferLength: dataBuffer.current.length 
+      })
       
+      // Capture data BEFORE stopping to avoid race conditions
+      const finalDataPoints = [...dataBuffer.current]
+      console.log(`📊 Captured ${finalDataPoints.length} data points before stopping`)
+      
+      // Stop BLE notifications if using real data
       if (isUsingRealData && connectedDevices.length > 0) {
         const deviceId = connectedDevices[0]
         console.log('🔄 Stopping BLE notifications for device:', deviceId)
@@ -136,13 +146,11 @@ export default function CollectTab() {
         setIsUsingRealData(false)
       }
       
+      // Update UI state
       setIsCollecting(false)
       console.log('✅ Set isCollecting to false')
       
-      // Capture collected data
-      const finalDataPoints = [...dataBuffer.current]
-      console.log(`📊 Captured ${finalDataPoints.length} data points`, finalDataPoints.slice(0, 3))
-      
+      // Update collected data with captured points
       if (collectedData) {
         const updatedData = {
           ...collectedData,
@@ -151,7 +159,8 @@ export default function CollectTab() {
         setCollectedData(updatedData)
         console.log('💾 Updated collected data:', {
           sessionName: updatedData.sessionName,
-          dataPointsLength: updatedData.dataPoints.length
+          dataPointsLength: updatedData.dataPoints.length,
+          sampleDataPoints: updatedData.dataPoints.slice(0, 2)
         })
       } else {
         console.warn('⚠️ No collectedData state found')
@@ -162,7 +171,10 @@ export default function CollectTab() {
       
     } catch (error) {
       console.error('❌ Failed to stop collection:', error)
-      alert(`Failed to stop collection properly: ${error}\n\nData has been saved but device may still be streaming.`)
+      
+      // Show detailed error to user
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      alert(`Failed to stop collection properly: ${errorMessage}\n\nData has been captured but device may still be streaming. Please check the device connection.`)
       
       // Force stop the UI state even if device stopping failed
       setIsCollecting(false)
@@ -175,6 +187,7 @@ export default function CollectTab() {
           ...collectedData,
           dataPoints: finalDataPoints
         })
+        console.log('💾 Force-saved data points despite error:', finalDataPoints.length)
       }
       
       setCurrentStep('review')
