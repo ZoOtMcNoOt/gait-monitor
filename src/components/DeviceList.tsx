@@ -3,7 +3,6 @@ import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
-import ErrorBoundary from './ErrorBoundary'
 
 export default function DeviceList() {
   // Pagination state
