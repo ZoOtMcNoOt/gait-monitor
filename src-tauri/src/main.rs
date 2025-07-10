@@ -1524,20 +1524,24 @@ async fn save_filtered_data(
 ) -> Result<String, String> {
   let config = path_config.0.lock().await;
   
-  // Use downloads directory if available, otherwise app data directory
-  let target_dir = config.user_downloads_dir
-    .as_ref()
-    .unwrap_or(&config.app_data_dir);
+  // Use app data directory instead of Downloads to avoid permission issues
+  let target_dir = &config.app_data_dir;
 
-  if !config.is_path_allowed(target_dir) {
-    return Err("Target directory is not allowed".to_string());
+  println!("🔍 Target directory: {:?}", target_dir);
+  println!("🔍 Allowed base dirs: {:?}", config.allowed_base_dirs);
+
+  // Ensure the target directory exists
+  if !target_dir.exists() {
+    tokio::fs::create_dir_all(target_dir).await
+      .map_err(|e| format!("Failed to create directory: {}", e))?;
   }
 
   let file_path = target_dir.join(&file_name);
+  println!("🔍 Full file path: {:?}", file_path);
   
-  // Validate the file path
+  // Validate the file path (should always work for app_data_dir)
   if !config.is_path_allowed(&file_path) {
-    return Err("File path is not allowed".to_string());
+    return Err(format!("File path is not allowed: {:?}. Allowed directories: {:?}", file_path, config.allowed_base_dirs));
   }
 
   // Write the file asynchronously

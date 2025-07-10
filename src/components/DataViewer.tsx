@@ -73,7 +73,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [viewMode, setViewMode] = useState<'chart' | 'table' | 'stats'>('chart')
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
   
-  const { showError, showInfo } = useToast()
+  const { showError, showInfo, showSuccess } = useToast()
 
   const loadSessionData = useCallback(async () => {
     try {
@@ -220,14 +220,33 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
       const fileName = `${sessionName}_filtered_${new Date().toISOString().split('T')[0]}.csv`
       
-      await invoke('save_filtered_data', {
+      // Save filtered data to app data directory
+      const savedPath = await invoke('save_filtered_data', {
         fileName,
         content: csvContent
       })
       
-      showInfo('Export Complete', `Filtered data exported as ${fileName}`)
+      // Then copy it to Downloads folder using the working copy function
+      try {
+        const result = await invoke('copy_file_to_downloads', { 
+          filePath: savedPath,
+          fileName: fileName
+        })
+        
+        showSuccess(
+          'File Exported Successfully',
+          `Filtered data exported to Downloads folder: ${result}`
+        )
+      } catch {
+        // If copy fails, at least show where the file was saved
+        showInfo(
+          'Export Completed - Manual Copy Available',
+          `Filtered data saved to: ${savedPath}\n\nNote: You can manually copy this file to your desired location.`
+        )
+      }
     } catch (err) {
-      showError('Export Failed', `Failed to export data: ${err}`)
+      console.error('Failed to export filtered data:', err)
+      showError('Export Failed', `Failed to export filtered data: ${err}`)
     }
   }
 
