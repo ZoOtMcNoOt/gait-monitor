@@ -34,6 +34,7 @@ export default function CollectTab() {
   const [isUsingRealData, setIsUsingRealData] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showStopConfirmation, setShowStopConfirmation] = useState(false)
+  const [isStopping, setIsStopping] = useState(false) // Prevent multiple stop calls
 
   // Data collection buffer
   const dataBuffer = useRef<GaitDataPoint[]>([])
