@@ -4,7 +4,6 @@ import type { SessionMetadata } from '../types'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
-import ErrorBoundary from './ErrorBoundary'
 
 interface Props {
   darkMode: boolean
