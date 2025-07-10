@@ -22,18 +22,6 @@ export interface LogEntry {
   devices: string[];
 }
 
-// Legacy interface for backward compatibility (used by LogsTable.tsx)
-export interface LegacySession {
-  id: string | number;
-  date: number;
-  meta: {
-    name: string;
-    [key: string]: unknown;
-  };
-  data: unknown[];
-  csv: string;
-}
-
 export interface GaitDataPoint {
   device_id: string;
   r1: number;
