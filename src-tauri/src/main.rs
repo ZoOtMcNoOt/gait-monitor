@@ -14,6 +14,156 @@ use futures::stream::StreamExt;
 use tauri::Emitter;
 use std::time::{Duration, Instant};
 
+// Cross-platform path management module
+mod path_manager {
+    use std::path::{Path, PathBuf};
+    use serde::{Serialize, Deserialize};
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct PathConfig {
+        pub app_data_dir: PathBuf,
+        pub user_documents_dir: Option<PathBuf>,
+        pub user_downloads_dir: Option<PathBuf>,
+        pub user_desktop_dir: Option<PathBuf>,
+        pub allowed_base_dirs: Vec<PathBuf>,
+    }
+
+    impl PathConfig {
+        pub fn new() -> Result<Self, String> {
+            let app_data_dir = Self::get_app_data_directory()?;
+            let user_documents_dir = dirs::document_dir();
+            let user_downloads_dir = dirs::download_dir();
+            let user_desktop_dir = dirs::desktop_dir();
+            
+            // Build list of allowed base directories
+            let mut allowed_base_dirs = vec![app_data_dir.clone()];
+            
+            // Add user directories if they exist and are writable
+            for dir_opt in [&user_documents_dir, &user_downloads_dir, &user_desktop_dir] {
+                if let Some(dir) = dir_opt {
+                    if dir.exists() && Self::is_directory_writable(dir) {
+                        allowed_base_dirs.push(dir.clone());
+                    }
+                }
+            }
+            
+            // Add current working directory as fallback
+            if let Ok(cwd) = std::env::current_dir() {
+                if Self::is_directory_writable(&cwd) {
+                    allowed_base_dirs.push(cwd);
+                }
+            }
+
+            Ok(PathConfig {
+                app_data_dir,
+                user_documents_dir,
+                user_downloads_dir,
+                user_desktop_dir,
+                allowed_base_dirs,
+            })
+        }
+
+        fn get_app_data_directory() -> Result<PathBuf, String> {
+            // Try to get platform-appropriate app data directory
+            if let Some(config_dir) = dirs::config_dir() {
+                let app_dir = config_dir.join("GaitMonitor");
+                if Self::ensure_directory_exists(&app_dir) {
+                    return Ok(app_dir);
+                }
+            }
+
+            // Fallback to home directory
+            if let Some(home_dir) = dirs::home_dir() {
+                let app_dir = home_dir.join(".gait-monitor");
+                if Self::ensure_directory_exists(&app_dir) {
+                    return Ok(app_dir);
+                }
+            }
+
+            // Last resort: current directory
+            std::env::current_dir()
+                .map(|cwd| cwd.join("gait_data"))
+                .map_err(|e| format!("Cannot determine app data directory: {}", e))
+        }
+
+        fn ensure_directory_exists(path: &Path) -> bool {
+            if path.exists() {
+                path.is_dir() && Self::is_directory_writable(path)
+            } else {
+                std::fs::create_dir_all(path).is_ok() && Self::is_directory_writable(path)
+            }
+        }
+
+        fn is_directory_writable(path: &Path) -> bool {
+            if !path.exists() || !path.is_dir() {
+                return false;
+            }
+            
+            // Try to create a temporary file to test write permissions
+            let test_file = path.join(format!(".write_test_{}", uuid::Uuid::new_v4()));
+            match std::fs::write(&test_file, "") {
+                Ok(_) => {
+                    let _ = std::fs::remove_file(&test_file);
+                    true
+                }
+                Err(_) => false,
+            }
+        }
+
+        pub fn get_default_storage_path(&self) -> PathBuf {
+            self.app_data_dir.join("sessions")
+        }
+
+        pub fn is_path_allowed(&self, path: &Path) -> bool {
+            // Resolve the path to its canonical form
+            let canonical_path = match path.canonicalize() {
+                Ok(p) => p,
+                Err(_) => return false,
+            };
+
+            // Check against allowed base directories
+            self.allowed_base_dirs.iter().any(|base| {
+                if let Ok(canonical_base) = base.canonicalize() {
+                    canonical_path.starts_with(canonical_base)
+                } else {
+                    false
+                }
+            })
+        }
+
+        pub fn sanitize_filename(filename: &str) -> String {
+            // Remove or replace problematic characters
+            filename
+                .chars()
+                .map(|c| match c {
+                    // Replace path separators and dangerous chars
+                    '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+                    // Replace control characters
+                    c if c.is_control() => '_',
+                    // Keep safe characters
+                    c => c,
+                })
+                .collect::<String>()
+                .trim()
+                .to_string()
+        }
+
+        pub fn get_safe_download_path(&self, filename: &str) -> Option<PathBuf> {
+            let safe_filename = Self::sanitize_filename(filename);
+            
+            // Try downloads directory first
+            if let Some(ref downloads) = self.user_downloads_dir {
+                if downloads.exists() && Self::is_directory_writable(downloads) {
+                    return Some(downloads.join(safe_filename));
+                }
+            }
+            
+            // Fallback to app data directory
+            Some(self.app_data_dir.join("downloads").join(safe_filename))
+        }
+    }
+}
+
 // CSRF Protection - Simple token-based validation
 #[derive(Clone)]
 pub struct CSRFTokenState(Arc<Mutex<Option<String>>>);
@@ -78,6 +228,17 @@ pub struct BluetoothManagerState(Arc<Mutex<Option<Manager>>>);
 // New state to track which devices are actively streaming data
 #[derive(Clone)]
 pub struct ActiveNotificationsState(Arc<Mutex<HashMap<String, bool>>>);
+
+// Cross-platform path configuration state
+#[derive(Clone)]
+pub struct PathConfigState(Arc<Mutex<path_manager::PathConfig>>);
+
+impl PathConfigState {
+    pub fn new() -> Result<Self, String> {
+        let config = path_manager::PathConfig::new()?;
+        Ok(Self(Arc::new(Mutex::new(config))))
+    }
+}
 
 // A simple serializable struct to send back to JS
 #[derive(Serialize)]
@@ -814,7 +975,8 @@ async fn save_session_data(
   data: Vec<GaitData>,
   storage_path: Option<String>,
   csrf_token: String,
-  csrf_state: tauri::State<'_, CSRFTokenState>
+  csrf_state: tauri::State<'_, CSRFTokenState>,
+  path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
   // CSRF Protection
   validate_csrf!(csrf_state, &csrf_token);
@@ -835,7 +997,10 @@ async fn save_session_data(
     return Err("Subject ID cannot be empty".to_string());
   }
 
-  // Validate and sanitize storage path if provided
+  // Get path configuration
+  let config = path_config.0.lock().await;
+
+  // Validate and determine storage path
   let base_path = if let Some(user_path) = storage_path {
     // Validate the user-provided path
     let path = Path::new(&user_path);
@@ -845,33 +1010,15 @@ async fn save_session_data(
       return Err("Invalid path: Path traversal not allowed".to_string());
     }
     
-    // Ensure path is absolute or convert to absolute
-    let canonical_path = path.canonicalize()
-      .map_err(|_| "Invalid path: Cannot resolve path".to_string())?;
-    
-    // Check if path is within allowed directories (Documents, Downloads, Desktop)
-    let allowed_bases = [
-      dirs::document_dir(),
-      dirs::download_dir(), 
-      dirs::desktop_dir(),
-    ];
-    
-    let path_allowed = allowed_bases.iter()
-      .filter_map(|base| base.as_ref())
-      .any(|base| canonical_path.starts_with(base));
-    
-    if !path_allowed {
-      return Err("Invalid path: Path must be within Documents, Downloads, or Desktop directories".to_string());
+    // Ensure path exists and is allowed
+    if !config.is_path_allowed(path) {
+      return Err("Invalid path: Path is not within allowed directories".to_string());
     }
     
-    canonical_path.to_string_lossy().to_string()
+    path.to_path_buf()
   } else {
-    // Default to Documents/GaitMonitor or current directory
-    dirs::document_dir()
-      .map(|p| p.join("GaitMonitor"))
-      .unwrap_or_else(|| std::env::current_dir().unwrap().join("gait_data"))
-      .to_string_lossy()
-      .to_string()
+    // Use default storage path
+    config.get_default_storage_path()
   };
 
   // Create directory if it doesn't exist
@@ -884,10 +1031,8 @@ async fn save_session_data(
     .unwrap()
     .as_secs();
   
-  let safe_session_name = session_name
-    .chars()
-    .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
-    .collect::<String>();
+  // Use the path manager to sanitize the filename
+  let safe_session_name = path_manager::PathConfig::sanitize_filename(&session_name);
   
   let filename = format!("gait_{}_{}.csv", 
     chrono::DateTime::from_timestamp(timestamp as i64, 0)
@@ -896,7 +1041,7 @@ async fn save_session_data(
     safe_session_name
   );
   
-  let file_path = Path::new(&base_path).join(&filename);
+  let file_path = base_path.join(&filename);
 
   // Generate CSV content
   let mut csv_content = String::new();
@@ -960,20 +1105,27 @@ async fn save_session_data(
 }
 
 #[tauri::command]
-async fn get_sessions() -> Result<Vec<SessionMetadata>, String> {
-  // Try to load from default location first
-  let possible_paths = vec![
-    dirs::document_dir().map(|p| p.join("GaitMonitor")),
-    Some(std::env::current_dir().unwrap().join("gait_data")),
+async fn get_sessions(
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<Vec<SessionMetadata>, String> {
+  let config = path_config.0.lock().await;
+  
+  // Try to load from configured paths
+  let mut possible_paths = vec![
+    config.get_default_storage_path(),
+    config.app_data_dir.clone(),
   ];
 
-  for path_opt in possible_paths {
-    if let Some(path) = path_opt {
-      if path.exists() {
-        match load_sessions_from_path(&path).await {
-          Ok(sessions) => return Ok(sessions),
-          Err(_) => continue,
-        }
+  // Add user directories if they exist
+  if let Some(ref docs) = config.user_documents_dir {
+    possible_paths.push(docs.join("GaitMonitor"));
+  }
+
+  for path in possible_paths {
+    if path.exists() {
+      match load_sessions_from_path(&path).await {
+        Ok(sessions) => return Ok(sessions),
+        Err(_) => continue,
       }
     }
   }
@@ -986,12 +1138,13 @@ async fn get_sessions() -> Result<Vec<SessionMetadata>, String> {
 async fn delete_session(
   session_id: String,
   csrf_token: String,
-  csrf_state: tauri::State<'_, CSRFTokenState>
+  csrf_state: tauri::State<'_, CSRFTokenState>,
+  path_config: tauri::State<'_, PathConfigState>
 ) -> Result<(), String> {
   // CSRF Protection
   validate_csrf!(csrf_state, &csrf_token);
   
-  let sessions = get_sessions().await?;
+  let sessions = get_sessions(path_config.clone()).await?;
 
   if let Some(session) = sessions.iter().find(|s| s.id == session_id).cloned() {
     // Delete the data file asynchronously
@@ -1016,18 +1169,30 @@ async fn delete_session(
 }
 
 #[tauri::command]
-async fn choose_storage_directory(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn choose_storage_directory(
+  app_handle: tauri::AppHandle,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<Option<String>, String> {
   use tauri_plugin_dialog::DialogExt;
+  
+  let config = path_config.0.lock().await;
   
   // Use a blocking approach with a channel to handle the callback
   let (tx, rx) = std::sync::mpsc::channel();
+  
+  // Determine initial directory for dialog
+  let initial_dir = config.user_documents_dir
+    .as_ref()
+    .or(config.user_desktop_dir.as_ref())
+    .cloned()
+    .unwrap_or_else(|| config.app_data_dir.clone());
   
   // Use the dialog plugin to show a folder picker
   app_handle
     .dialog()
     .file()
     .set_title("Choose Storage Directory for Gait Data")
-    .set_directory(&dirs::document_dir().unwrap_or_else(|| std::env::current_dir().unwrap()))
+    .set_directory(&initial_dir)
     .pick_folder(move |folder_path| {
       let result = match folder_path {
         Some(path) => {
@@ -1048,8 +1213,8 @@ async fn choose_storage_directory(app_handle: tauri::AppHandle) -> Result<Option
 }
 
 // Helper functions for session metadata management
-async fn save_session_metadata(base_path: &str, metadata: &SessionMetadata) -> Result<(), String> {
-  let metadata_path = Path::new(base_path).join("sessions_index.json");
+async fn save_session_metadata(base_path: &Path, metadata: &SessionMetadata) -> Result<(), String> {
+  let metadata_path = base_path.join("sessions_index.json");
   
   // Load existing sessions asynchronously
   let mut sessions = if metadata_path.exists() {
@@ -1153,7 +1318,8 @@ async fn copy_file_to_downloads(
   file_path: String,
   file_name: String,
   csrf_token: String,
-  csrf_state: tauri::State<'_, CSRFTokenState>
+  csrf_state: tauri::State<'_, CSRFTokenState>,
+  path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
   // CSRF Protection
   validate_csrf!(csrf_state, &csrf_token);
@@ -1161,8 +1327,9 @@ async fn copy_file_to_downloads(
   use tokio::fs;
   use std::path::Path;
 
-  // Input validation
-  if file_name.is_empty() || file_name.contains("..") || file_name.contains("/") || file_name.contains("\\") {
+  // Input validation and sanitization
+  let safe_filename = path_manager::PathConfig::sanitize_filename(&file_name);
+  if safe_filename.is_empty() {
     return Err("Invalid file name".to_string());
   }
   
@@ -1170,36 +1337,30 @@ async fn copy_file_to_downloads(
     return Err("Invalid file path: Path traversal not allowed".to_string());
   }
 
-  // Get the Downloads directory
-  let downloads_dir = dirs::download_dir()
-    .ok_or("Could not find Downloads directory")?;
-
+  let config = path_config.0.lock().await;
   let source_path = Path::new(&file_path);
   
   // Enhanced security: Verify source path is within allowed directories
+  if !config.is_path_allowed(source_path) {
+    return Err("Source file must be within allowed directories".to_string());
+  }
+  
   let canonical_source = source_path.canonicalize()
     .map_err(|_| "Source file path cannot be resolved".to_string())?;
-  
-  // Check if source is within allowed directories
-  let allowed_bases = [
-    dirs::document_dir(),
-    dirs::download_dir(), 
-    dirs::desktop_dir(),
-  ];
-  
-  let source_allowed = allowed_bases.iter()
-    .filter_map(|base| base.as_ref())
-    .any(|base| canonical_source.starts_with(base));
-  
-  if !source_allowed {
-    return Err("Source file must be within Documents, Downloads, or Desktop directories".to_string());
-  }
   
   if !canonical_source.exists() {
     return Err("Source file does not exist".to_string());
   }
 
-  let dest_path = downloads_dir.join(&file_name);
+  // Get safe download path using path manager
+  let dest_path = config.get_safe_download_path(&safe_filename)
+    .ok_or("Could not determine safe download location")?;
+  
+  // Ensure download directory exists
+  if let Some(parent) = dest_path.parent() {
+    fs::create_dir_all(parent).await
+      .map_err(|e| format!("Failed to create download directory: {}", e))?;
+  }
   
   // Prevent overwriting existing files without confirmation
   if dest_path.exists() {
@@ -1225,6 +1386,25 @@ async fn refresh_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Res
   Ok(csrf_state.refresh_token().await)
 }
 
+// Path Configuration Commands
+#[tauri::command]
+async fn get_path_config(
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<path_manager::PathConfig, String> {
+  let config = path_config.0.lock().await;
+  Ok(config.clone())
+}
+
+#[tauri::command]
+async fn validate_path(
+  path_str: String,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<bool, String> {
+  let config = path_config.0.lock().await;
+  let path = std::path::Path::new(&path_str);
+  Ok(config.is_path_allowed(path))
+}
+
 fn main() {
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
@@ -1232,6 +1412,7 @@ fn main() {
   let active_notifications = ActiveNotificationsState(Arc::new(Mutex::new(HashMap::new())));
   let rate_limiting_state = RateLimitingState::new();
   let csrf_token_state = CSRFTokenState::new();
+  let path_config_state = PathConfigState::new().expect("Failed to initialize path config");
   
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
@@ -1242,7 +1423,8 @@ fn main() {
     .manage(active_notifications)
     .manage(rate_limiting_state)
     .manage(csrf_token_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token])
+    .manage(path_config_state)
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
