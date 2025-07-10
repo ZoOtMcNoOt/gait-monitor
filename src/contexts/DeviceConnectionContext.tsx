@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { ReactNode } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
+import { config, isDebugEnabled } from '../config'
 
 // Types
 interface HeartbeatPayload {
@@ -112,7 +113,9 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   const addDevice = useCallback((deviceId: string) => {
     setAvailableDevices(prev => {
       if (!prev.includes(deviceId)) {
-        console.log('📱 Adding device to global state:', deviceId)
+        if (isDebugEnabled()) {
+          console.log('📱 Adding device to global state:', deviceId)
+        }
         return [...prev, deviceId]
       }
       return prev
@@ -129,7 +132,9 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   }, [])
 
   const removeDevice = (deviceId: string) => {
-    console.log('🗑️ Removing device from global state:', deviceId)
+    if (isDebugEnabled()) {
+      console.log('🗑️ Removing device from global state:', deviceId)
+    }
     
     setAvailableDevices(prev => prev.filter(id => id !== deviceId))
     setExpectedDevices(prev => {
@@ -442,7 +447,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     // Refresh connection status every 10 seconds
     const interval = setInterval(() => {
       refreshConnectedDevices()
-    }, 10000)
+    }, config.heartbeatTimeout)
     
     return () => clearInterval(interval)
   }, [refreshConnectedDevices])
@@ -451,8 +456,8 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   useEffect(() => {
     const heartbeatInterval = setInterval(() => {
       const now = Date.now()
-      const HEARTBEAT_TIMEOUT = 15000 // 15 seconds (more lenient timeout)
-      const GAIT_DATA_TIMEOUT = 10000 // 10 seconds without gait data
+      const HEARTBEAT_TIMEOUT = config.heartbeatTimeout
+      const GAIT_DATA_TIMEOUT = config.heartbeatTimeout // Use same timeout for consistency
       // Removed automatic device cleanup - let users manually manage devices
       
       setConnectionStatus(prev => {
@@ -515,7 +520,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       // Note: Removed automatic device cleanup to prevent unwanted device removal
       // Users should manually remove devices they no longer want to track
       
-    }, 5000) // Check every 5 seconds instead of 2
+    }, config.dataUpdateInterval * 50) // Check every 50 update intervals
     
     return () => clearInterval(heartbeatInterval)
   }, [availableDevices, connectedDevices, deviceHeartbeats, lastGaitDataTime, connectionStatus])

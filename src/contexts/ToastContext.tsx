@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { config } from '../config'
 
 export interface Toast {
   id: string;
@@ -35,7 +36,7 @@ interface ToastProviderProps {
 
 export const ToastProvider = ({ children }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const timeoutRefs = useRef<Map<string, number>>(new Map());
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -56,7 +57,7 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
     setToasts(prev => [...prev, newToast]);
 
     // Auto remove after duration with proper cleanup
-    const duration = toast.duration || 5000;
+    const duration = toast.duration || config.toastDuration;
     const timeoutId = setTimeout(() => {
       removeToast(id);
     }, duration);
@@ -69,7 +70,7 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
   useEffect(() => {
     const currentTimeouts = timeoutRefs.current;
     return () => {
-      currentTimeouts.forEach((timeoutId: number) => clearTimeout(timeoutId));
+      currentTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
       currentTimeouts.clear();
     };
   }, []);
@@ -79,7 +80,7 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
   }, [addToast]);
 
   const showError = useCallback((title: string, message?: string) => {
-    addToast({ type: 'error', title, message, duration: 7000 });
+    addToast({ type: 'error', title, message, duration: config.toastDuration + 2000 }); // Errors stay longer
   }, [addToast]);
 
   const showWarning = useCallback((title: string, message?: string) => {

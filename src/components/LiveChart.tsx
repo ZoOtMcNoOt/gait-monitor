@@ -8,8 +8,9 @@ import {
   TimeScale,
   Title,
   Tooltip,
-  Legend
+  Legend 
 } from 'chart.js'
+import { config, shouldShowChartDebug } from '../config'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 Chart.register(
@@ -131,7 +132,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
           borderWidth: 2
         }
         chart.data.datasets.push(dataset)
+      if (shouldShowChartDebug()) {
         console.log(`📊 Created new dataset: ${label} (total datasets: ${chart.data.datasets.length})`)
+      }
       }
       
       return dataset
@@ -180,7 +183,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
     // Initialize base timestamp on first data point from any device
     if (baseTimestamp.current === null) {
       baseTimestamp.current = gaitData.timestamp
+    if (shouldShowChartDebug()) {
       console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
+    }
     }
     
     // Convert to relative time from base timestamp (in seconds)
@@ -203,7 +208,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     deviceBuffer.push(normalizedGaitData)
     
     // Keep only last 10 seconds at 100Hz per device (increased from 5 to 10 seconds)
-    if (deviceBuffer.length > 1000) {
+    if (deviceBuffer.length > config.maxChartPoints) {
       deviceBuffer.shift()
     }
     
@@ -367,7 +372,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   useEffect(() => {
     if (!isCollecting) return
 
-    let simulationInterval: number | null = null
+    let simulationInterval: ReturnType<typeof setInterval> | null = null
     
     // Reset base timestamp and clear data when starting collection
     baseTimestamp.current = null

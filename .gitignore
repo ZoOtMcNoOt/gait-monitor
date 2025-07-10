@@ -26,6 +26,10 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Keep example files
+!.env.example
+!.env.production
+
 # Cache directories
 .npm
 .eslintcache
