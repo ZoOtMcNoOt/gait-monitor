@@ -1427,36 +1427,56 @@ async fn load_session_data(
   let mut min_timestamp = u64::MAX;
   let mut max_timestamp = 0u64;
 
-  // Parse CSV content (skip header)
-  for (line_num, line) in content.lines().enumerate() {
-    if line_num == 0 || line.trim().is_empty() {
-      continue; // Skip header or empty lines
+  // Parse CSV content (skip comments and header)
+  let mut header_found = false;
+  for line in content.lines() {
+    let trimmed = line.trim();
+    
+    // Skip comment lines that start with #
+    if trimmed.starts_with('#') || trimmed.is_empty() {
+      continue;
     }
-
+    
+    // Skip the header line (device_id,timestamp,r1,r2,r3,x,y,z)
+    if !header_found && trimmed.starts_with("device_id") {
+      header_found = true;
+      continue;
+    }
+    
     let parts: Vec<&str> = line.split(',').collect();
-    if parts.len() >= 5 {
-      // Expected format: timestamp,device_id,data_type,value,unit
-      if let (Ok(timestamp), value_str, unit) = (
-        parts[0].parse::<u64>(),
-        parts[3],
-        parts.get(4).unwrap_or(&"")
+    // Expected format: device_id,timestamp,r1,r2,r3,x,y,z
+    if parts.len() >= 8 {
+      if let (Ok(timestamp), device_id) = (
+        parts[1].parse::<u64>(),
+        parts[0]
       ) {
-        if let Ok(value) = value_str.parse::<f64>() {
-          let device_id = parts[1].to_string();
-          let data_type = parts[2].to_string();
-          
-          devices.insert(device_id.clone());
-          data_types.insert(data_type.clone());
-          min_timestamp = min_timestamp.min(timestamp);
-          max_timestamp = max_timestamp.max(timestamp);
+        let device_id = device_id.to_string();
+        devices.insert(device_id.clone());
+        min_timestamp = min_timestamp.min(timestamp);
+        max_timestamp = max_timestamp.max(timestamp);
 
-          data_points.push(DataPoint {
-            timestamp,
-            device_id,
-            data_type,
-            value,
-            unit: unit.to_string(),
-          });
+        // Parse each sensor value as a separate data point
+        let sensor_data = [
+          ("r1", parts[2], "Ω"),
+          ("r2", parts[3], "Ω"), 
+          ("r3", parts[4], "Ω"),
+          ("x", parts[5], "g"),
+          ("y", parts[6], "g"),
+          ("z", parts[7], "g"),
+        ];
+
+        for (data_type, value_str, unit) in sensor_data {
+          if let Ok(value) = value_str.parse::<f64>() {
+            data_types.insert(data_type.to_string());
+            
+            data_points.push(DataPoint {
+              timestamp,
+              device_id: device_id.clone(),
+              data_type: data_type.to_string(),
+              value,
+              unit: unit.to_string(),
+            });
+          }
         }
       }
     }
