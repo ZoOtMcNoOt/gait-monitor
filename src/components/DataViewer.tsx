@@ -150,10 +150,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         
         return {
           label: `${device} - ${dataType}`,
-          data: deviceData.map(point => ({
-            x: point.timestamp * 1000, // Convert to milliseconds for Chart.js
-            y: point.value
-          })),
+          data: deviceData.map(point => {
+            // Handle both microsecond and millisecond timestamps
+            // If timestamp > 1e12, it's in microseconds, convert to milliseconds
+            const timestampMs = point.timestamp > 1e12 ? point.timestamp / 1000 : point.timestamp * 1000
+            
+            return {
+              x: timestampMs, // Ensure it's in milliseconds for Chart.js TimeScale
+              y: point.value
+            }
+          }),
           borderColor: getDeviceColor(device, dataType),
           backgroundColor: getDeviceColor(device, dataType, 0.1),
           borderWidth: 2,
