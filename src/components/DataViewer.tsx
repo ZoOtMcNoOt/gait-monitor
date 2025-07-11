@@ -88,13 +88,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     loadSessionData()
   }, [loadSessionData])
 
-  // Cleanup on component unmount
+  // Simple cleanup on component unmount only
   useEffect(() => {
     return () => {
       // Clean up any chart instances when component unmounts
-      // This helps prevent canvas reuse errors
       try {
-        // Get canvases specifically in the DataViewer component
         const container = document.getElementById('data-viewer-chart')
         if (container) {
           const canvases = container.querySelectorAll('canvas')
@@ -151,12 +149,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         return {
           label: `${device} - ${dataType}`,
           data: deviceData.map(point => {
-            // Handle both microsecond and millisecond timestamps
-            // If timestamp > 1e12, it's in microseconds, convert to milliseconds
-            const timestampMs = point.timestamp > 1e12 ? point.timestamp / 1000 : point.timestamp * 1000
+            // Backend generates microsecond timestamps, convert to milliseconds for Chart.js
+            const timestampMs = point.timestamp / 1000
             
             return {
-              x: timestampMs, // Ensure it's in milliseconds for Chart.js TimeScale
+              x: timestampMs,
               y: point.value
             }
           }),
@@ -220,13 +217,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     try {
       const csvContent = [
         ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
-        ...filteredData.map(point => [
-          new Date(point.timestamp * 1000).toISOString(),
-          point.device_id,
-          point.data_type,
-          point.value,
-          point.unit
-        ].join(','))
+        ...filteredData.map(point => {
+          // Backend generates microsecond timestamps, convert to milliseconds for Date
+          const timestampMs = point.timestamp / 1000
+          
+          return [
+            new Date(timestampMs).toISOString(),
+            point.device_id,
+            point.data_type,
+            point.value,
+            point.unit
+          ].join(',')
+        })
       ].join('\n')
 
       const fileName = `${sessionName}_filtered_${new Date().toISOString().split('T')[0]}.csv`
@@ -411,53 +413,70 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         <div className="data-viewer-content">
           {viewMode === 'chart' && chartData && (
             <div className="chart-container" id="data-viewer-chart">
-              <Line
-                key={`data-chart-${selectedDevices.join('-')}-${selectedDataTypes.join('-')}-${viewMode}`}
-                data={chartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top',
-                      labels: {
-                        boxWidth: 12,
-                        padding: 10
-                      }
-                    },
-                    title: {
-                      display: true,
-                      text: `${sessionData.session_name} - Data Visualization`
-                    }
-                  },
-                  scales: {
-                    x: {
-                      type: 'time',
-                      time: {
-                        displayFormats: {
-                          millisecond: 'HH:mm:ss.SSS',
-                          second: 'HH:mm:ss',
-                          minute: 'HH:mm'
+              {/* Add error boundary around Chart component */}
+              {(() => {
+                try {
+                  return (
+                    <Line
+                      key={`data-chart-${selectedDevices.join('-')}-${selectedDataTypes.join('-')}-${viewMode}`}
+                      data={chartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                            labels: {
+                              boxWidth: 12,
+                              padding: 10
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: `${sessionData.session_name} - Data Visualization`
+                          }
+                        },
+                        scales: {
+                          x: {
+                            type: 'time',
+                            time: {
+                              displayFormats: {
+                                millisecond: 'HH:mm:ss.SSS',
+                                second: 'HH:mm:ss',
+                                minute: 'HH:mm'
+                              }
+                            },
+                            title: {
+                              display: true,
+                              text: 'Time'
+                            }
+                          },
+                          y: {
+                            title: {
+                              display: true,
+                              text: 'Value'
+                            }
+                          }
+                        },
+                        interaction: {
+                          intersect: false,
+                          mode: 'index'
                         }
-                      },
-                      title: {
-                        display: true,
-                        text: 'Time'
-                      }
-                    },
-                    y: {
-                      title: {
-                        display: true,
-                        text: 'Value'
-                      }
-                    }
-                  },
-                  interaction: {
-                    intersect: false,
-                    mode: 'index'
-                  }
-                }}
-              />
+                      }}
+                    />
+                  )
+                } catch (error) {
+                  console.error('Chart rendering error:', error)
+                  return (
+                    <div className="chart-error">
+                      <p>Error rendering chart. Please try refreshing the data.</p>
+                      <button onClick={reloadData} className="btn-secondary">
+                        Reload Data
+                      </button>
+                    </div>
+                  )
+                }
+              })()}
             </div>
           )}
 
@@ -476,7 +495,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 <tbody>
                   {filteredData.slice(0, config.maxChartPoints).map((point, index) => (
                     <tr key={index}>
-                      <td>{new Date(point.timestamp * 1000).toLocaleTimeString()}</td>
+                      <td>{new Date(point.timestamp / 1000).toLocaleTimeString()}</td>
                       <td>{point.device_id}</td>
                       <td>{point.data_type}</td>
                       <td>{point.value.toFixed(3)}</td>

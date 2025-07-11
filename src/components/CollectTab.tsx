@@ -427,7 +427,7 @@ export default function CollectTab() {
                     <p><strong>Devices:</strong> {[...new Set(collectedData.dataPoints.map(d => d.device_id))].join(', ')}</p>
                     <p><strong>Collection Duration:</strong> {
                       collectedData.dataPoints.length > 0 ? 
-                        `${Math.round((collectedData.dataPoints[collectedData.dataPoints.length - 1].timestamp - collectedData.dataPoints[0].timestamp) / 1000)}s` : 
+                        `${Math.round((collectedData.dataPoints[collectedData.dataPoints.length - 1].timestamp - collectedData.dataPoints[0].timestamp) / 1000000)}s` : 
                         'N/A'
                     }</p>
                   </div>

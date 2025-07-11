@@ -1531,7 +1531,7 @@ async fn load_session_data(
 
   // Calculate metadata
   let duration = if max_timestamp > min_timestamp {
-    (max_timestamp - min_timestamp) as f64 / 1000.0 // Convert ms to seconds
+    (max_timestamp - min_timestamp) as f64 / 1_000_000.0 // Convert microseconds to seconds
   } else {
     0.0
   };

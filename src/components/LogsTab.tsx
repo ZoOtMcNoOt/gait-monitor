@@ -74,7 +74,7 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       const lastSession = logEntries.length > 0 
-        ? new Date(Math.max(...logEntries.map(log => log.timestamp * 1000))) // Convert to ms
+        ? new Date(Math.max(...logEntries.map(log => log.timestamp / 1000))) // Convert microseconds to ms
         : null
         
       setStats({ totalSessions, totalDataPoints, lastSession })
@@ -112,7 +112,7 @@ function LogsTabContent() {
       // Copy the file to Downloads folder with a user-friendly name
       const result = await invoke('copy_file_to_downloads', { 
         filePath: log.file_path,
-        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp * 1000).toISOString().split('T')[0]}.csv`,
+        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp / 1000).toISOString().split('T')[0]}.csv`,
         csrfToken
       })
       showSuccess(
@@ -226,7 +226,7 @@ function LogsTabContent() {
                   <tr key={log.id}>
                     <td className="session-name">{log.session_name}</td>
                     <td>{log.subject_id}</td>
-                    <td>{new Date(log.timestamp * 1000).toLocaleString()}</td>
+                    <td>{new Date(log.timestamp / 1000).toLocaleString()}</td>
                     <td>{log.data_points.toLocaleString()}</td>
                     <td>{formatFileSize(log.data_points)}</td>
                     <td className="notes-cell">

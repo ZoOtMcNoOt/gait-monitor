@@ -165,7 +165,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     
     // Initialize base timestamp on first data point from any device
     // Convert microsecond timestamps to milliseconds if needed
-    const baseTimestampInMs = gaitData.timestamp > 1e12 ? gaitData.timestamp / 1000 : gaitData.timestamp
+    // Convert microsecond timestamp to milliseconds for consistency
+    const baseTimestampInMs = gaitData.timestamp / 1000
     
     if (baseTimestamp.current === null) {
       baseTimestamp.current = baseTimestampInMs
@@ -176,7 +177,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     
     // Convert to relative time from base timestamp (in seconds)
     // Handle both millisecond and microsecond timestamps
-    const timestampInMs = gaitData.timestamp > 1e12 ? gaitData.timestamp / 1000 : gaitData.timestamp
+    // Convert microsecond timestamp to milliseconds for time calculations
+    const timestampInMs = gaitData.timestamp / 1000
     const relativeTime = (timestampInMs - baseTimestamp.current) / 1000
     const normalizedGaitData = { 
       ...gaitData, 
