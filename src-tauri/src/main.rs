@@ -1286,6 +1286,12 @@ fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
   let y = f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
   let z = f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
   
+  // Use microsecond precision to avoid timestamp collisions
+  let timestamp = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap()
+    .as_micros() as u64;
+  
   Ok(GaitData {
     device_id: device_id.to_string(),
     r1,
@@ -1294,10 +1300,7 @@ fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
     x,
     y,
     z,
-    timestamp: std::time::SystemTime::now()
-      .duration_since(std::time::UNIX_EPOCH)
-      .unwrap()
-      .as_millis() as u64,
+    timestamp,
   })
 }
 

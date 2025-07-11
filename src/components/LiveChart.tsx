@@ -181,15 +181,20 @@ export default function LiveChart({ isCollecting = false }: Props) {
     const deviceId = gaitData.device_id
     
     // Initialize base timestamp on first data point from any device
+    // Convert microsecond timestamps to milliseconds if needed
+    const baseTimestampInMs = gaitData.timestamp > 1e12 ? gaitData.timestamp / 1000 : gaitData.timestamp
+    
     if (baseTimestamp.current === null) {
-      baseTimestamp.current = gaitData.timestamp
-    if (shouldShowChartDebug()) {
-      console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
-    }
+      baseTimestamp.current = baseTimestampInMs
+      if (shouldShowChartDebug()) {
+        console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
+      }
     }
     
     // Convert to relative time from base timestamp (in seconds)
-    const relativeTime = (gaitData.timestamp - baseTimestamp.current) / 1000
+    // Handle both millisecond and microsecond timestamps
+    const timestampInMs = gaitData.timestamp > 1e12 ? gaitData.timestamp / 1000 : gaitData.timestamp
+    const relativeTime = (timestampInMs - baseTimestamp.current) / 1000
     const normalizedGaitData = { 
       ...gaitData, 
       timestamp: relativeTime 
