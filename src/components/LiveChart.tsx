@@ -1,28 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { 
-  Chart, 
-  LineController, 
-  LineElement, 
-  PointElement, 
-  LinearScale, 
-  TimeScale,
-  Title,
-  Tooltip,
-  Legend 
-} from 'chart.js'
+import { Chart } from 'chart.js'
 import { config, shouldShowChartDebug } from '../config'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { registerChartComponents } from '../utils/chartSetup'
 
-Chart.register(
-  LineController, 
-  LineElement, 
-  PointElement, 
-  LinearScale, 
-  TimeScale,
-  Title,
-  Tooltip,
-  Legend
-)
+// Register Chart.js components
+registerChartComponents()
 
 interface Props {
   isCollecting?: boolean
@@ -236,136 +219,157 @@ export default function LiveChart({ isCollecting = false }: Props) {
       }
     }
   }, [updateChartForDevice])
-
   // Initialize chart with original UI style
   useEffect(() => {
     if (!canvasRef.current) return
     
-    const datasets = []
-    
-    if (chartMode === 'all' || chartMode === 'resistance') {
-      datasets.push(
-        { 
-          label: 'R1 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R1,
-          backgroundColor: CHART_COLORS.R1 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R2 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R2,
-          backgroundColor: CHART_COLORS.R2 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R3 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R3,
-          backgroundColor: CHART_COLORS.R3 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
-    
-    if (chartMode === 'all' || chartMode === 'acceleration') {
-      datasets.push(
-        { 
-          label: 'X (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.X,
-          backgroundColor: CHART_COLORS.X + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Y (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Y,
-          backgroundColor: CHART_COLORS.Y + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Z (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Z,
-          backgroundColor: CHART_COLORS.Z + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
-    
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'line',
-      data: { datasets },
-      options: { 
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: {
-          intersect: false,
-          mode: 'index'
-        },
-        scales: { 
-          x: { 
-            type: 'linear',
-            title: {
-              display: true,
-              text: 'Time (seconds)'
-            },
-            grid: {
-              color: 'rgba(0,0,0,0.1)'
-            }
+    // Small delay to ensure canvas is ready
+    const initChart = () => {
+      if (!canvasRef.current) return
+      
+      // Destroy existing chart if it exists
+      if (chartRef.current) {
+        chartRef.current.destroy()
+        chartRef.current = null
+      }
+
+      // Clear any existing Chart.js instances on this canvas
+      const canvas = canvasRef.current
+      const existingChart = Chart.getChart(canvas)
+      if (existingChart) {
+        existingChart.destroy()
+      }
+      
+      const datasets = []
+      
+      if (chartMode === 'all' || chartMode === 'resistance') {
+        datasets.push(
+          { 
+            label: 'R1 (Resistance)', 
+            data: [],
+            borderColor: CHART_COLORS.R1,
+            backgroundColor: CHART_COLORS.R1 + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
           },
-          y: {
-            title: {
-              display: true,
-              text: chartMode === 'resistance' ? 'Resistance Values' : 
-                    chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
-                    'Sensor Values'
-            },
-            grid: {
-              color: 'rgba(0,0,0,0.1)'
-            }
+          { 
+            label: 'R2 (Resistance)', 
+            data: [],
+            borderColor: CHART_COLORS.R2,
+            backgroundColor: CHART_COLORS.R2 + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
+          },
+          { 
+            label: 'R3 (Resistance)', 
+            data: [],
+            borderColor: CHART_COLORS.R3,
+            backgroundColor: CHART_COLORS.R3 + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
           }
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              pointStyle: 'line'
+        )
+      }
+      
+      if (chartMode === 'all' || chartMode === 'acceleration') {
+        datasets.push(
+          { 
+            label: 'X (Accel)', 
+            data: [],
+            borderColor: CHART_COLORS.X,
+            backgroundColor: CHART_COLORS.X + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
+          },
+          { 
+            label: 'Y (Accel)', 
+            data: [],
+            borderColor: CHART_COLORS.Y,
+            backgroundColor: CHART_COLORS.Y + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
+          },
+          { 
+            label: 'Z (Accel)', 
+            data: [],
+            borderColor: CHART_COLORS.Z,
+            backgroundColor: CHART_COLORS.Z + '20',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 2
+          }
+        )
+      }
+      
+      chartRef.current = new Chart(canvasRef.current, {
+        type: 'line',
+        data: { datasets },
+        options: { 
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          scales: { 
+            x: { 
+              type: 'linear',
+              title: {
+                display: true,
+                text: 'Time (seconds)'
+              },
+              grid: {
+                color: 'rgba(0,0,0,0.1)'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: chartMode === 'resistance' ? 'Resistance Values' : 
+                      chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
+                      'Sensor Values'
+              },
+              grid: {
+                color: 'rgba(0,0,0,0.1)'
+              }
             }
           },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            callbacks: {
-              label: function(context) {
-                const label = context.dataset.label || ''
-                const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
-                return `${label}: ${value}`
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                pointStyle: 'line'
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  const label = context.dataset.label || ''
+                  const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
+                  return `${label}: ${value}`
+                }
               }
             }
           }
         }
-      }
-    })
+      })
+    }
+
+    // Initialize chart with small delay
+    const timeoutId = setTimeout(initChart, 10)
 
     return () => {
+      clearTimeout(timeoutId)
       if (chartRef.current) {
         chartRef.current.destroy()
         chartRef.current = null
@@ -586,7 +590,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         </div>
       </div>
       <div className="chart-container">
-        <canvas ref={canvasRef} />
+        <canvas ref={canvasRef} key={`chart-${chartMode}`} />
       </div>
       <div className="chart-info">
         <div className="data-info">

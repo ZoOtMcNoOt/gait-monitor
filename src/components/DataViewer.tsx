@@ -2,30 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useToast } from '../contexts/ToastContext'
 import { config } from '../config'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  TimeScale,
-} from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import 'chartjs-adapter-date-fns'
+import { Chart } from 'chart.js'
+import { registerChartComponents } from '../utils/chartSetup'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  TimeScale
-)
+// Register Chart.js components
+registerChartComponents()
 
 interface DataPoint {
   timestamp: number
@@ -105,6 +87,29 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   useEffect(() => {
     loadSessionData()
   }, [loadSessionData])
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any chart instances when component unmounts
+      // This helps prevent canvas reuse errors
+      try {
+        // Get canvases specifically in the DataViewer component
+        const container = document.getElementById('data-viewer-chart')
+        if (container) {
+          const canvases = container.querySelectorAll('canvas')
+          canvases.forEach(canvas => {
+            const chart = Chart.getChart(canvas)
+            if (chart) {
+              chart.destroy()
+            }
+          })
+        }
+      } catch (error) {
+        console.warn('Error cleaning up DataViewer charts:', error)
+      }
+    }
+  }, [])
 
   // Helper function to generate consistent colors for device/data type combinations
   const getDeviceColor = (device: string, dataType: string, alpha: number = 1) => {
@@ -399,8 +404,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
         <div className="data-viewer-content">
           {viewMode === 'chart' && chartData && (
-            <div className="chart-container">
+            <div className="chart-container" id="data-viewer-chart">
               <Line
+                key={`data-chart-${selectedDevices.join('-')}-${selectedDataTypes.join('-')}-${viewMode}`}
                 data={chartData}
                 options={{
                   responsive: true,
