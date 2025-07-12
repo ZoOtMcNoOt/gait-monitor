@@ -55,6 +55,12 @@ function LogsTabContent() {
       const sessions: SessionMetadata[] = await invoke('get_sessions')
       
       console.log('📊 Loaded sessions from backend:', sessions.length)
+      console.log('📊 Sample session timestamps:', sessions.slice(0, 3).map(s => ({ 
+        name: s.session_name, 
+        timestamp: s.timestamp,
+        asDate: new Date(s.timestamp * 1000).toLocaleString(),
+        asMicroseconds: new Date(s.timestamp / 1000).toLocaleString()
+      })))
       
       // Convert to LogEntry format
       const logEntries: LogEntry[] = sessions.map(session => ({
@@ -73,9 +79,26 @@ function LogsTabContent() {
       // Calculate stats
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
-      const lastSession = logEntries.length > 0 
-        ? new Date(Math.max(...logEntries.map(log => log.timestamp / 1000))) // Convert microseconds to ms
+      
+      // Filter out invalid timestamps and convert to milliseconds
+      const validTimestamps = logEntries
+        .map(log => log.timestamp)
+        .filter(timestamp => timestamp && timestamp > 0)
+        .map(timestamp => {
+          // Auto-detect if timestamp is in seconds or microseconds
+          return timestamp > 1e12 
+            ? timestamp / 1000 // Convert microseconds to milliseconds
+            : timestamp * 1000 // Convert seconds to milliseconds
+        })
+        
+      const lastSession = validTimestamps.length > 0 
+        ? new Date(Math.max(...validTimestamps))
         : null
+        
+      console.log('📊 Valid timestamps:', validTimestamps.length, 'of', logEntries.length)
+      if (validTimestamps.length > 0) {
+        console.log('📊 Latest timestamp (ms):', Math.max(...validTimestamps), 'Date:', new Date(Math.max(...validTimestamps)))
+      }
         
       setStats({ totalSessions, totalDataPoints, lastSession })
       
@@ -110,9 +133,18 @@ function LogsTabContent() {
       const csrfToken = await invoke('get_csrf_token')
       
       // Copy the file to Downloads folder with a user-friendly name
+      const safeDate = log.timestamp && log.timestamp > 0 
+        ? (() => {
+            const date = log.timestamp > 1e12 
+              ? new Date(log.timestamp / 1000) // microseconds to milliseconds
+              : new Date(log.timestamp * 1000) // seconds to milliseconds
+            return date.toISOString().split('T')[0]
+          })()
+        : 'unknown-date'
+        
       const result = await invoke('copy_file_to_downloads', { 
         filePath: log.file_path,
-        fileName: `${log.session_name}_${log.subject_id}_${new Date(log.timestamp / 1000).toISOString().split('T')[0]}.csv`,
+        fileName: `${log.session_name}_${log.subject_id}_${safeDate}.csv`,
         csrfToken
       })
       showSuccess(
@@ -160,6 +192,25 @@ function LogsTabContent() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
     return `${Math.round(bytes / (1024 * 1024))} MB`
+  }
+
+  const formatTimestamp = (timestamp: number) => {
+    if (!timestamp || timestamp <= 0) {
+      return 'Invalid Date'
+    }
+    try {
+      // Auto-detect if timestamp is in seconds or microseconds
+      // Timestamps > 1e12 are likely microseconds (after year 2001 in microseconds)
+      // Timestamps < 1e12 are likely seconds (valid until year 2286)
+      const date = timestamp > 1e12 
+        ? new Date(timestamp / 1000) // Convert microseconds to milliseconds
+        : new Date(timestamp * 1000) // Convert seconds to milliseconds
+        
+      return date.toLocaleString()
+    } catch {
+      console.warn('Invalid timestamp:', timestamp)
+      return 'Invalid Date'
+    }
   }
 
   return (
@@ -226,7 +277,7 @@ function LogsTabContent() {
                   <tr key={log.id}>
                     <td className="session-name">{log.session_name}</td>
                     <td>{log.subject_id}</td>
-                    <td>{new Date(log.timestamp / 1000).toLocaleString()}</td>
+                    <td>{formatTimestamp(log.timestamp)}</td>
                     <td>{log.data_points.toLocaleString()}</td>
                     <td>{formatFileSize(log.data_points)}</td>
                     <td className="notes-cell">
