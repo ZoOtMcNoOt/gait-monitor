@@ -14,6 +14,98 @@ use futures::stream::StreamExt;
 use tauri::Emitter;
 use std::time::{Duration, Instant};
 
+// Sample rate calculation module
+mod sample_rate_calculator {
+    use std::collections::{HashMap, VecDeque};
+    use std::time::{Duration, Instant};
+
+    pub struct SampleRateCalculator {
+        device_rates: HashMap<String, DeviceRateCalculator>,
+    }
+
+    struct DeviceRateCalculator {
+        timestamps: VecDeque<Instant>,
+        window_duration: Duration,
+        last_rate: f64,
+        last_calculation: Instant,
+        calculation_interval: Duration,
+    }
+
+    impl SampleRateCalculator {
+        pub fn new() -> Self {
+            Self {
+                device_rates: HashMap::new(),
+            }
+        }
+
+        pub fn record_sample(&mut self, device_id: &str) -> Option<f64> {
+            let now = Instant::now();
+            
+            let device_calculator = self.device_rates
+                .entry(device_id.to_string())
+                .or_insert_with(|| DeviceRateCalculator::new());
+            
+            device_calculator.record_sample(now)
+        }
+
+        pub fn get_current_rate(&self, device_id: &str) -> Option<f64> {
+            self.device_rates
+                .get(device_id)
+                .map(|calc| calc.last_rate)
+                .filter(|&rate| rate > 0.0)
+        }
+    }
+
+    impl DeviceRateCalculator {
+        fn new() -> Self {
+            Self {
+                timestamps: VecDeque::new(),
+                window_duration: Duration::from_secs(5), // 5-second rolling window
+                last_rate: 0.0,
+                last_calculation: Instant::now(),
+                calculation_interval: Duration::from_millis(500), // Calculate every 500ms
+            }
+        }
+
+        fn record_sample(&mut self, timestamp: Instant) -> Option<f64> {
+            // Add new timestamp
+            self.timestamps.push_back(timestamp);
+            
+            // Remove old timestamps outside the window
+            let cutoff = timestamp - self.window_duration;
+            while let Some(&front) = self.timestamps.front() {
+                if front < cutoff {
+                    self.timestamps.pop_front();
+                } else {
+                    break;
+                }
+            }
+
+            // Calculate rate if enough time has passed since last calculation
+            if timestamp.duration_since(self.last_calculation) >= self.calculation_interval {
+                self.last_calculation = timestamp;
+                
+                if self.timestamps.len() >= 2 {
+                    let sample_count = self.timestamps.len() as f64;
+                    let time_span = timestamp - self.timestamps[0];
+                    
+                    if time_span > Duration::from_millis(100) { // Avoid division by near-zero
+                        self.last_rate = sample_count / time_span.as_secs_f64();
+                        return Some(self.last_rate);
+                    }
+                }
+            }
+            
+            // Return current rate even if not recalculated
+            if self.last_rate > 0.0 {
+                Some(self.last_rate)
+            } else {
+                None
+            }
+        }
+    }
+}
+
 // Cross-platform path management module
 mod path_manager {
     use std::path::{Path, PathBuf};
@@ -234,6 +326,16 @@ pub struct BluetoothManagerState(Arc<Mutex<Option<Manager>>>);
 #[derive(Clone)]
 pub struct ActiveNotificationsState(Arc<Mutex<HashMap<String, bool>>>);
 
+// Global state for sample rate calculation
+#[derive(Clone)]
+pub struct SampleRateState(Arc<Mutex<sample_rate_calculator::SampleRateCalculator>>);
+
+impl SampleRateState {
+    fn new() -> Self {
+        Self(Arc::new(Mutex::new(sample_rate_calculator::SampleRateCalculator::new())))
+    }
+}
+
 // Cross-platform path configuration state
 #[derive(Clone)]
 pub struct PathConfigState(Arc<Mutex<path_manager::PathConfig>>);
@@ -269,6 +371,20 @@ struct GaitData {
   y: f32,
   z: f32,
   timestamp: u64,
+}
+
+// Enhanced GaitData to include sample rate for frontend
+#[derive(Clone, Serialize, serde::Deserialize)]
+struct GaitDataWithRate {
+  device_id: String,
+  r1: f32,
+  r2: f32,
+  r3: f32,
+  x: f32,
+  y: f32,
+  z: f32,
+  timestamp: u64,
+  sample_rate: Option<f64>, // Add sample rate field
 }
 
 // Rate limiting structure
@@ -629,6 +745,7 @@ async fn start_gait_notifications(
   device_id: String,
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
   active_notifications: tauri::State<'_, ActiveNotificationsState>,
+  sample_rate_state: tauri::State<'_, SampleRateState>,
   app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
   use btleplug::api::Peripheral;
@@ -749,6 +866,7 @@ async fn start_gait_notifications(
   let app_handle_clone = app_handle.clone();
   let device_id_clone = device_id.clone();
   let active_notifications_clone = active_notifications.inner().clone();
+  let sample_rate_state_clone = sample_rate_state.inner().clone();
   let heartbeat_uuid_clone = heartbeat_uuid;
   
   // Start listening for notifications in a background task
@@ -777,9 +895,28 @@ async fn start_gait_notifications(
         if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
           let parse_duration = parse_start.elapsed();
           
+          // Calculate sample rate
+          let sample_rate = {
+            let mut rate_calc = sample_rate_state_clone.0.lock().await;
+            rate_calc.record_sample(&device_id_clone)
+          };
+          
+          // Create enhanced data with sample rate
+          let gait_data_with_rate = GaitDataWithRate {
+            device_id: gait_data.device_id,
+            r1: gait_data.r1,
+            r2: gait_data.r2,
+            r3: gait_data.r3,
+            x: gait_data.x,
+            y: gait_data.y,
+            z: gait_data.z,
+            timestamp: gait_data.timestamp,
+            sample_rate,
+          };
+          
           let emit_start = std::time::Instant::now();
-          // Emit to frontend with device ID
-          let _ = app_handle_clone.emit("gait-data", &gait_data);
+          // Emit enhanced data to frontend with device ID and sample rate
+          let _ = app_handle_clone.emit("gait-data", &gait_data_with_rate);
           let emit_duration = emit_start.elapsed();
           
           // Log timing every 100th packet to avoid spam (thread-safe)
@@ -788,8 +925,9 @@ async fn start_gait_notifications(
           
           let count = PACKET_COUNT.fetch_add(1, Ordering::Relaxed);
           if count % 5 == 0 {  // More frequent logging to catch duplicates
-            println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Parse: {:?}, Emit: {:?}", 
-              count, data_hash, gait_data.timestamp, parse_duration, emit_duration);
+            let rate_info = sample_rate.map(|r| format!("{:.1} Hz", r)).unwrap_or_else(|| "calculating...".to_string());
+            println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
+              count, data_hash, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
           }
         }
       } else if data.uuid == heartbeat_uuid_clone && data.value.len() == 8 {
@@ -803,6 +941,15 @@ async fn start_gait_notifications(
   });
   
   Ok(format!("Started notifications for device: {}", device_id))
+}
+
+#[tauri::command]
+async fn get_sample_rate(
+  device_id: String,
+  sample_rate_state: tauri::State<'_, SampleRateState>,
+) -> Result<Option<f64>, String> {
+  let rate_calc = sample_rate_state.0.lock().await;
+  Ok(rate_calc.get_current_rate(&device_id))
 }
 
 #[tauri::command]
@@ -1617,6 +1764,7 @@ fn main() {
   let rate_limiting_state = RateLimitingState::new();
   let csrf_token_state = CSRFTokenState::new();
   let path_config_state = PathConfigState::new().expect("Failed to initialize path config");
+  let sample_rate_state = SampleRateState::new();
   
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
@@ -1628,7 +1776,8 @@ fn main() {
     .manage(rate_limiting_state)
     .manage(csrf_token_state)
     .manage(path_config_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data, get_storage_path])
+    .manage(sample_rate_state)
+    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data, get_storage_path, get_sample_rate])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

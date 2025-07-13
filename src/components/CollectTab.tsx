@@ -17,6 +17,7 @@ interface GaitDataPoint {
   y: number
   z: number
   timestamp: number
+  sample_rate?: number  // Add optional sample rate field
 }
 
 interface CollectedData {

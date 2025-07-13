@@ -1,11 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Chart } from 'chart.js'
-import { config, shouldShowChartDebug } from '../config'
+import { 
+  Chart, 
+  LineController, 
+  LineElement, 
+  PointElement, 
+  LinearScale, 
+  TimeScale,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
-import { registerChartComponents } from '../utils/chartSetup'
 
-// Register Chart.js components
-registerChartComponents()
+Chart.register(
+  LineController, 
+  LineElement, 
+  PointElement, 
+  LinearScale, 
+  TimeScale,
+  Title,
+  Tooltip,
+  Legend
+)
 
 interface Props {
   isCollecting?: boolean
@@ -26,7 +42,8 @@ interface GaitDataPayload {
   device_id: string,
   r1: number, r2: number, r3: number,
   x: number, y: number, z: number,
-  timestamp: number
+  timestamp: number,
+  sample_rate?: number  // Add optional sample rate field
 }
 
 const CHART_COLORS = {
@@ -51,12 +68,45 @@ export default function LiveChart({ isCollecting = false }: Props) {
     connectionStatus, 
     deviceHeartbeats,
     subscribeToGaitData,
-    lastGaitDataTime
+    lastGaitDataTime,
+    getCurrentSampleRate
   } = useDeviceConnection()
   
   // Store data per device and timing reference
   const deviceDataBuffers = useRef<Map<string, GaitData[]>>(new Map())
   const baseTimestamp = useRef<number | null>(null)
+
+  // Calculate current sample rate display
+  const getCurrentSampleRateDisplay = useCallback((): string => {
+    if (activeCollectingDevices.length === 0) {
+      return "0 Hz"
+    }
+    
+    const rates = activeCollectingDevices
+      .map(deviceId => getCurrentSampleRate(deviceId))
+      .filter((rate): rate is number => rate !== null && rate > 0)
+    
+    if (rates.length === 0) {
+      return "calculating..."
+    }
+    
+    if (rates.length === 1) {
+      return `${rates[0].toFixed(1)} Hz`
+    }
+    
+    // Multiple devices - show range or average
+    const minRate = Math.min(...rates)
+    const maxRate = Math.max(...rates)
+    
+    if (Math.abs(maxRate - minRate) < 1) {
+      // Similar rates, show average
+      const avgRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length
+      return `${avgRate.toFixed(1)} Hz`
+    } else {
+      // Different rates, show range
+      return `${minRate.toFixed(1)}-${maxRate.toFixed(1)} Hz`
+    }
+  }, [activeCollectingDevices, getCurrentSampleRate])
 
   // Convert Tauri payload to internal format
   const convertPayloadToGaitData = useCallback((payload: GaitDataPayload): GaitData => {
@@ -115,9 +165,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           borderWidth: 2
         }
         chart.data.datasets.push(dataset)
-      if (shouldShowChartDebug()) {
         console.log(`📊 Created new dataset: ${label} (total datasets: ${chart.data.datasets.length})`)
-      }
       }
       
       return dataset
@@ -164,22 +212,13 @@ export default function LiveChart({ isCollecting = false }: Props) {
     const deviceId = gaitData.device_id
     
     // Initialize base timestamp on first data point from any device
-    // Convert microsecond timestamps to milliseconds if needed
-    // Convert microsecond timestamp to milliseconds for consistency
-    const baseTimestampInMs = gaitData.timestamp / 1000
-    
     if (baseTimestamp.current === null) {
-      baseTimestamp.current = baseTimestampInMs
-      if (shouldShowChartDebug()) {
-        console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
-      }
+      baseTimestamp.current = gaitData.timestamp
+      console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
     }
     
     // Convert to relative time from base timestamp (in seconds)
-    // Handle both millisecond and microsecond timestamps
-    // Convert microsecond timestamp to milliseconds for time calculations
-    const timestampInMs = gaitData.timestamp / 1000
-    const relativeTime = (timestampInMs - baseTimestamp.current) / 1000
+    const relativeTime = (gaitData.timestamp - baseTimestamp.current) / 1000
     const normalizedGaitData = { 
       ...gaitData, 
       timestamp: relativeTime 
@@ -198,7 +237,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     deviceBuffer.push(normalizedGaitData)
     
     // Keep only last 10 seconds at 100Hz per device (increased from 5 to 10 seconds)
-    if (deviceBuffer.length > config.maxChartPoints) {
+    if (deviceBuffer.length > 1000) {
       deviceBuffer.shift()
     }
     
@@ -221,157 +260,136 @@ export default function LiveChart({ isCollecting = false }: Props) {
       }
     }
   }, [updateChartForDevice])
+
   // Initialize chart with original UI style
   useEffect(() => {
     if (!canvasRef.current) return
     
-    // Small delay to ensure canvas is ready
-    const initChart = () => {
-      if (!canvasRef.current) return
-      
-      // Destroy existing chart if it exists
-      if (chartRef.current) {
-        chartRef.current.destroy()
-        chartRef.current = null
-      }
-
-      // Clear any existing Chart.js instances on this canvas
-      const canvas = canvasRef.current
-      const existingChart = Chart.getChart(canvas)
-      if (existingChart) {
-        existingChart.destroy()
-      }
-      
-      const datasets = []
-      
-      if (chartMode === 'all' || chartMode === 'resistance') {
-        datasets.push(
-          { 
-            label: 'R1 (Resistance)', 
-            data: [],
-            borderColor: CHART_COLORS.R1,
-            backgroundColor: CHART_COLORS.R1 + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          },
-          { 
-            label: 'R2 (Resistance)', 
-            data: [],
-            borderColor: CHART_COLORS.R2,
-            backgroundColor: CHART_COLORS.R2 + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          },
-          { 
-            label: 'R3 (Resistance)', 
-            data: [],
-            borderColor: CHART_COLORS.R3,
-            backgroundColor: CHART_COLORS.R3 + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          }
-        )
-      }
-      
-      if (chartMode === 'all' || chartMode === 'acceleration') {
-        datasets.push(
-          { 
-            label: 'X (Accel)', 
-            data: [],
-            borderColor: CHART_COLORS.X,
-            backgroundColor: CHART_COLORS.X + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          },
-          { 
-            label: 'Y (Accel)', 
-            data: [],
-            borderColor: CHART_COLORS.Y,
-            backgroundColor: CHART_COLORS.Y + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          },
-          { 
-            label: 'Z (Accel)', 
-            data: [],
-            borderColor: CHART_COLORS.Z,
-            backgroundColor: CHART_COLORS.Z + '20',
-            tension: 0.1,
-            pointRadius: 0,
-            borderWidth: 2
-          }
-        )
-      }
-      
-      chartRef.current = new Chart(canvasRef.current, {
-        type: 'line',
-        data: { datasets },
-        options: { 
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          interaction: {
-            intersect: false,
-            mode: 'index'
-          },
-          scales: { 
-            x: { 
-              type: 'linear',
-              title: {
-                display: true,
-                text: 'Time (seconds)'
-              },
-              grid: {
-                color: 'rgba(0,0,0,0.1)'
-              }
+    const datasets = []
+    
+    if (chartMode === 'all' || chartMode === 'resistance') {
+      datasets.push(
+        { 
+          label: 'R1 (Resistance)', 
+          data: [],
+          borderColor: CHART_COLORS.R1,
+          backgroundColor: CHART_COLORS.R1 + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        { 
+          label: 'R2 (Resistance)', 
+          data: [],
+          borderColor: CHART_COLORS.R2,
+          backgroundColor: CHART_COLORS.R2 + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        { 
+          label: 'R3 (Resistance)', 
+          data: [],
+          borderColor: CHART_COLORS.R3,
+          backgroundColor: CHART_COLORS.R3 + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        }
+      )
+    }
+    
+    if (chartMode === 'all' || chartMode === 'acceleration') {
+      datasets.push(
+        { 
+          label: 'X (Accel)', 
+          data: [],
+          borderColor: CHART_COLORS.X,
+          backgroundColor: CHART_COLORS.X + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        { 
+          label: 'Y (Accel)', 
+          data: [],
+          borderColor: CHART_COLORS.Y,
+          backgroundColor: CHART_COLORS.Y + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        },
+        { 
+          label: 'Z (Accel)', 
+          data: [],
+          borderColor: CHART_COLORS.Z,
+          backgroundColor: CHART_COLORS.Z + '20',
+          tension: 0.1,
+          pointRadius: 0,
+          borderWidth: 2
+        }
+      )
+    }
+    
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: { datasets },
+      options: { 
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        },
+        scales: { 
+          x: { 
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'Time (seconds)'
             },
-            y: {
-              title: {
-                display: true,
-                text: chartMode === 'resistance' ? 'Resistance Values' : 
-                      chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
-                      'Sensor Values'
-              },
-              grid: {
-                color: 'rgba(0,0,0,0.1)'
-              }
+            grid: {
+              color: 'rgba(0,0,0,0.1)'
             }
           },
-          plugins: {
-            legend: {
+          y: {
+            title: {
               display: true,
-              position: 'top',
-              labels: {
-                usePointStyle: true,
-                pointStyle: 'line'
-              }
+              text: chartMode === 'resistance' ? 'Resistance Values' : 
+                    chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
+                    'Sensor Values'
             },
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              callbacks: {
-                label: function(context) {
-                  const label = context.dataset.label || ''
-                  const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
-                  return `${label}: ${value}`
-                }
+            grid: {
+              color: 'rgba(0,0,0,0.1)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'line'
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: function(context) {
+                const label = context.dataset.label || ''
+                const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
+                return `${label}: ${value}`
               }
             }
           }
         }
-      })
-    }
-
-    // Initialize chart with small delay
-    const timeoutId = setTimeout(initChart, 10)
+      }
+    })
 
     return () => {
-      clearTimeout(timeoutId)
       if (chartRef.current) {
         chartRef.current.destroy()
         chartRef.current = null
@@ -446,89 +464,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length])
 
-  // Cleanup datasets for disconnected devices to prevent memory leaks
-  useEffect(() => {
-    if (!chartRef.current) return
-
-    const chart = chartRef.current
-    const connectedDeviceIds = new Set(connectedDevices)
-    
-    // Remove datasets for devices that are no longer connected
-    chart.data.datasets = chart.data.datasets.filter(dataset => {
-      if (!dataset.label) return true
-      
-      // Keep simulation datasets
-      if (dataset.label.includes('Sim -')) return true
-      
-      // Check if this dataset belongs to a connected device
-      const belongsToConnectedDevice = connectedDevices.some(deviceId => 
-        dataset.label!.includes(`Device ${deviceId.slice(-4)}`)
-      )
-      
-      if (!belongsToConnectedDevice) {
-        console.log(`🗑️ Removing dataset for disconnected device: ${dataset.label}`)
-        return false
-      }
-      
-      return true
-    })
-    
-    // Clean up device data buffers for disconnected devices
-    const disconnectedDevices = Array.from(deviceDataBuffers.current.keys()).filter(
-      deviceId => !connectedDeviceIds.has(deviceId) && deviceId !== 'simulation'
-    )
-    
-    disconnectedDevices.forEach(deviceId => {
-      console.log(`🗑️ Cleaning up data buffer for disconnected device: ${deviceId}`)
-      deviceDataBuffers.current.delete(deviceId)
-    })
-    
-    if (disconnectedDevices.length > 0) {
-      chart.update('none')
-    }
-  }, [connectedDevices])
-
-  // Memory monitoring and aggressive cleanup for long sessions
-  useEffect(() => {
-    if (!isCollecting) return
-
-    const memoryCleanupInterval = setInterval(() => {
-      if (!chartRef.current) return
-
-      const chart = chartRef.current
-      const now = Date.now()
-      const MEMORY_CLEANUP_THRESHOLD = 5000 // Clean up if more than 5000 total data points
-      
-      // Count total data points across all datasets
-      const totalDataPoints = chart.data.datasets.reduce(
-        (total, dataset) => total + dataset.data.length, 0
-      )
-      
-      if (totalDataPoints > MEMORY_CLEANUP_THRESHOLD) {
-        console.log(`🧹 Memory cleanup triggered: ${totalDataPoints} total data points`)
-        
-        // More aggressive cleanup - keep only last 5 seconds of data
-        chart.data.datasets.forEach(dataset => {
-          const cutoffTime = now / 1000 - 5 // 5 seconds ago
-          dataset.data = (dataset.data as Array<{ x: number; y: number }>)
-            .filter(point => point.x >= cutoffTime)
-        })
-        
-        // Clean up device buffers more aggressively
-        deviceDataBuffers.current.forEach((buffer, deviceId) => {
-          if (buffer.length > 500) { // Keep only 500 most recent points per device
-            buffer.splice(0, buffer.length - 500)
-            console.log(`🧹 Trimmed buffer for device ${deviceId} to 500 points`)
-          }
-        })
-        
-        chart.update('none')
-      }
-    }, 30000) // Check every 30 seconds
-
-    return () => clearInterval(memoryCleanupInterval)
-  }, [isCollecting])
-
   return (
     <section className="card">
       <div className="chart-header">
@@ -592,11 +527,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
         </div>
       </div>
       <div className="chart-container">
-        <canvas ref={canvasRef} key={`chart-${chartMode}`} />
+        <canvas ref={canvasRef} />
       </div>
       <div className="chart-info">
         <div className="data-info">
-          <span>Sample Rate: 100 Hz</span>
+          <span>Sample Rate: {getCurrentSampleRateDisplay()}</span>
           <span>•</span>
           <span>Devices: {connectedDevices.length}</span>
           <span>•</span>

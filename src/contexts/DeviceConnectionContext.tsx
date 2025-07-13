@@ -20,7 +20,8 @@ interface GaitDataPayload {
   x: number,
   y: number,
   z: number,
-  timestamp: number
+  timestamp: number,
+  sample_rate?: number  // Add optional sample rate field
 }
 
 interface BLEDeviceInfo { 
@@ -48,6 +49,7 @@ interface DeviceConnectionState {
   connectionStatus: Map<string, ConnectionStatus>
   deviceHeartbeats: Map<string, HeartbeatPayload>
   lastGaitDataTime: Map<string, number>
+  deviceSampleRates: Map<string, number>  // Add sample rates
   
   // UI state
   isScanning: boolean
@@ -72,6 +74,7 @@ interface DeviceConnectionState {
   startDeviceCollection: (deviceId: string) => Promise<void>
   stopDeviceCollection: (deviceId: string) => Promise<void>
   getActiveCollectingDevices: () => Promise<string[]>
+  getCurrentSampleRate: (deviceId: string) => number | null
   
   // Event subscription for gait data
   subscribeToGaitData: (callback: (data: GaitDataPayload) => void) => () => void
@@ -101,6 +104,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   const [connectionStatus, setConnectionStatus] = useState<Map<string, ConnectionStatus>>(new Map())
   const [deviceHeartbeats, setDeviceHeartbeats] = useState<Map<string, HeartbeatPayload>>(new Map())
   const [lastGaitDataTime, setLastGaitDataTime] = useState<Map<string, number>>(new Map())
+  const [deviceSampleRates, setDeviceSampleRates] = useState<Map<string, number>>(new Map())
   
   // UI State
   const [isScanning, setIsScanning] = useState(false)
@@ -409,6 +413,15 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
           // Update gait data timing
           updateGaitDataTime(payload.device_id)
           
+          // Update sample rate if provided
+          if (payload.sample_rate !== undefined) {
+            setDeviceSampleRates(prev => {
+              const newMap = new Map(prev)
+              newMap.set(payload.device_id, payload.sample_rate!)
+              return newMap
+            })
+          }
+          
           // Notify all subscribers
           gaitDataSubscribers.current.forEach(callback => {
             try {
@@ -576,6 +589,11 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     return () => clearInterval(memoryMonitoringInterval)
   }, [deviceHeartbeats, connectionStatus, lastGaitDataTime, connectedDevices])
 
+  // Actions - Sample Rate
+  const getCurrentSampleRate = useCallback((deviceId: string): number | null => {
+    return deviceSampleRates.get(deviceId) || null
+  }, [deviceSampleRates])
+
   const contextValue: DeviceConnectionState = {
     // Device tracking
     availableDevices,
@@ -586,6 +604,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     connectionStatus,
     deviceHeartbeats,
     lastGaitDataTime,
+    deviceSampleRates,
     
     // UI state
     isScanning,
@@ -610,6 +629,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     startDeviceCollection,
     stopDeviceCollection,
     getActiveCollectingDevices,
+    getCurrentSampleRate,
     
     // Event subscription
     subscribeToGaitData
