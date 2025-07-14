@@ -6,7 +6,7 @@
  */
 
 // Standard precision: Use milliseconds throughout the application
-// This eliminates the need for microsecond precision while maintaining accuracy
+// This provides consistent millisecond precision while maintaining accuracy
 
 export interface TimestampConfig {
   /** Base timestamp for relative time calculations (ms) */
@@ -195,13 +195,6 @@ export const timestampUtils = {
   getGlobalManager: () => TimestampManager.getInstance(),
 
   /**
-   * Convert microseconds to milliseconds safely
-   */
-  microToMilli: (microseconds: number): number => {
-    return microseconds > 1e12 ? microseconds / 1000 : microseconds;
-  },
-
-  /**
    * Convert milliseconds to seconds for Chart.js
    */
   milliToSeconds: (milliseconds: number): number => {
@@ -209,19 +202,11 @@ export const timestampUtils = {
   },
 
   /**
-   * Check if timestamp is in microseconds
-   */
-  isMicroseconds: (timestamp: number): boolean => {
-    return timestamp > 1e12;
-  },
-
-  /**
    * Get relative time in seconds
    */
   getRelativeTime: (timestamp: number, baseTimestamp: number): number => {
-    const current = timestampUtils.microToMilli(timestamp);
-    const base = timestampUtils.microToMilli(baseTimestamp);
-    return (current - base) / 1000;
+    // Backend always provides milliseconds - use directly
+    return (timestamp - baseTimestamp) / 1000;
   }
 };
 

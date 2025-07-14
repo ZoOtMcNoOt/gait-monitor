@@ -123,21 +123,19 @@ export const useTimestampManager = (options: UseTimestampManagerOptions = {}): T
  */
 export const useTimestampFormatter = () => {
   const formatRelativeTime = useCallback((timestamp: number, baseTimestamp: number): string => {
-    const current = timestamp > 1e12 ? timestamp / 1000 : timestamp;
-    const base = baseTimestamp > 1e12 ? baseTimestamp / 1000 : baseTimestamp;
-    const relativeSeconds = (current - base) / 1000;
+    // Backend always provides milliseconds - use directly
+    const relativeSeconds = (timestamp - baseTimestamp) / 1000;
     return `${relativeSeconds.toFixed(2)}s`;
   }, []);
 
   const formatAbsoluteTime = useCallback((timestamp: number): string => {
-    const ms = timestamp > 1e12 ? timestamp / 1000 : timestamp;
-    return new Date(ms).toLocaleTimeString();
+    // Backend always provides milliseconds - use directly
+    return new Date(timestamp).toLocaleTimeString();
   }, []);
 
   const formatDuration = useCallback((timestamp: number, baseTimestamp: number): string => {
-    const current = timestamp > 1e12 ? timestamp / 1000 : timestamp;
-    const base = baseTimestamp > 1e12 ? baseTimestamp / 1000 : baseTimestamp;
-    const relativeSeconds = (current - base) / 1000;
+    // Backend always provides milliseconds - use directly
+    const relativeSeconds = (timestamp - baseTimestamp) / 1000;
     
     const minutes = Math.floor(relativeSeconds / 60);
     const seconds = (relativeSeconds % 60).toFixed(1);
