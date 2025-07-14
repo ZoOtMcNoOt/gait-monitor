@@ -79,15 +79,10 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       
-      // Use consistent timestamp handling for all timestamps
+      // Since backend now generates consistent millisecond timestamps, use them directly
       const validTimestamps = logEntries
-        .map(log => {
-          if (!log.timestamp || log.timestamp <= 0) return null;
-          // Normalize to milliseconds: if > 1e12 it's microseconds, otherwise assume milliseconds
-          const normalizedMs = log.timestamp > 1e12 ? log.timestamp / 1000 : log.timestamp;
-          return normalizedMs;
-        })
-        .filter((ts): ts is number => ts !== null)
+        .map(log => log.timestamp)
+        .filter(timestamp => timestamp && timestamp > 0)
         
       const lastSession = validTimestamps.length > 0 
         ? new Date(Math.max(...validTimestamps))
@@ -127,11 +122,7 @@ function LogsTabContent() {
       
       // Copy the file to Downloads folder with a user-friendly name
       const safeDate = log.timestamp && log.timestamp > 0 
-        ? (() => {
-            // Normalize timestamp to milliseconds
-            const normalizedMs = log.timestamp > 1e12 ? log.timestamp / 1000 : log.timestamp;
-            return new Date(normalizedMs).toISOString().split('T')[0];
-          })()
+        ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds directly
         : 'unknown-date'
         
       const result = await invoke('copy_file_to_downloads', { 
