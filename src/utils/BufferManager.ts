@@ -116,6 +116,26 @@ class CircularBuffer {
   }
 
   /**
+   * Get all data points in chronological order
+   */
+  getAll(): GaitDataPoint[] {
+    const result: GaitDataPoint[] = []
+    
+    if (this.size === 0) return result
+    
+    let current = this.tail
+    for (let i = 0; i < this.size; i++) {
+      const point = this.buffer[current]
+      if (point) {
+        result.push(point)
+      }
+      current = (current + 1) % this.capacity
+    }
+    
+    return result.sort((a, b) => a.timestamp - b.timestamp)
+  }
+
+  /**
    * Remove data older than the specified timestamp
    */
   private cleanupOldData(currentTimestamp: number): void {
@@ -443,5 +463,51 @@ export class BufferManager {
       this.cleanupTimer = null
     }
     this.clearAll()
+  }
+
+  // Legacy API methods for backward compatibility with tests
+  
+  /**
+   * Add data point (legacy method for tests)
+   */
+  addData(data: GaitDataPoint): void {
+    this.addDataPoint(data.device_id, data)
+  }
+
+  /**
+   * Get device data within time range (legacy method for tests)
+   */
+  getDeviceData(deviceId: string, startTime?: number, endTime?: number): GaitDataPoint[] {
+    const buffer = this.deviceBuffers.get(deviceId)
+    if (!buffer) return []
+
+    if (startTime !== undefined && endTime !== undefined) {
+      // Get all data and filter by exact time range
+      const allData = buffer.getAll()
+      return allData.filter(point => 
+        point.timestamp >= startTime && point.timestamp <= endTime
+      )
+    }
+    
+    // Return all data if no time range specified
+    return buffer.getAll()
+  }
+
+  /**
+   * Get total number of devices (legacy method for tests)
+   */
+  getTotalDevices(): number {
+    return this.deviceBuffers.size
+  }
+
+  /**
+   * Clear data (legacy method for tests)
+   */
+  clear(deviceId?: string): void {
+    if (deviceId) {
+      this.removeDevice(deviceId)
+    } else {
+      this.clearAll()
+    }
   }
 }

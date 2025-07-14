@@ -109,6 +109,29 @@ export function useBufferManager() {
     getBufferStats,
     getMemoryUsage,
     performCleanup,
+    // Legacy methods for backward compatibility with tests
+    addData: useCallback((data: GaitDataPoint) => {
+      if (bufferManagerRef.current) {
+        bufferManagerRef.current.addData(data)
+      }
+    }, []),
+    getDeviceData: useCallback((deviceId: string, startTime?: number, endTime?: number) => {
+      if (bufferManagerRef.current) {
+        return bufferManagerRef.current.getDeviceData(deviceId, startTime, endTime)
+      }
+      return []
+    }, []),
+    getTotalDevices: useCallback(() => {
+      if (bufferManagerRef.current) {
+        return bufferManagerRef.current.getTotalDevices()
+      }
+      return 0
+    }, []),
+    clear: useCallback((deviceId?: string) => {
+      if (bufferManagerRef.current) {
+        bufferManagerRef.current.clear(deviceId)
+      }
+    }, []),
     // Expose buffer configuration for debugging
     bufferConfig: config.bufferConfig
   }

@@ -148,6 +148,12 @@ export class TimestampManager {
    */
   getChartTimestamp(backendTimestamp: number): number {
     const normalized = this.normalizeTimestamp(backendTimestamp);
+    
+    // If no base timestamp is set, return absolute timestamp
+    if (this.config.baseTimestamp === null) {
+      return normalized.absolute;
+    }
+    
     return this.config.useRelativeTime ? normalized.relative : normalized.absolute;
   }
 
