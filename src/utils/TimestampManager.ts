@@ -106,12 +106,15 @@ export class TimestampManager {
   /**
    * Format timestamp for display
    */
-  formatTimestamp(timestamp: number, format: 'absolute' | 'relative' | 'duration' = 'relative'): string {
+  formatTimestamp(timestamp: number, format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative'): string {
     const normalized = this.normalizeTimestamp(timestamp);
 
     switch (format) {
       case 'absolute':
         return new Date(normalized.absolute).toLocaleTimeString();
+      
+      case 'full':
+        return new Date(normalized.absolute).toLocaleString();
       
       case 'relative':
         return `${normalized.relative.toFixed(2)}s`;

@@ -1197,17 +1197,23 @@ async fn save_session_data(
   fs::create_dir_all(&base_path).await
     .map_err(|e| format!("Failed to create directory: {}", e))?;
 
-  // Generate filename with timestamp
-  let timestamp = std::time::SystemTime::now()
+  // Generate filename with timestamp (for filename, seconds are fine)
+  let file_timestamp = std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
     .unwrap()
     .as_secs();
+  
+  // Generate metadata timestamp in milliseconds (consistent with data timestamps)
+  let metadata_timestamp = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap()
+    .as_millis() as u64;
   
   // Use the path manager to sanitize the filename
   let safe_session_name = path_manager::PathConfig::sanitize_filename(&session_name);
   
   let filename = format!("gait_{}_{}.csv", 
-    chrono::DateTime::from_timestamp(timestamp as i64, 0)
+    chrono::DateTime::from_timestamp(file_timestamp as i64, 0)
       .unwrap()
       .format("%Y%m%d_%H%M%S"),
     safe_session_name
@@ -1265,7 +1271,7 @@ async fn save_session_data(
     session_name,
     subject_id,
     notes,
-    timestamp,
+    timestamp: metadata_timestamp,
     data_points: data.len(),
     file_path: file_path.to_string_lossy().to_string(),
     devices: devices.into_iter().collect(),

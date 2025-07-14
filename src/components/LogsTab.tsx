@@ -63,7 +63,10 @@ function LogsTabContent() {
       console.log('📊 Sample session timestamps:', sessions.slice(0, 3).map(s => ({ 
         name: s.session_name, 
         timestamp: s.timestamp,
-        asDate: formatTimestamp(s.timestamp)
+        timestampType: s.timestamp > 1e12 ? 'microseconds' : s.timestamp > 1e9 ? 'milliseconds' : 'seconds',
+        asDate: formatTimestamp(s.timestamp),
+        directDate: new Date(s.timestamp).toLocaleString(),
+        adjustedDate: s.timestamp > 1e12 ? new Date(s.timestamp / 1000).toLocaleString() : new Date(s.timestamp).toLocaleString()
       })))
       
       // Convert to LogEntry format
@@ -84,10 +87,25 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       
-      // Since backend now generates millisecond timestamps, use them directly
+      // Handle timestamp validation with auto-detection of precision
       const validTimestamps = logEntries
-        .map(log => log.timestamp)
-        .filter(timestamp => timestamp && timestamp > 0)
+        .map(log => {
+          const ts = log.timestamp;
+          if (!ts || ts <= 0) return null;
+          
+          // Auto-detect timestamp precision and normalize to milliseconds
+          if (ts > 1e12) {
+            // Microseconds - convert to milliseconds
+            return ts / 1000;
+          } else if (ts > 1e9) {
+            // Already milliseconds
+            return ts;
+          } else {
+            // Seconds - convert to milliseconds  
+            return ts * 1000;
+          }
+        })
+        .filter((ts): ts is number => ts !== null)
         
       const lastSession = validTimestamps.length > 0 
         ? new Date(Math.max(...validTimestamps))
@@ -132,7 +150,18 @@ function LogsTabContent() {
       
       // Copy the file to Downloads folder with a user-friendly name
       const safeDate = log.timestamp && log.timestamp > 0 
-        ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds
+        ? (() => {
+            // Auto-detect timestamp precision and normalize to milliseconds
+            let normalizedTimestamp = log.timestamp;
+            if (log.timestamp > 1e12) {
+              // Microseconds - convert to milliseconds
+              normalizedTimestamp = log.timestamp / 1000;
+            } else if (log.timestamp < 1e9) {
+              // Seconds - convert to milliseconds  
+              normalizedTimestamp = log.timestamp * 1000;
+            }
+            return new Date(normalizedTimestamp).toISOString().split('T')[0];
+          })()
         : 'unknown-date'
         
       const result = await invoke('copy_file_to_downloads', { 
@@ -251,7 +280,7 @@ function LogsTabContent() {
                   <tr key={log.id}>
                     <td className="session-name">{log.session_name}</td>
                     <td>{log.subject_id}</td>
-                    <td>{formatTimestamp(log.timestamp)}</td>
+                    <td>{formatTimestamp(log.timestamp, 'full')}</td>
                     <td>{log.data_points.toLocaleString()}</td>
                     <td>{formatFileSize(log.data_points)}</td>
                     <td className="notes-cell">

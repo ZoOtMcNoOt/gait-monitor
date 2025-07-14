@@ -18,7 +18,7 @@ interface TimestampManagerHook {
   /** Get timestamp formatted for Chart.js */
   getChartTimestamp: (timestamp: number) => number;
   /** Format timestamp for display */
-  formatTimestamp: (timestamp: number, format?: 'absolute' | 'relative' | 'duration') => string;
+  formatTimestamp: (timestamp: number, format?: 'absolute' | 'relative' | 'duration' | 'full') => string;
   /** Calculate time difference between timestamps */
   getTimeDifference: (timestamp1: number, timestamp2: number) => number;
   /** Get cache statistics */
@@ -79,7 +79,7 @@ export const useTimestampManager = (options: UseTimestampManagerOptions = {}): T
 
   const formatTimestamp = useCallback((
     timestamp: number, 
-    format: 'absolute' | 'relative' | 'duration' = 'relative'
+    format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative'
   ): string => {
     return manager.formatTimestamp(timestamp, format);
   }, [manager]);

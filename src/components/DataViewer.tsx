@@ -495,7 +495,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 <tbody>
                   {filteredData.slice(0, config.maxChartPoints).map((point, index) => (
                     <tr key={index}>
-                      <td>{formatTimestamp(point.timestamp)}</td>
+                      <td>{formatTimestamp(point.timestamp, 'absolute')}</td>
                       <td>{point.device_id}</td>
                       <td>{point.data_type}</td>
                       <td>{point.value.toFixed(3)}</td>
