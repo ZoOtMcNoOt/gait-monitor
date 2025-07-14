@@ -268,13 +268,6 @@ mod path_manager {
 }
 
 // Enhanced CSRF Protection with comprehensive security features
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use sha2::{Sha256, Digest};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use dashmap::DashMap;
-use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
-use nonzero_ext::*;
-use tracing::{info, warn, error};
 
 // Security event types for logging
 #[derive(Debug, Clone, serde::Serialize)]
@@ -293,6 +286,7 @@ pub enum SecurityEvent {
 struct CSRFToken {
     value: String,
     id: String,
+    #[allow(dead_code)]
     created_at: Instant,
     expires_at: Instant,
     usage_count: u32,
@@ -519,7 +513,8 @@ impl CSRFTokenState {
         
         // Keep only last 1000 events to prevent memory issues
         if events.len() > 1000 {
-            events.drain(0..events.len() - 1000);
+            let len = events.len();
+            events.drain(0..len - 1000);
         }
     }
     
@@ -656,12 +651,12 @@ struct GaitDataWithRate {
 
 // Rate limiting structure
 #[derive(Clone)]
-struct RateLimiter {
+struct CustomRateLimiter {
   last_operation: Instant,
   min_interval: Duration,
 }
 
-impl RateLimiter {
+impl CustomRateLimiter {
   fn new(min_interval_ms: u64) -> Self {
     Self {
       last_operation: Instant::now() - Duration::from_millis(min_interval_ms + 1),
@@ -691,7 +686,7 @@ impl RateLimiter {
 
 // Rate limiting state for different operations
 #[derive(Clone)]
-pub struct RateLimitingState(Arc<Mutex<HashMap<String, RateLimiter>>>);
+pub struct RateLimitingState(Arc<Mutex<HashMap<String, CustomRateLimiter>>>);
 
 impl RateLimitingState {
   fn new() -> Self {
@@ -711,7 +706,7 @@ async fn scan_devices(
   {
     let mut limiters = rate_limiting.0.lock().await;
     let limiter = limiters.entry("scan_devices".to_string())
-      .or_insert_with(|| RateLimiter::new(2000)); // 2 second minimum interval
+      .or_insert_with(|| CustomRateLimiter::new(2000)); // 2 second minimum interval
     
     if !limiter.can_proceed() {
       let wait_time = limiter.time_until_next();
@@ -865,7 +860,7 @@ async fn connect_device(
   {
     let mut limiters = rate_limiting.0.lock().await;
     let limiter = limiters.entry(format!("connect_{}", device_id))
-      .or_insert_with(|| RateLimiter::new(1000)); // 1 second minimum interval per device
+      .or_insert_with(|| CustomRateLimiter::new(1000)); // 1 second minimum interval per device
     
     if !limiter.can_proceed() {
       let wait_time = limiter.time_until_next();
@@ -1809,18 +1804,6 @@ async fn copy_file_to_downloads(
     .map_err(|e| format!("Failed to copy file: {}", e))?;
   
   Ok(dest_path.to_string_lossy().to_string())
-}
-
-// CSRF Protection Commands
-#[tauri::command]
-async fn get_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
-  csrf_state.get_token().await
-    .ok_or_else(|| "CSRF token not initialized".to_string())
-}
-
-#[tauri::command]
-async fn refresh_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
-  Ok(csrf_state.refresh_token().await)
 }
 
 // Path Configuration Commands
