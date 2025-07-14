@@ -1,5 +1,6 @@
 import DeviceList from './DeviceList'
 import ScrollableContainer from './ScrollableContainer'
+import '../styles/tabs.css'
 
 export default function ConnectTab() {
   return (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import '../styles/forms.css'
 
 // Input validation utilities
 const validateSessionName = (name: string): string | null => {

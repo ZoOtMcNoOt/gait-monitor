@@ -7,6 +7,7 @@ import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { invoke } from '@tauri-apps/api/core'
 import ErrorBoundary from './ErrorBoundary'
 import '../styles/modal.css'
+import '../styles/tabs.css'
 
 type CollectStep = 'metadata' | 'live' | 'review'
 

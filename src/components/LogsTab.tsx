@@ -7,6 +7,8 @@ import ConfirmationModal from './ConfirmationModal'
 import ErrorBoundary from './ErrorBoundary'
 import DataViewer from './DataViewer'
 import ScrollableContainer from './ScrollableContainer'
+import '../styles/tables.css'
+import '../styles/tabs.css'
 
 interface LogEntry {
   id: string

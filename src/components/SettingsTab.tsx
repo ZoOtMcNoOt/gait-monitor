@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
 import ScrollableContainer from './ScrollableContainer'
+import '../styles/settings.css'
+import '../styles/tabs.css'
 
 interface Props {
   darkMode: boolean
