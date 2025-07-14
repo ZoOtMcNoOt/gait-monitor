@@ -1230,7 +1230,7 @@ async fn save_session_data(
   csv_content.push_str(&format!("# Subject: {}\n", subject_id));
   csv_content.push_str(&format!("# Notes: {}\n", notes));
   csv_content.push_str(&format!("# Export Time: {}\n", 
-    chrono::DateTime::from_timestamp(timestamp as i64, 0)
+    chrono::DateTime::from_timestamp((metadata_timestamp / 1000) as i64, 0)
       .unwrap()
       .format("%Y-%m-%d %H:%M:%S UTC")
   ));

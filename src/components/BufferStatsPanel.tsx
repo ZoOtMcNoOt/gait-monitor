@@ -43,7 +43,7 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
 
   const formatTimestamp = (timestamp: number): string => {
     if (timestamp === 0) return 'N/A'
-    return new Date(timestamp * 1000).toLocaleTimeString()
+    return new Date(timestamp).toLocaleTimeString() // Timestamps are already in milliseconds
   }
 
   const getMemoryStatus = (usage: number): 'good' | 'warning' | 'critical' => {

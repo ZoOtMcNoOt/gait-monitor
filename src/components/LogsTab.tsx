@@ -60,15 +60,7 @@ function LogsTabContent() {
       const sessions: SessionMetadata[] = await invoke('get_sessions')
       
       console.log('📊 Loaded sessions from backend:', sessions.length)
-      console.log('📊 Sample session timestamps:', sessions.slice(0, 3).map(s => ({ 
-        name: s.session_name, 
-        timestamp: s.timestamp,
-        timestampType: s.timestamp > 1e12 ? 'microseconds' : s.timestamp > 1e9 ? 'milliseconds' : 'seconds',
-        asDate: formatTimestamp(s.timestamp),
-        directDate: new Date(s.timestamp).toLocaleString(),
-        adjustedDate: s.timestamp > 1e12 ? new Date(s.timestamp / 1000).toLocaleString() : new Date(s.timestamp).toLocaleString()
-      })))
-      
+
       // Convert to LogEntry format
       const logEntries: LogEntry[] = sessions.map(session => ({
         id: session.id,
@@ -87,34 +79,19 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       
-      // Handle timestamp validation with auto-detection of precision
+      // Use consistent timestamp handling for all timestamps
       const validTimestamps = logEntries
         .map(log => {
-          const ts = log.timestamp;
-          if (!ts || ts <= 0) return null;
-          
-          // Auto-detect timestamp precision and normalize to milliseconds
-          if (ts > 1e12) {
-            // Microseconds - convert to milliseconds
-            return ts / 1000;
-          } else if (ts > 1e9) {
-            // Already milliseconds
-            return ts;
-          } else {
-            // Seconds - convert to milliseconds  
-            return ts * 1000;
-          }
+          if (!log.timestamp || log.timestamp <= 0) return null;
+          // Normalize to milliseconds: if > 1e12 it's microseconds, otherwise assume milliseconds
+          const normalizedMs = log.timestamp > 1e12 ? log.timestamp / 1000 : log.timestamp;
+          return normalizedMs;
         })
         .filter((ts): ts is number => ts !== null)
         
       const lastSession = validTimestamps.length > 0 
         ? new Date(Math.max(...validTimestamps))
         : null
-        
-      console.log('📊 Valid timestamps:', validTimestamps.length, 'of', logEntries.length)
-      if (validTimestamps.length > 0) {
-        console.log('📊 Latest timestamp (ms):', Math.max(...validTimestamps), 'Date:', new Date(Math.max(...validTimestamps)))
-      }
         
       setStats({ totalSessions, totalDataPoints, lastSession })
       
@@ -131,7 +108,7 @@ function LogsTabContent() {
       setLogs([])
       setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
     }
-  }, [showError, showInfo, formatTimestamp])
+  }, [showError, showInfo])
 
   // Load logs from storage
   useEffect(() => {
@@ -151,16 +128,9 @@ function LogsTabContent() {
       // Copy the file to Downloads folder with a user-friendly name
       const safeDate = log.timestamp && log.timestamp > 0 
         ? (() => {
-            // Auto-detect timestamp precision and normalize to milliseconds
-            let normalizedTimestamp = log.timestamp;
-            if (log.timestamp > 1e12) {
-              // Microseconds - convert to milliseconds
-              normalizedTimestamp = log.timestamp / 1000;
-            } else if (log.timestamp < 1e9) {
-              // Seconds - convert to milliseconds  
-              normalizedTimestamp = log.timestamp * 1000;
-            }
-            return new Date(normalizedTimestamp).toISOString().split('T')[0];
+            // Normalize timestamp to milliseconds
+            const normalizedMs = log.timestamp > 1e12 ? log.timestamp / 1000 : log.timestamp;
+            return new Date(normalizedMs).toISOString().split('T')[0];
           })()
         : 'unknown-date'
         

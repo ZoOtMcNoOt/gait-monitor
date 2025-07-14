@@ -54,8 +54,18 @@ export class TimestampManager {
    * Set the base timestamp for relative time calculations
    */
   setBaseTimestamp(timestamp: number): void {
-    // Convert microseconds to milliseconds if needed
-    const normalizedTimestamp = timestamp > 1e12 ? timestamp / 1000 : timestamp;
+    // Use same detection logic as normalizeTimestamp
+    let normalizedTimestamp: number;
+    if (timestamp > 1e15) {
+      normalizedTimestamp = timestamp / 1000; // microseconds
+    } else if (timestamp > 1e12) {
+      normalizedTimestamp = timestamp; // milliseconds (2020-2030 range)
+    } else if (timestamp > 1e9) {
+      normalizedTimestamp = timestamp * 1000; // seconds
+    } else {
+      normalizedTimestamp = timestamp; // program-relative
+    }
+    
     this.config.baseTimestamp = normalizedTimestamp;
     this.clearCache(); // Clear cache when base changes
   }
@@ -77,8 +87,24 @@ export class TimestampManager {
       return cached;
     }
 
-    // Convert microseconds to milliseconds if needed
-    const absoluteMs = backendTimestamp > 1e12 ? backendTimestamp / 1000 : backendTimestamp;
+    // Determine timestamp format based on realistic ranges
+    // Current time (2025) in milliseconds is around 1.73e12
+    // Microseconds would be around 1.73e15
+    let absoluteMs: number;
+
+    if (backendTimestamp > 1e15) {
+      // Definitely microseconds (> 1e15)
+      absoluteMs = backendTimestamp / 1000;
+    } else if (backendTimestamp > 1e12) {
+      // Could be milliseconds (1e12 to 1e15) - treat as milliseconds for 2020-2030 range
+      absoluteMs = backendTimestamp;
+    } else if (backendTimestamp > 1e9) {
+      // Seconds since epoch (1e9 to 1e12) - convert to milliseconds
+      absoluteMs = backendTimestamp * 1000;
+    } else {
+      // Very small timestamp - probably seconds since program start, treat as milliseconds
+      absoluteMs = backendTimestamp;
+    }
     
     // Calculate relative time in seconds if base is set
     let relativeSeconds = 0;
