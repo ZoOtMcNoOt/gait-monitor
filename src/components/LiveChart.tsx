@@ -11,6 +11,8 @@ import {
   Legend
 } from 'chart.js'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useBufferManager } from '../hooks/useBufferManager'
+import { config } from '../config'
 
 Chart.register(
   LineController, 
@@ -72,8 +74,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
     getCurrentSampleRate
   } = useDeviceConnection()
   
-  // Store data per device and timing reference
-  const deviceDataBuffers = useRef<Map<string, GaitData[]>>(new Map())
+  // Initialize unified buffer manager
+  const bufferManager = useBufferManager()
+  
+  // Chart timing reference
   const baseTimestamp = useRef<number | null>(null)
 
   // Calculate current sample rate display
@@ -136,7 +140,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
     ]
     
     const getDeviceColor = (baseColor: string) => {
-      const deviceIndex = [...deviceDataBuffers.current.keys()].indexOf(deviceId)
+      // Get all active device IDs from buffer manager for consistent indexing
+      const bufferStats = bufferManager.getBufferStats()
+      const deviceIds = bufferStats ? Array.from(bufferStats.deviceStats.keys()) : []
+      const deviceIndex = deviceIds.indexOf(deviceId)
       
       // If it's the first device or simulation, use base colors
       if (deviceIndex === 0 || deviceId === 'simulation') {
@@ -181,11 +188,23 @@ export default function LiveChart({ isCollecting = false }: Props) {
       r2Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R2 })
       r3Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R3 })
       
-      // Time-based data retention: keep data from last 10 seconds
-      const cutoffTime = gaitData.timestamp - 10
+      // Time-based data retention using configuration
+      const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
       r1Dataset.data = (r1Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       r2Dataset.data = (r2Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       r3Dataset.data = (r3Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
+      
+      // Enforce maximum chart points limit
+      const maxPoints = config.bufferConfig.maxChartPoints
+      if (r1Dataset.data.length > maxPoints) {
+        r1Dataset.data = r1Dataset.data.slice(-maxPoints)
+      }
+      if (r2Dataset.data.length > maxPoints) {
+        r2Dataset.data = r2Dataset.data.slice(-maxPoints)
+      }
+      if (r3Dataset.data.length > maxPoints) {
+        r3Dataset.data = r3Dataset.data.slice(-maxPoints)
+      }
     }
     
     if (chartMode === 'all' || chartMode === 'acceleration') {
@@ -197,15 +216,27 @@ export default function LiveChart({ isCollecting = false }: Props) {
       yDataset.data.push({ x: gaitData.timestamp, y: gaitData.Y })
       zDataset.data.push({ x: gaitData.timestamp, y: gaitData.Z })
       
-      // Time-based data retention: keep data from last 10 seconds
-      const cutoffTime = gaitData.timestamp - 10
+      // Time-based data retention using configuration
+      const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
       xDataset.data = (xDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       yDataset.data = (yDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       zDataset.data = (zDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
+      
+      // Enforce maximum chart points limit
+      const maxPoints = config.bufferConfig.maxChartPoints
+      if (xDataset.data.length > maxPoints) {
+        xDataset.data = xDataset.data.slice(-maxPoints)
+      }
+      if (yDataset.data.length > maxPoints) {
+        yDataset.data = yDataset.data.slice(-maxPoints)
+      }
+      if (zDataset.data.length > maxPoints) {
+        zDataset.data = zDataset.data.slice(-maxPoints)
+      }
     }
 
     chart.update('none')
-  }, [chartMode])
+  }, [chartMode, bufferManager])
 
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
@@ -224,42 +255,29 @@ export default function LiveChart({ isCollecting = false }: Props) {
       timestamp: relativeTime 
     }
     
-    // Debug logging for timing analysis
-    console.log(`📊 Device ${deviceId}: Raw timestamp: ${gaitData.timestamp}, Relative time: ${relativeTime.toFixed(3)}s`)
+    // Add to unified buffer manager
+    bufferManager.addDataPoint(deviceId, {
+      device_id: deviceId,
+      R1: normalizedGaitData.R1,
+      R2: normalizedGaitData.R2,
+      R3: normalizedGaitData.R3,
+      X: normalizedGaitData.X,
+      Y: normalizedGaitData.Y,
+      Z: normalizedGaitData.Z,
+      timestamp: relativeTime
+    })
     
-    // Get or create device buffer
-    if (!deviceDataBuffers.current.has(deviceId)) {
-      deviceDataBuffers.current.set(deviceId, [])
-      console.log('📱 New device added:', deviceId, 'at relative time:', relativeTime.toFixed(3) + 's')
-    }
-    
-    const deviceBuffer = deviceDataBuffers.current.get(deviceId)!
-    deviceBuffer.push(normalizedGaitData)
-    
-    // Keep only last 10 seconds at 100Hz per device (increased from 5 to 10 seconds)
-    if (deviceBuffer.length > 1000) {
-      deviceBuffer.shift()
-    }
-    
+    // Update chart with new data
     if (chartRef.current) {
       updateChartForDevice(deviceId, normalizedGaitData)
       
-      // Debug logging for multi-device data retention
-      const deviceBuffer = deviceDataBuffers.current.get(deviceId)!
-      if (deviceBuffer.length % 100 === 0) { // Log every 100 points
-        console.log(`📈 Device ${deviceId}: ${deviceBuffer.length} points buffered, latest timestamp: ${normalizedGaitData.timestamp.toFixed(2)}s`)
-        
-        // Also log chart dataset info
-        const deviceDatasets = chartRef.current.data.datasets.filter(ds => ds.label?.includes(deviceId.slice(-4)))
-        console.log(`📊 Device ${deviceId} chart datasets:`, deviceDatasets.map(ds => ({ 
-          label: ds.label, 
-          points: ds.data.length,
-          firstTime: ds.data.length > 0 ? (ds.data[0] as { x: number; y: number })?.x : 'none',
-          lastTime: ds.data.length > 0 ? (ds.data[ds.data.length - 1] as { x: number; y: number })?.x : 'none'
-        })))
+      // Get buffer stats for debugging
+      const bufferStats = bufferManager.getBufferStats()
+      if (bufferStats && bufferStats.totalDataPoints % 100 === 0) { // Log every 100 points
+        console.log(`📈 BufferManager: ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
       }
     }
-  }, [updateChartForDevice])
+  }, [updateChartForDevice, bufferManager])
 
   // Initialize chart with original UI style
   useEffect(() => {
@@ -403,9 +421,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
     let simulationInterval: ReturnType<typeof setInterval> | null = null
     
-    // Reset base timestamp and clear data when starting collection
+    // Reset base timestamp and clear buffers when starting collection
     baseTimestamp.current = null
-    deviceDataBuffers.current.clear()
+    bufferManager.clearAll()
     
     // Clear existing chart data
     if (chartRef.current) {
@@ -462,7 +480,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         clearInterval(simulationInterval)
       }
     }
-  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length])
+  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, bufferManager])
 
   return (
     <section className="card">
@@ -535,7 +553,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
           <span>•</span>
           <span>Devices: {connectedDevices.length}</span>
           <span>•</span>
-          <span>Total Samples: {Array.from(deviceDataBuffers.current.values()).reduce((sum, buffer) => sum + buffer.length, 0)}</span>
+          <span>Total Samples: {(() => {
+            const stats = bufferManager.getBufferStats()
+            return stats ? stats.totalDataPoints : 0
+          })()}</span>
           <span>•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
         </div>

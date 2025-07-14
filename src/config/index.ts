@@ -1,6 +1,17 @@
 // Environment configuration management for Gait Monitor
 // This module centralizes all environment variable access and provides type safety
 
+// Buffer management configuration
+export interface BufferConfig {
+  maxChartPoints: number           // Maximum points in chart datasets
+  maxDeviceBufferPoints: number    // Maximum points in device data buffers  
+  maxDeviceDatasets: number        // Maximum datasets per chart (6 channels × multiple devices)
+  memoryThresholdMB: number        // Trigger cleanup when memory usage exceeds this (MB)
+  cleanupInterval: number          // Periodic cleanup interval (ms)
+  slidingWindowSeconds: number     // Seconds of data to retain in sliding window
+  enableCircularBuffers: boolean   // Use efficient circular buffers vs arrays
+}
+
 export interface AppConfig {
   // Application settings
   mode: 'development' | 'production'
@@ -13,6 +24,9 @@ export interface AppConfig {
   dataUpdateInterval: number
   heartbeatTimeout: number
   connectionTimeout: number
+  
+  // Buffer management settings
+  bufferConfig: BufferConfig
   
   // UI settings
   defaultTheme: 'light' | 'dark' | 'auto'
@@ -79,6 +93,17 @@ export const loadConfig = (): AppConfig => {
     dataUpdateInterval: parseNumber(import.meta.env.VITE_DATA_UPDATE_INTERVAL, 100),
     heartbeatTimeout: parseNumber(import.meta.env.VITE_HEARTBEAT_TIMEOUT, 10000),
     connectionTimeout: parseNumber(import.meta.env.VITE_CONNECTION_TIMEOUT, 30000),
+    
+    // Buffer management settings
+    bufferConfig: {
+      maxChartPoints: parseNumber(import.meta.env.VITE_MAX_CHART_POINTS, 1000),
+      maxDeviceBufferPoints: parseNumber(import.meta.env.VITE_MAX_DEVICE_BUFFER_POINTS, 500),
+      maxDeviceDatasets: parseNumber(import.meta.env.VITE_MAX_DEVICE_DATASETS, 12),
+      memoryThresholdMB: parseNumber(import.meta.env.VITE_MEMORY_THRESHOLD_MB, 50),
+      cleanupInterval: parseNumber(import.meta.env.VITE_BUFFER_CLEANUP_INTERVAL, 5000),
+      slidingWindowSeconds: parseNumber(import.meta.env.VITE_SLIDING_WINDOW_SECONDS, 10),
+      enableCircularBuffers: parseBoolean(import.meta.env.VITE_ENABLE_CIRCULAR_BUFFERS, true),
+    },
     
     // UI settings
     defaultTheme: parseString(
@@ -161,6 +186,31 @@ export const validateConfig = (cfg: AppConfig): string[] => {
   
   if (cfg.chartRenderThrottle <= 0) {
     errors.push('chartRenderThrottle must be greater than 0')
+  }
+  
+  // Buffer configuration validation
+  if (cfg.bufferConfig.maxChartPoints <= 0) {
+    errors.push('bufferConfig.maxChartPoints must be greater than 0')
+  }
+  
+  if (cfg.bufferConfig.maxDeviceBufferPoints <= 0) {
+    errors.push('bufferConfig.maxDeviceBufferPoints must be greater than 0')
+  }
+  
+  if (cfg.bufferConfig.maxDeviceDatasets <= 0) {
+    errors.push('bufferConfig.maxDeviceDatasets must be greater than 0')
+  }
+  
+  if (cfg.bufferConfig.memoryThresholdMB <= 0) {
+    errors.push('bufferConfig.memoryThresholdMB must be greater than 0')
+  }
+  
+  if (cfg.bufferConfig.cleanupInterval <= 0) {
+    errors.push('bufferConfig.cleanupInterval must be greater than 0')
+  }
+  
+  if (cfg.bufferConfig.slidingWindowSeconds <= 0) {
+    errors.push('bufferConfig.slidingWindowSeconds must be greater than 0')
   }
   
   return errors
