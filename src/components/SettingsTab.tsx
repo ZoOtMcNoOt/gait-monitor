@@ -4,6 +4,7 @@ import type { SessionMetadata } from '../types'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
+import ScrollableContainer from './ScrollableContainer'
 
 interface Props {
   darkMode: boolean
@@ -138,7 +139,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   }
 
   return (
-    <div className="tab-content">
+    <ScrollableContainer id="settings-tab" className="tab-content">
       <div className="tab-header">
         <h1>Settings</h1>
         <p>Configure application preferences and data management options.</p>
@@ -334,7 +335,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
       />
-    </div>
+    </ScrollableContainer>
   )
 }
 

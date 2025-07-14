@@ -5,6 +5,7 @@ import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
 import ErrorBoundary from './ErrorBoundary'
 import DataViewer from './DataViewer'
+import ScrollableContainer from './ScrollableContainer'
 
 interface LogEntry {
   id: string
@@ -214,7 +215,7 @@ function LogsTabContent() {
   }
 
   return (
-    <div className="tab-content">
+    <ScrollableContainer id="logs-tab" className="tab-content">
       <div className="tab-header">
         <h1>Data Logs</h1>
         <p>View, download, and manage your saved gait data sessions.</p>
@@ -340,6 +341,6 @@ function LogsTabContent() {
           onClose={() => setViewingSession(null)}
         />
       )}
-    </div>
+    </ScrollableContainer>
   )
 }

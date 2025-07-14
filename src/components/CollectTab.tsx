@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import MetadataForm from './MetadataForm'
 import LiveChart from './LiveChart'
 import MultiDeviceSelector from './MultiDeviceSelector'
+import ScrollableContainer from './ScrollableContainer'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { invoke } from '@tauri-apps/api/core'
 import ErrorBoundary from './ErrorBoundary'
@@ -315,7 +316,7 @@ export default function CollectTab() {
   }
 
   return (
-    <div className="tab-content">
+    <ScrollableContainer id="collect-tab" className="tab-content">
       <div className="tab-header">
         <h1>Data Collection</h1>
         <p>Follow the 3-step process to collect and save gait data.</p>
@@ -503,6 +504,6 @@ export default function CollectTab() {
           </div>
         </div>
       )}
-    </div>
+    </ScrollableContainer>
   )
 }

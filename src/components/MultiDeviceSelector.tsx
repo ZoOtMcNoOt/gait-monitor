@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
+import ScrollableContainer from './ScrollableContainer'
 
 interface DeviceStatus {
   id: string
@@ -138,7 +139,7 @@ export default function MultiDeviceSelector() {
             </div>
           </div>
           
-          <div className="device-list">
+          <ScrollableContainer id="device-list" className="device-list">
             {devices.map(device => (
               <div key={device.id} className={`device-item ${device.isCollecting ? 'collecting' : ''}`}>
                 <div className="device-info">
@@ -171,7 +172,7 @@ export default function MultiDeviceSelector() {
                 )}
               </div>
             ))}
-          </div>
+          </ScrollableContainer>
         </>
       )}
     </div>
