@@ -82,7 +82,7 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       
-      // Since backend now generates consistent millisecond timestamps, use them directly
+      // Since backend generates consistent millisecond timestamps, use them directly
       const validTimestamps = logEntries
         .map(log => log.timestamp)
         .filter(timestamp => timestamp && timestamp > 0)
