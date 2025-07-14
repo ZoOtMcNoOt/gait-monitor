@@ -355,19 +355,7 @@ impl CSRFTokenState {
             attack_attempts: Arc::new(DashMap::new()),
         };
         
-        // Log initial token generation
-        tokio::spawn({
-            let events = state.security_events.clone();
-            let token_id = initial_token.id.clone();
-            async move {
-                let event = SecurityEvent::TokenGenerated {
-                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
-                    token_id,
-                };
-                events.lock().await.push(event);
-            }
-        });
-        
+        // Initial token will be logged when first accessed
         state
     }
     
@@ -2048,7 +2036,7 @@ fn main() {
   
   // Start background task for CSRF token cleanup
   let csrf_cleanup_state = csrf_token_state.clone();
-  tokio::spawn(async move {
+  tauri::async_runtime::spawn(async move {
     let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
     loop {
       interval.tick().await;
