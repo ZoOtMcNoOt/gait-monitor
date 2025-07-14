@@ -12,7 +12,13 @@ use btleplug::platform::{Peripheral, Manager};
 use uuid::Uuid;
 use futures::stream::StreamExt;
 use tauri::Emitter;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Digest};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use dashmap::DashMap;
+use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
+use nonzero_ext::*;
+use tracing::{info, warn, error};
 
 // Sample rate calculation module
 mod sample_rate_calculator {
@@ -261,46 +267,307 @@ mod path_manager {
     }
 }
 
-// CSRF Protection - Simple token-based validation
-#[derive(Clone)]
-pub struct CSRFTokenState(Arc<Mutex<Option<String>>>);
+// Enhanced CSRF Protection with comprehensive security features
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Digest};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use dashmap::DashMap;
+use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
+use nonzero_ext::*;
+use tracing::{info, warn, error};
 
-impl CSRFTokenState {
-  fn new() -> Self {
-    // Generate initial CSRF token
-    let token = uuid::Uuid::new_v4().to_string();
-    Self(Arc::new(Mutex::new(Some(token))))
-  }
-
-  async fn validate_token(&self, provided_token: &str) -> bool {
-    let token_guard = self.0.lock().await;
-    if let Some(ref current_token) = *token_guard {
-      current_token == provided_token
-    } else {
-      false
-    }
-  }
-
-  async fn get_token(&self) -> Option<String> {
-    let token_guard = self.0.lock().await;
-    token_guard.clone()
-  }
-
-  async fn refresh_token(&self) -> String {
-    let new_token = uuid::Uuid::new_v4().to_string();
-    let mut token_guard = self.0.lock().await;
-    *token_guard = Some(new_token.clone());
-    new_token
-  }
+// Security event types for logging
+#[derive(Debug, Clone, serde::Serialize)]
+pub enum SecurityEvent {
+    TokenGenerated { timestamp: u64, token_id: String },
+    TokenValidated { timestamp: u64, token_id: String, success: bool },
+    TokenRefreshed { timestamp: u64, old_token_id: String, new_token_id: String },
+    TokenExpired { timestamp: u64, token_id: String },
+    RateLimitExceeded { timestamp: u64, operation: String },
+    SuspiciousActivity { timestamp: u64, details: String },
+    CSRFAttackDetected { timestamp: u64, provided_token: String, expected_token: String },
 }
 
-// Macro to validate CSRF token for protected commands
-macro_rules! validate_csrf {
-  ($csrf_state:expr, $token:expr) => {
-    if !$csrf_state.validate_token($token).await {
-      return Err("Invalid CSRF token".to_string());
+// Enhanced CSRF token with metadata
+#[derive(Debug, Clone)]
+struct CSRFToken {
+    value: String,
+    id: String,
+    created_at: Instant,
+    expires_at: Instant,
+    usage_count: u32,
+    last_used: Option<Instant>,
+}
+
+impl CSRFToken {
+    fn new(lifetime: Duration) -> Self {
+        let now = Instant::now();
+        let id = uuid::Uuid::new_v4().to_string();
+        let value = Self::generate_secure_token(&id);
+        
+        Self {
+            value,
+            id,
+            created_at: now,
+            expires_at: now + lifetime,
+            usage_count: 0,
+            last_used: None,
+        }
     }
-  };
+    
+    fn generate_secure_token(id: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(id.as_bytes());
+        hasher.update(&SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos().to_be_bytes());
+        hasher.update(uuid::Uuid::new_v4().as_bytes());
+        BASE64.encode(hasher.finalize())
+    }
+    
+    fn is_expired(&self) -> bool {
+        Instant::now() > self.expires_at
+    }
+    
+    fn mark_used(&mut self) {
+        self.usage_count += 1;
+        self.last_used = Some(Instant::now());
+    }
+}
+
+// Rate limiter configuration
+const TOKEN_REFRESH_QUOTA: Quota = Quota::per_minute(nonzero!(10u32));
+const TOKEN_VALIDATION_QUOTA: Quota = Quota::per_minute(nonzero!(100u32));
+
+#[derive(Clone)]
+pub struct CSRFTokenState {
+    current_token: Arc<Mutex<Option<CSRFToken>>>,
+    token_lifetime: Duration,
+    refresh_rate_limiter: Arc<DefaultDirectRateLimiter>,
+    validation_rate_limiter: Arc<DefaultDirectRateLimiter>,
+    security_events: Arc<Mutex<Vec<SecurityEvent>>>,
+    attack_attempts: Arc<DashMap<String, u32>>,
+}
+
+impl CSRFTokenState {
+    fn new() -> Self {
+        let token_lifetime = Duration::from_secs(3600); // 1 hour default
+        let initial_token = CSRFToken::new(token_lifetime);
+        
+        let state = Self {
+            current_token: Arc::new(Mutex::new(Some(initial_token.clone()))),
+            token_lifetime,
+            refresh_rate_limiter: Arc::new(RateLimiter::direct(TOKEN_REFRESH_QUOTA)),
+            validation_rate_limiter: Arc::new(RateLimiter::direct(TOKEN_VALIDATION_QUOTA)),
+            security_events: Arc::new(Mutex::new(Vec::new())),
+            attack_attempts: Arc::new(DashMap::new()),
+        };
+        
+        // Log initial token generation
+        tokio::spawn({
+            let events = state.security_events.clone();
+            let token_id = initial_token.id.clone();
+            async move {
+                let event = SecurityEvent::TokenGenerated {
+                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    token_id,
+                };
+                events.lock().await.push(event);
+            }
+        });
+        
+        state
+    }
+    
+    async fn validate_token(&self, provided_token: &str) -> bool {
+        // Rate limiting for validation attempts
+        if self.validation_rate_limiter.check().is_err() {
+            self.log_security_event(SecurityEvent::RateLimitExceeded {
+                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                operation: "token_validation".to_string(),
+            }).await;
+            warn!("CSRF token validation rate limit exceeded");
+            return false;
+        }
+        
+        let mut token_guard = self.current_token.lock().await;
+        
+        if let Some(ref mut token) = *token_guard {
+            // Check if token is expired
+            if token.is_expired() {
+                self.log_security_event(SecurityEvent::TokenExpired {
+                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    token_id: token.id.clone(),
+                }).await;
+                *token_guard = None;
+                return false;
+            }
+            
+            let is_valid = token.value == provided_token;
+            
+            if is_valid {
+                token.mark_used();
+                self.log_security_event(SecurityEvent::TokenValidated {
+                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    token_id: token.id.clone(),
+                    success: true,
+                }).await;
+                true
+            } else {
+                // Potential CSRF attack detected
+                self.detect_csrf_attack(provided_token, &token.value).await;
+                self.log_security_event(SecurityEvent::TokenValidated {
+                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    token_id: token.id.clone(),
+                    success: false,
+                }).await;
+                false
+            }
+        } else {
+            false
+        }
+    }
+    
+    async fn get_token(&self) -> Option<String> {
+        let mut token_guard = self.current_token.lock().await;
+        
+        if let Some(ref token) = *token_guard {
+            if token.is_expired() {
+                self.log_security_event(SecurityEvent::TokenExpired {
+                    timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                    token_id: token.id.clone(),
+                }).await;
+                *token_guard = None;
+                None
+            } else {
+                Some(token.value.clone())
+            }
+        } else {
+            None
+        }
+    }
+    
+    async fn refresh_token(&self) -> Result<String, String> {
+        // Rate limiting for token refresh
+        if self.refresh_rate_limiter.check().is_err() {
+            self.log_security_event(SecurityEvent::RateLimitExceeded {
+                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                operation: "token_refresh".to_string(),
+            }).await;
+            return Err("Token refresh rate limit exceeded".to_string());
+        }
+        
+        let mut token_guard = self.current_token.lock().await;
+        let old_token_id = token_guard.as_ref().map(|t| t.id.clone()).unwrap_or_else(|| "none".to_string());
+        
+        let new_token = CSRFToken::new(self.token_lifetime);
+        let new_token_value = new_token.value.clone();
+        let new_token_id = new_token.id.clone();
+        
+        *token_guard = Some(new_token);
+        
+        self.log_security_event(SecurityEvent::TokenRefreshed {
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            old_token_id,
+            new_token_id,
+        }).await;
+        
+        Ok(new_token_value)
+    }
+    
+    async fn detect_csrf_attack(&self, provided_token: &str, expected_token: &str) {
+        // Track attack attempts from specific tokens
+        let attack_count = self.attack_attempts.entry(provided_token.to_string())
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+        
+        if *attack_count >= 3 {
+            self.log_security_event(SecurityEvent::SuspiciousActivity {
+                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+                details: format!("Multiple failed CSRF token attempts with token: {}", provided_token),
+            }).await;
+            error!("Potential CSRF attack detected: multiple failed attempts with token {}", provided_token);
+        }
+        
+        self.log_security_event(SecurityEvent::CSRFAttackDetected {
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            provided_token: provided_token.to_string(),
+            expected_token: expected_token.to_string(),
+        }).await;
+        
+        warn!("CSRF attack detected: invalid token provided");
+    }
+    
+    async fn log_security_event(&self, event: SecurityEvent) {
+        let mut events = self.security_events.lock().await;
+        
+        // Log to structured logging
+        match &event {
+            SecurityEvent::TokenGenerated { token_id, .. } => {
+                info!("CSRF token generated: {}", token_id);
+            },
+            SecurityEvent::TokenValidated { token_id, success, .. } => {
+                info!("CSRF token validation: {} - {}", token_id, if *success { "SUCCESS" } else { "FAILED" });
+            },
+            SecurityEvent::CSRFAttackDetected { .. } => {
+                error!("CSRF attack detected: {}", serde_json::to_string(&event).unwrap_or_default());
+            },
+            _ => {
+                info!("Security event: {}", serde_json::to_string(&event).unwrap_or_default());
+            }
+        }
+        
+        events.push(event);
+        
+        // Keep only last 1000 events to prevent memory issues
+        if events.len() > 1000 {
+            events.drain(0..events.len() - 1000);
+        }
+    }
+    
+    async fn get_security_events(&self) -> Vec<SecurityEvent> {
+        self.security_events.lock().await.clone()
+    }
+    
+    async fn cleanup_expired_attack_attempts(&self) {
+        // Remove old attack attempt records (older than 1 hour)
+        self.attack_attempts.retain(|_, _| {
+            // In a production system, you'd want to track timestamps for each attempt
+            // For now, we'll periodically clear all attempts
+            false
+        });
+    }
+}
+
+// Enhanced macro to validate CSRF token for protected commands
+macro_rules! validate_csrf {
+    ($csrf_state:expr, $token:expr) => {
+        if !$csrf_state.validate_token($token).await {
+            return Err("Invalid or expired CSRF token. Please refresh and try again.".to_string());
+        }
+    };
+}
+
+// Tauri commands for CSRF token management
+#[tauri::command]
+async fn get_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
+    csrf_state.get_token().await.ok_or_else(|| "No CSRF token available".to_string())
+}
+
+#[tauri::command]
+async fn refresh_csrf_token(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<String, String> {
+    csrf_state.refresh_token().await
+}
+
+#[tauri::command]
+async fn get_security_events(csrf_state: tauri::State<'_, CSRFTokenState>) -> Result<Vec<SecurityEvent>, String> {
+    Ok(csrf_state.get_security_events().await)
+}
+
+#[tauri::command]
+async fn validate_csrf_token(
+    token: String,
+    csrf_state: tauri::State<'_, CSRFTokenState>
+) -> Result<bool, String> {
+    Ok(csrf_state.validate_token(&token).await)
 }
 
 // Add heartbeat data structure
@@ -1336,8 +1603,13 @@ async fn delete_session(
 #[tauri::command]
 async fn choose_storage_directory(
   app_handle: tauri::AppHandle,
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<Option<String>, String> {
+  // CSRF Protection
+  validate_csrf!(csrf_state, &csrf_token);
+  
   use tauri_plugin_dialog::DialogExt;
   
   let config = path_config.0.lock().await;
@@ -1722,8 +1994,13 @@ async fn load_session_data(
 async fn save_filtered_data(
   file_name: String,
   content: String,
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
+  // CSRF Protection
+  validate_csrf!(csrf_state, &csrf_token);
+  
   let config = path_config.0.lock().await;
   
   // Use sessions subdirectory within app data directory for consistency
@@ -1764,6 +2041,17 @@ async fn get_storage_path(
 }
 
 fn main() {
+  // Initialize structured logging
+  tracing_subscriber::fmt()
+    .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+    .with_target(false)
+    .with_thread_ids(true)
+    .with_file(true)
+    .with_line_number(true)
+    .init();
+
+  info!("Starting Gait Monitor application with enhanced CSRF protection");
+
   let connected_devices = ConnectedDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let discovered_devices = DiscoveredDevicesState(Arc::new(Mutex::new(HashMap::new())));
   let bt_manager = BluetoothManagerState(Arc::new(Mutex::new(None)));
@@ -1772,6 +2060,19 @@ fn main() {
   let csrf_token_state = CSRFTokenState::new();
   let path_config_state = PathConfigState::new().expect("Failed to initialize path config");
   let sample_rate_state = SampleRateState::new();
+
+  info!("All application states initialized successfully");
+  
+  // Start background task for CSRF token cleanup
+  let csrf_cleanup_state = csrf_token_state.clone();
+  tokio::spawn(async move {
+    let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+    loop {
+      interval.tick().await;
+      csrf_cleanup_state.cleanup_expired_attack_attempts().await;
+      info!("Completed CSRF attack attempts cleanup");
+    }
+  });
   
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
@@ -1784,7 +2085,34 @@ fn main() {
     .manage(csrf_token_state)
     .manage(path_config_state)
     .manage(sample_rate_state)
-    .invoke_handler(tauri::generate_handler![scan_devices, connect_device, disconnect_device, get_connected_devices, is_device_connected, start_gait_notifications, stop_gait_notifications, get_active_notifications, is_device_collecting, debug_device_services, check_connection_status, save_session_data, get_sessions, delete_session, choose_storage_directory, copy_file_to_downloads, get_csrf_token, refresh_csrf_token, get_path_config, validate_path, load_session_data, save_filtered_data, get_storage_path, get_sample_rate])
+    .invoke_handler(tauri::generate_handler![
+      scan_devices, 
+      connect_device, 
+      disconnect_device, 
+      get_connected_devices, 
+      is_device_connected, 
+      start_gait_notifications, 
+      stop_gait_notifications, 
+      get_active_notifications, 
+      is_device_collecting, 
+      debug_device_services, 
+      check_connection_status, 
+      save_session_data, 
+      get_sessions, 
+      delete_session, 
+      choose_storage_directory, 
+      copy_file_to_downloads, 
+      get_csrf_token, 
+      refresh_csrf_token, 
+      get_security_events,
+      validate_csrf_token,
+      get_path_config, 
+      validate_path, 
+      load_session_data, 
+      save_filtered_data, 
+      get_storage_path, 
+      get_sample_rate
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

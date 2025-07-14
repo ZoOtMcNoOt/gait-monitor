@@ -7,6 +7,7 @@ import ConfirmationModal from './ConfirmationModal'
 import ErrorBoundary from './ErrorBoundary'
 import DataViewer from './DataViewer'
 import ScrollableContainer from './ScrollableContainer'
+import { protectedOperations } from '../services/csrfProtection'
 import '../styles/tables.css'
 import '../styles/tabs.css'
 
@@ -119,19 +120,16 @@ function LogsTabContent() {
 
   const handleDownloadLog = async (log: LogEntry) => {
     try {
-      // Get CSRF token first
-      const csrfToken = await invoke('get_csrf_token')
-      
-      // Copy the file to Downloads folder with a user-friendly name
+      // Copy the file to Downloads folder with a user-friendly name using enhanced CSRF protection
       const safeDate = log.timestamp && log.timestamp > 0 
         ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds directly
         : 'unknown-date'
         
-      const result = await invoke('copy_file_to_downloads', { 
-        filePath: log.file_path,
-        fileName: `${log.session_name}_${log.subject_id}_${safeDate}.csv`,
-        csrfToken
-      })
+      const result = await protectedOperations.copyFileToDownloads(
+        log.file_path,
+        `${log.session_name}_${log.subject_id}_${safeDate}.csv`
+      )
+      
       showSuccess(
         'File Exported Successfully',
         `File exported to Downloads folder: ${result}`
@@ -157,16 +155,25 @@ function LogsTabContent() {
     
     if (confirmed) {
       try {
-        // Get CSRF token first
-        const csrfToken = await invoke('get_csrf_token')
+        // Use enhanced CSRF protection for delete operation
+        await protectedOperations.deleteSession(logId)
         
-        await invoke('delete_session', { sessionId: logId, csrfToken })
         // Reload logs after deletion
         await loadLogs()
         showSuccess('Session Deleted', 'The session has been successfully deleted.')
       } catch (error) {
         console.error('Failed to delete session:', error)
-        showError('Delete Failed', `Failed to delete session: ${error}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        
+        // Enhanced error handling for CSRF-related errors
+        if (errorMessage.includes('CSRF')) {
+          showError('Security Error', `${errorMessage}\n\nThe page will refresh to get a new security token.`)
+          setTimeout(() => window.location.reload(), 3000)
+        } else if (errorMessage.includes('rate limit')) {
+          showError('Rate Limit Exceeded', `${errorMessage}\n\nPlease wait a moment before trying again.`)
+        } else {
+          showError('Delete Failed', `Failed to delete session: ${errorMessage}`)
+        }
       }
     }
   }

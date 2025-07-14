@@ -32,4 +32,12 @@ futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 tokio = { version = "1.0", features = ["fs"] }
+sha2 = "0.10"
+base64 = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+ring = "0.17"
+dashmap = "5.5"
+governor = "0.6"
+nonzero_ext = "0.3"
 

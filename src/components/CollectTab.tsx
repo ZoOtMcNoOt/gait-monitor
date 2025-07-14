@@ -4,8 +4,8 @@ import LiveChart from './LiveChart'
 import MultiDeviceSelector from './MultiDeviceSelector'
 import ScrollableContainer from './ScrollableContainer'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
-import { invoke } from '@tauri-apps/api/core'
 import ErrorBoundary from './ErrorBoundary'
+import { protectedOperations, securityMonitor } from '../services/csrfProtection'
 import '../styles/modal.css'
 import '../styles/tabs.css'
 
@@ -42,6 +42,17 @@ export default function CollectTab() {
 
   // Data collection buffer
   const dataBuffer = useRef<GaitDataPoint[]>([])
+
+  // Initialize security monitoring
+  useEffect(() => {
+    console.log('🛡️ Starting security monitoring for file operations')
+    securityMonitor.startMonitoring(30000) // Check every 30 seconds
+    
+    return () => {
+      console.log('🛡️ Stopping security monitoring')
+      securityMonitor.stopMonitoring()
+    }
+  }, [])
 
   // Use global device connection context
   const { 
@@ -279,20 +290,15 @@ export default function CollectTab() {
     setIsSaving(true)
     
     try {
-      // Get CSRF token first
-      console.log('🔐 Getting CSRF token...')
-      const csrfToken = await invoke<string>('get_csrf_token')
-      console.log('✅ CSRF token obtained')
+      console.log('🔐 Saving session with enhanced CSRF protection...')
 
-      // Save session data with CSRF token
-      const filePath = await invoke<string>('save_session_data', {
-        sessionName: collectedData.sessionName,
-        subjectId: collectedData.subjectId,
-        notes: collectedData.notes,
-        data: collectedData.dataPoints,
-        storagePath: null, // Use default path for now
-        csrfToken: csrfToken
-      })
+      // Use enhanced CSRF protection with automatic retry
+      const filePath = await protectedOperations.saveSessionData(
+        collectedData.sessionName,
+        collectedData.subjectId,
+        collectedData.notes,
+        collectedData.dataPoints
+      )
 
       console.log('✅ Session saved successfully to:', filePath)
       alert(`Session saved successfully!\n\nFile: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
@@ -305,7 +311,16 @@ export default function CollectTab() {
     } catch (error) {
       console.error('❌ Failed to save session:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      alert(`Failed to save session: ${errorMessage}\n\nPlease check the console for more details and try again.`)
+      
+      // Enhanced error handling for CSRF-related errors
+      if (errorMessage.includes('CSRF')) {
+        alert(`Security Error: ${errorMessage}\n\nThis might be due to an expired session. The page will refresh to get a new security token.`)
+        window.location.reload()
+      } else if (errorMessage.includes('rate limit')) {
+        alert(`Rate Limit Exceeded: ${errorMessage}\n\nPlease wait a moment before trying again.`)
+      } else {
+        alert(`Failed to save session: ${errorMessage}\n\nPlease check the console for more details and try again.`)
+      }
     } finally {
       setIsSaving(false)
     }
