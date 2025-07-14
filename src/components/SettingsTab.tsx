@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
 import ScrollableContainer from './ScrollableContainer'
+import { protectedOperations } from '../services/csrfProtection'
 import '../styles/settings.css'
 import '../styles/tabs.css'
 
@@ -126,9 +127,9 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           // Get all sessions first
           const sessions = await invoke<SessionMetadata[]>('get_sessions')
           
-          // Delete each session
+          // Delete each session using CSRF protection
           for (const session of sessions) {
-            await invoke('delete_session', { sessionId: session.id })
+            await protectedOperations.deleteSession(session.id)
           }
           
           showSuccess('Data Cleared', `Successfully deleted ${sessions.length} session(s) and their data files.`)

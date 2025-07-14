@@ -6,6 +6,7 @@ import { config } from '../config'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { registerChartComponents } from '../utils/chartSetup'
+import { protectedOperations } from '../services/csrfProtection'
 import '../styles/modal.css'
 
 // Register Chart.js components
@@ -234,22 +235,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
       const fileName = `${sessionName}_filtered_${new Date().toISOString().split('T')[0]}.csv`
       
-      // Save filtered data to app data directory
-      const savedPath = await invoke('save_filtered_data', {
-        fileName,
-        content: csvContent
-      })
+      // Save filtered data to app data directory using CSRF protection
+      const savedPath = await protectedOperations.saveFilteredData(fileName, csvContent) as string
       
-      // Then copy it to Downloads folder using the working copy function
+      // Then copy it to Downloads folder using CSRF protection
       try {
-        // Get CSRF token first
-        const csrfToken = await invoke('get_csrf_token')
-        
-        const result = await invoke('copy_file_to_downloads', { 
-          filePath: savedPath,
-          fileName: fileName,
-          csrfToken
-        })
+        const result = await protectedOperations.copyFileToDownloads(savedPath, fileName)
         
         showSuccess(
           'File Exported Successfully',
