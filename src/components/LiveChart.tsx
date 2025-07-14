@@ -13,6 +13,7 @@ import {
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
+import { useTimestampManager } from '../hooks/useTimestampManager'
 import BufferStatsPanel from './BufferStatsPanel'
 
 Chart.register(
@@ -79,8 +80,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
   // Initialize unified buffer manager
   const bufferManager = useBufferManager()
   
-  // Chart timing reference
-  const baseTimestamp = useRef<number | null>(null)
+  // Optimized timestamp management with caching
+  const { getChartTimestamp } = useTimestampManager({
+    useRelativeTime: true,
+    autoSetBase: true,
+    cacheExpiration: 1000 // 1 second cache for high-frequency data
+  })
 
   // Calculate current sample rate display
   const getCurrentSampleRateDisplay = useCallback((): string => {
@@ -244,14 +249,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
     const deviceId = gaitData.device_id
     
-    // Initialize base timestamp on first data point from any device
-    if (baseTimestamp.current === null) {
-      baseTimestamp.current = gaitData.timestamp
-      console.log('📏 Base timestamp set:', baseTimestamp.current, 'for device:', deviceId)
-    }
-    
-    // Convert to relative time from base timestamp (in seconds)
-    const relativeTime = (gaitData.timestamp - baseTimestamp.current) / 1000
+    // Use timestamp manager for optimized timestamp handling
+    const relativeTime = getChartTimestamp(gaitData.timestamp)
     const normalizedGaitData = { 
       ...gaitData, 
       timestamp: relativeTime 
@@ -279,7 +278,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         console.log(`📈 BufferManager: ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
       }
     }
-  }, [updateChartForDevice, bufferManager])
+  }, [updateChartForDevice, bufferManager, getChartTimestamp])
 
   // Initialize chart with original UI style
   useEffect(() => {
@@ -423,8 +422,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
     let simulationInterval: ReturnType<typeof setInterval> | null = null
     
-    // Reset base timestamp and clear buffers when starting collection
-    baseTimestamp.current = null
+    // Clear buffers when starting collection (TimestampManager handles base timestamp)
     bufferManager.clearAll()
     
     // Clear existing chart data

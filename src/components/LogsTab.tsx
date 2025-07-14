@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
+import { useTimestampManager } from '../hooks/useTimestampManager'
 import ConfirmationModal from './ConfirmationModal'
 import ErrorBoundary from './ErrorBoundary'
 import DataViewer from './DataViewer'
@@ -46,6 +47,9 @@ function LogsTabContent() {
   })
   const [viewingSession, setViewingSession] = useState<LogEntry | null>(null)
   
+  // Optimized timestamp management
+  const { formatTimestamp } = useTimestampManager()
+  
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
@@ -59,8 +63,7 @@ function LogsTabContent() {
       console.log('📊 Sample session timestamps:', sessions.slice(0, 3).map(s => ({ 
         name: s.session_name, 
         timestamp: s.timestamp,
-        asDate: new Date(s.timestamp * 1000).toLocaleString(),
-        asMicroseconds: new Date(s.timestamp / 1000).toLocaleString()
+        asDate: formatTimestamp(s.timestamp)
       })))
       
       // Convert to LogEntry format
@@ -81,16 +84,10 @@ function LogsTabContent() {
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
       
-      // Filter out invalid timestamps and convert to milliseconds
+      // Since backend now generates millisecond timestamps, use them directly
       const validTimestamps = logEntries
         .map(log => log.timestamp)
         .filter(timestamp => timestamp && timestamp > 0)
-        .map(timestamp => {
-          // Auto-detect if timestamp is in seconds or microseconds
-          return timestamp > 1e12 
-            ? timestamp / 1000 // Convert microseconds to milliseconds
-            : timestamp * 1000 // Convert seconds to milliseconds
-        })
         
       const lastSession = validTimestamps.length > 0 
         ? new Date(Math.max(...validTimestamps))
@@ -116,7 +113,7 @@ function LogsTabContent() {
       setLogs([])
       setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
     }
-  }, [showError, showInfo])
+  }, [showError, showInfo, formatTimestamp])
 
   // Load logs from storage
   useEffect(() => {
@@ -135,12 +132,7 @@ function LogsTabContent() {
       
       // Copy the file to Downloads folder with a user-friendly name
       const safeDate = log.timestamp && log.timestamp > 0 
-        ? (() => {
-            const date = log.timestamp > 1e12 
-              ? new Date(log.timestamp / 1000) // microseconds to milliseconds
-              : new Date(log.timestamp * 1000) // seconds to milliseconds
-            return date.toISOString().split('T')[0]
-          })()
+        ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds
         : 'unknown-date'
         
       const result = await invoke('copy_file_to_downloads', { 
@@ -193,25 +185,6 @@ function LogsTabContent() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
     return `${Math.round(bytes / (1024 * 1024))} MB`
-  }
-
-  const formatTimestamp = (timestamp: number) => {
-    if (!timestamp || timestamp <= 0) {
-      return 'Invalid Date'
-    }
-    try {
-      // Auto-detect if timestamp is in seconds or microseconds
-      // Timestamps > 1e12 are likely microseconds (after year 2001 in microseconds)
-      // Timestamps < 1e12 are likely seconds (valid until year 2286)
-      const date = timestamp > 1e12 
-        ? new Date(timestamp / 1000) // Convert microseconds to milliseconds
-        : new Date(timestamp * 1000) // Convert seconds to milliseconds
-        
-      return date.toLocaleString()
-    } catch {
-      console.warn('Invalid timestamp:', timestamp)
-      return 'Invalid Date'
-    }
   }
 
   return (

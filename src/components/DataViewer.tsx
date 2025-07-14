@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useToast } from '../contexts/ToastContext'
+import { useTimestampManager } from '../hooks/useTimestampManager'
 import { config } from '../config'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
@@ -54,6 +55,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'chart' | 'table' | 'stats'>('chart')
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
+  
+  // Optimized timestamp management
+  const { formatTimestamp } = useTimestampManager()
   
   const { showError, showInfo, showSuccess } = useToast()
 
@@ -149,11 +153,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         return {
           label: `${device} - ${dataType}`,
           data: deviceData.map(point => {
-            // Backend generates microsecond timestamps, convert to milliseconds for Chart.js
-            const timestampMs = point.timestamp / 1000
-            
+            // Backend now generates millisecond timestamps directly
             return {
-              x: timestampMs,
+              x: point.timestamp,
               y: point.value
             }
           }),
@@ -218,11 +220,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       const csvContent = [
         ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
         ...filteredData.map(point => {
-          // Backend generates microsecond timestamps, convert to milliseconds for Date
-          const timestampMs = point.timestamp / 1000
-          
+          // Backend now generates millisecond timestamps directly
           return [
-            new Date(timestampMs).toISOString(),
+            new Date(point.timestamp).toISOString(),
             point.device_id,
             point.data_type,
             point.value,
@@ -495,7 +495,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 <tbody>
                   {filteredData.slice(0, config.maxChartPoints).map((point, index) => (
                     <tr key={index}>
-                      <td>{new Date(point.timestamp / 1000).toLocaleTimeString()}</td>
+                      <td>{formatTimestamp(point.timestamp)}</td>
                       <td>{point.device_id}</td>
                       <td>{point.data_type}</td>
                       <td>{point.value.toFixed(3)}</td>
