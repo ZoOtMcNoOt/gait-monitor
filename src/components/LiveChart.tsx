@@ -13,6 +13,7 @@ import {
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
+import BufferStatsPanel from './BufferStatsPanel'
 
 Chart.register(
   LineController, 
@@ -62,6 +63,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
+  const [showBufferStats, setShowBufferStats] = useState(false)
   
   // Use global device connection context (read-only)
   const { 
@@ -559,8 +561,28 @@ export default function LiveChart({ isCollecting = false }: Props) {
           })()}</span>
           <span>•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
+          {config.debugEnabled && (
+            <>
+              <span>•</span>
+              <button
+                onClick={() => setShowBufferStats(!showBufferStats)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${
+                  showBufferStats 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {showBufferStats ? 'Hide' : 'Show'} Buffer Stats
+              </button>
+            </>
+          )}
         </div>
       </div>
+      
+      {/* Buffer Statistics Panel (Debug Mode) */}
+      {config.debugEnabled && (
+        <BufferStatsPanel isVisible={showBufferStats} />
+      )}
     </section>
   )
 }
