@@ -53,20 +53,20 @@ export interface AppConfig {
 }
 
 // Helper function to parse boolean environment variables
-const parseBoolean = (value: string | undefined, defaultValue: boolean = false): boolean => {
+export const parseBoolean = (value: string | undefined, defaultValue: boolean = false): boolean => {
   if (!value) return defaultValue
   return value.toLowerCase() === 'true'
 }
 
 // Helper function to parse number environment variables
-const parseNumber = (value: string | undefined, defaultValue: number): number => {
+export const parseNumber = (value: string | undefined, defaultValue: number): number => {
   if (!value) return defaultValue
   const parsed = Number(value)
   return isNaN(parsed) ? defaultValue : parsed
 }
 
 // Helper function to parse string environment variables with validation
-const parseString = <T extends string>(
+export const parseString = <T extends string>(
   value: string | undefined, 
   validValues: T[], 
   defaultValue: T

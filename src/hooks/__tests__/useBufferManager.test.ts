@@ -51,13 +51,20 @@ describe('useBufferManager', () => {
     await renderHook()
 
     expect(hookResult).toBeDefined()
+    
+    // Wait a tick for useEffect to complete
+    await new Promise(resolve => setTimeout(resolve, 0))
+    
     expect(hookResult!.getTotalDevices()).toBe(0)
   })
 
   it('should add data to buffer', async () => {
     await renderHook()
+    
+    // Wait a tick for useEffect to complete
+    await new Promise(resolve => setTimeout(resolve, 0))
+    
     const testData = createMockGaitData()
-
     hookResult!.addData(testData)
 
     expect(hookResult!.getTotalDevices()).toBe(1)

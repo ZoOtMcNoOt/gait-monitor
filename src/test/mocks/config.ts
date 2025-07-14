@@ -109,6 +109,28 @@ export const validateConfig = jest.fn((cfg: AppConfig): string[] => {
   
   return errors
 })
+
+// Export the parsing functions
+export const parseBoolean = (value: string | undefined, defaultValue: boolean = false): boolean => {
+  if (!value) return defaultValue
+  return value.toLowerCase() === 'true'
+}
+
+export const parseNumber = (value: string | undefined, defaultValue: number): number => {
+  if (!value) return defaultValue
+  const parsed = Number(value)
+  return isNaN(parsed) ? defaultValue : parsed
+}
+
+export const parseString = <T extends string>(
+  value: string | undefined, 
+  validValues: T[], 
+  defaultValue: T
+): T => {
+  if (!value || !validValues.includes(value as T)) return defaultValue
+  return value as T
+}
+
 export const isDevelopment = jest.fn(() => true)
 export const isProduction = jest.fn(() => false) 
 export const isDebugEnabled = jest.fn(() => true)
