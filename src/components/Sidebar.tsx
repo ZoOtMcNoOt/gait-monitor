@@ -1,4 +1,5 @@
 // Sidebar Component
+import '../styles/sidebar.css'
 
 interface Props { 
   page: 'connect' | 'collect' | 'logs' | 'settings'

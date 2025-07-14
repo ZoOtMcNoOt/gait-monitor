@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { config } from '../config'
+import '../styles/toast.css'
 
 export interface Toast {
   id: string;

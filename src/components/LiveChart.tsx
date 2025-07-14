@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import '../styles/chart.css'
 import { 
   Chart, 
   LineController, 
