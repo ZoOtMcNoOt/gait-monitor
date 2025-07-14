@@ -1,0 +1,414 @@
+/*────────────────────────────────────────────────────────
+  Modal Component Styles
+────────────────────────────────────────────────────────*/
+
+/* Modal overlay */
+.data-viewer-overlay,
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: var(--spacing);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Data viewer modal */
+.data-viewer-modal {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 95vw;
+  height: 90vh;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  animation: modal-scale-in 0.2s ease-out;
+}
+
+.data-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.data-viewer-header .session-info h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-color);
+}
+
+.data-viewer-header .session-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: calc(var(--radius) * 0.5);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-close:hover {
+  background: var(--color-border);
+  color: var(--text-color);
+}
+
+.data-viewer-controls {
+  padding: var(--spacing);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-group label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.btn-group {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--color-card-bg);
+  padding: 0.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.btn-small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: calc(var(--radius) - 0.125rem);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.btn-small.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-small.btn-secondary {
+  background: transparent;
+  color: var(--text-color);
+}
+
+.btn-small.btn-secondary:hover {
+  background: var(--color-bg);
+}
+
+/* Confirmation modal */
+.confirmation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.confirmation-modal {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 90vw;
+  max-width: 500px;
+  border: 1px solid var(--color-border);
+  animation: modal-scale-in 0.2s ease-out;
+  overflow: hidden;
+}
+
+.confirmation-modal-header {
+  padding: var(--spacing);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+}
+
+.confirmation-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confirmation-modal-body {
+  padding: var(--spacing);
+  background: var(--color-card-bg);
+}
+
+.confirmation-modal-body p {
+  margin: 0 0 var(--spacing) 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.session-stats {
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  padding: var(--spacing);
+  margin: var(--spacing) 0;
+  border: 1px solid var(--color-border);
+}
+
+.session-stats h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.session-stats .stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.session-stats .stat-row:last-child {
+  margin-bottom: 0;
+}
+
+.session-stats .stat-label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.session-stats .stat-value {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+.confirmation-modal-footer {
+  padding: var(--spacing);
+  background: var(--color-card-bg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.confirmation-modal-footer .btn-primary,
+.confirmation-modal-footer .btn-secondary,
+.confirmation-modal-footer .btn-danger {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  min-width: 80px;
+  font-family: inherit;
+}
+
+.confirmation-modal-footer .btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.confirmation-modal-footer .btn-primary:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+}
+
+.confirmation-modal-footer .btn-secondary {
+  background: var(--color-bg);
+  color: var(--text-color);
+  border-color: var(--color-border);
+}
+
+.confirmation-modal-footer .btn-secondary:hover {
+  background: var(--color-border);
+}
+
+.confirmation-modal-footer .btn-danger {
+  background: var(--error-color);
+  color: white;
+  border-color: var(--error-color);
+}
+
+.confirmation-modal-footer .btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* CollectTab modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 90vw;
+  max-width: 500px;
+  border: 1px solid var(--color-border);
+  animation: modal-scale-in 0.2s ease-out;
+  padding: var(--spacing);
+}
+
+.modal-content h3 {
+  margin: 0 0 var(--spacing) 0;
+  font-size: 1.1rem;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+}
+
+.modal-content > p {
+  margin: 0 0 var(--spacing) 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.modal-details {
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  padding: var(--spacing);
+  margin: var(--spacing) 0;
+  border: 1px solid var(--color-border);
+}
+
+.modal-details p {
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.modal-details p:last-child {
+  margin-bottom: 0;
+}
+
+.modal-details strong {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.modal-warning {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin: var(--spacing) 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: var(--spacing);
+  padding-top: var(--spacing);
+  border-top: 1px solid var(--color-border);
+}
+
+.modal-confirm-btn {
+  order: 1;
+}
+
+.modal-actions .btn-secondary {
+  order: 2;
+}
+
+/* Modal animations */
+@keyframes modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .data-viewer-modal {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+  
+  .confirmation-modal {
+    width: 95vw;
+    margin: var(--spacing);
+  }
+  
+  .data-viewer-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-group {
+    justify-content: center;
+  }
+}

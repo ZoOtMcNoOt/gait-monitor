@@ -6,6 +6,7 @@ import ScrollableContainer from './ScrollableContainer'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { invoke } from '@tauri-apps/api/core'
 import ErrorBoundary from './ErrorBoundary'
+import '../styles/modal.css'
 
 type CollectStep = 'metadata' | 'live' | 'review'
 

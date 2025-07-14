@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import '../styles/modal.css'
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -72,49 +73,41 @@ export const ConfirmationModal = ({
   return (
     <div
       ref={modalRef}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="confirmation-modal-overlay"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
       aria-describedby="modal-description"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="p-6">
-          <div className="flex items-center mb-4">
-            <span className="text-2xl mr-3" aria-hidden="true">
-              {currentStyle.icon}
-            </span>
-            <h3 
-              id="modal-title"
-              className="text-lg font-semibold text-gray-900 dark:text-white"
-            >
-              {title}
-            </h3>
-          </div>
-          
-          <p 
-            id="modal-description"
-            className="text-gray-600 dark:text-gray-300 mb-6"
-          >
+      <div className="confirmation-modal">
+        <div className="confirmation-modal-header">
+          <h3 id="modal-title">
+            <span aria-hidden="true">{currentStyle.icon}</span>
+            {title}
+          </h3>
+        </div>
+        
+        <div className="confirmation-modal-body">
+          <p id="modal-description">
             {message}
           </p>
-          
-          <div className="flex justify-end space-x-3">
-            <button
-              ref={cancelButtonRef}
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              {cancelText}
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`px-4 py-2 text-white rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${currentStyle.confirmButton}`}
-            >
-              {confirmText}
-            </button>
-          </div>
+        </div>
+        
+        <div className="confirmation-modal-footer">
+          <button
+            ref={cancelButtonRef}
+            onClick={onCancel}
+            className="btn-secondary"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={type === 'danger' ? 'btn-danger' : 'btn-primary'}
+          >
+            {confirmText}
+          </button>
         </div>
       </div>
     </div>

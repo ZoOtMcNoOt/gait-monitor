@@ -6,6 +6,7 @@ import { config } from '../config'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { registerChartComponents } from '../utils/chartSetup'
+import '../styles/modal.css'
 
 // Register Chart.js components
 registerChartComponents()
