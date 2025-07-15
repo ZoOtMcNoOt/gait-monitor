@@ -10,10 +10,8 @@ export default function DeviceList() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [devicesPerPage, setDevicesPerPage] = useState(5)
-  const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0)
   
   // Refs for keyboard navigation
-  const deviceListRef = useRef<HTMLDivElement>(null)
   const deviceButtonRefs = useRef<(HTMLButtonElement | null)[]>([])
   
   // Add hooks for proper error handling
@@ -35,22 +33,8 @@ export default function DeviceList() {
     removeScannedDevice // Add manual device removal
   } = useDeviceConnection()
 
-  // Keyboard navigation functions
-  const focusDevice = useCallback((index: number) => {
-    const sortedDevices = getSortedDevices()
-    if (index >= 0 && index < sortedDevices.length) {
-      setSelectedDeviceIndex(index)
-      deviceButtonRefs.current[index]?.focus()
-    }
-  }, [])
-
-  // Load connected devices on component mount
-  useEffect(() => {
-    refreshConnectedDevices()
-  }, [refreshConnectedDevices])
-
   // Sort devices function
-  const getSortedDevices = () => {
+  const getSortedDevices = useCallback(() => {
     return scannedDevices
       .sort((a, b) => {
         // Sort GaitBLE devices to the top
@@ -65,7 +49,20 @@ export default function DeviceList() {
         const bName = b.name || 'Unknown Device';
         return aName.localeCompare(bName);
       })
-  }
+  }, [scannedDevices])
+
+  // Keyboard navigation functions
+  const focusDevice = useCallback((index: number) => {
+    const sortedDevices = getSortedDevices()
+    if (index >= 0 && index < sortedDevices.length) {
+      deviceButtonRefs.current[index]?.focus()
+    }
+  }, [getSortedDevices])
+
+  // Load connected devices on component mount
+  useEffect(() => {
+    refreshConnectedDevices()
+  }, [refreshConnectedDevices])
 
   // Pagination calculations
   const sortedDevices = getSortedDevices()
@@ -117,7 +114,7 @@ export default function DeviceList() {
     }
   }
 
-  const handleConnect = async (deviceId: string) => {
+  const handleConnect = useCallback(async (deviceId: string) => {
     try {
       await connectDevice(deviceId)
       // Show success message
@@ -127,16 +124,16 @@ export default function DeviceList() {
     } catch (error) {
       showError('Connection Failed', error instanceof Error ? error.message : `Connection failed: ${error}`)
     }
-  }
+  }, [connectDevice, scannedDevices, showSuccess, showError])
 
-  const handleDisconnect = async (deviceId: string) => {
+  const handleDisconnect = useCallback(async (deviceId: string) => {
     try {
       await disconnectDevice(deviceId)
       showSuccess('Device Disconnected', 'Device has been disconnected successfully.')
     } catch (error) {
       showError('Disconnection Failed', `Disconnection failed: ${error}`)
     }
-  }
+  }, [disconnectDevice, showSuccess, showError])
 
   const handleScan = async () => {
     try {
@@ -182,7 +179,7 @@ export default function DeviceList() {
         focusDevice(deviceIndex === 0 ? devices.length - 1 : deviceIndex - 1)
         break
       case 'Enter':
-      case ' ':
+      case ' ': {
         e.preventDefault()
         const device = devices[deviceIndex]
         if (device) {
@@ -194,8 +191,9 @@ export default function DeviceList() {
           }
         }
         break
+      }
     }
-  }, [focusDevice, connectedDevices, handleConnect, handleDisconnect])
+  }, [focusDevice, connectedDevices, handleConnect, handleDisconnect, getSortedDevices])
 
   // Device list keyboard shortcuts
   const deviceShortcuts: KeyboardShortcut[] = [
