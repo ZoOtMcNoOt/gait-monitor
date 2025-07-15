@@ -199,6 +199,102 @@ input:focus, select:focus, textarea:focus {
 }
 
 /*────────────────────────────────────────────────────────
+  4.1. Enhanced Focus Indicators (A3.5: Keyboard Navigation)
+────────────────────────────────────────────────────────*/
+
+/* Hide default outline for all elements, we'll add custom ones */
+*:focus {
+  outline: none;
+}
+
+/* Enhanced focus styles for interactive elements */
+button:focus,
+.btn:focus,
+[role="button"]:focus,
+a:focus,
+[href]:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Special focus for primary buttons */
+.btn-primary:focus {
+  outline-color: var(--color-primary-light);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Focus for sidebar navigation */
+.sidebar button:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Enhanced focus for form inputs */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+/* Focus for modal and dialog elements */
+[role="dialog"]:focus,
+.modal:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+/* Focus visible only when using keyboard navigation */
+.js-focus-visible :focus:not(.focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Keyboard navigation indicators */
+[data-keyboard-navigation="true"] button:focus,
+[data-keyboard-navigation="true"] a:focus,
+[data-keyboard-navigation="true"] input:focus,
+[data-keyboard-navigation="true"] select:focus,
+[data-keyboard-navigation="true"] textarea:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.15);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  button:focus,
+  .btn:focus,
+  [role="button"]:focus,
+  a:focus,
+  [href]:focus {
+    outline: 3px solid;
+    outline-offset: 2px;
+  }
+  
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-width: 2px;
+    box-shadow: none;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *:focus {
+    transition: none;
+  }
+  
+  .skip-link {
+    transition: none;
+  }
+}
+
+/*────────────────────────────────────────────────────────
   5. Tables
 ────────────────────────────────────────────────────────*/
 table {
@@ -654,6 +750,10 @@ tbody tr:hover {
   --color-text:          #f3f4f6;
   --color-text-light:    #ffffff;
   --color-border:        #374151;
+  --color-dark-bg:       #111827;
+  --color-dark-card:     #1f2937;
+  --color-dark-border:   #374151;
+  --color-dark-text:     #f3f4f6;
 }
 
 /*────────────────────────────────────────────────────────

@@ -93,10 +93,6 @@ function LogsTabContent() {
         
       setStats({ totalSessions, totalDataPoints, lastSession })
       
-      if (logEntries.length === 0) {
-        showInfo('No Sessions', 'No saved sessions found. Complete the data collection process to create sessions.')
-      }
-      
     } catch (error) {
       console.error('Failed to load sessions:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -106,7 +102,7 @@ function LogsTabContent() {
       setLogs([])
       setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
     }
-  }, [showError, showInfo])
+  }, [showError])
 
   // Load logs from storage
   useEffect(() => {

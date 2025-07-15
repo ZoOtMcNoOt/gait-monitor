@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import type { KeyboardShortcut } from '../hooks/useKeyboardShortcuts'
 import ConfirmationModal from './ConfirmationModal'
 
 export default function DeviceList() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [devicesPerPage, setDevicesPerPage] = useState(5)
+  const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0)
+  
+  // Refs for keyboard navigation
+  const deviceListRef = useRef<HTMLDivElement>(null)
+  const deviceButtonRefs = useRef<(HTMLButtonElement | null)[]>([])
   
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
@@ -27,6 +34,15 @@ export default function DeviceList() {
     refreshConnectedDevices,
     removeScannedDevice // Add manual device removal
   } = useDeviceConnection()
+
+  // Keyboard navigation functions
+  const focusDevice = useCallback((index: number) => {
+    const sortedDevices = getSortedDevices()
+    if (index >= 0 && index < sortedDevices.length) {
+      setSelectedDeviceIndex(index)
+      deviceButtonRefs.current[index]?.focus()
+    }
+  }, [])
 
   // Load connected devices on component mount
   useEffect(() => {
@@ -151,6 +167,59 @@ export default function DeviceList() {
       showError('Debug Failed', `Debug services failed: ${e}`)
     }
   }
+
+  // Keyboard navigation handler (defined after the action handlers)
+  const handleDeviceKeyDown = useCallback((e: React.KeyboardEvent, deviceIndex: number) => {
+    const devices = getSortedDevices()
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        focusDevice((deviceIndex + 1) % devices.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        focusDevice(deviceIndex === 0 ? devices.length - 1 : deviceIndex - 1)
+        break
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        const device = devices[deviceIndex]
+        if (device) {
+          const isDeviceConnected = connectedDevices.includes(device.id)
+          if (isDeviceConnected) {
+            handleDisconnect(device.id)
+          } else {
+            handleConnect(device.id)
+          }
+        }
+        break
+    }
+  }, [focusDevice, connectedDevices, handleConnect, handleDisconnect])
+
+  // Device list keyboard shortcuts
+  const deviceShortcuts: KeyboardShortcut[] = [
+    {
+      key: 's',
+      ctrl: true,
+      description: 'Start/stop device scanning',
+      category: 'Device Management',
+      action: () => handleScan()
+    },
+    {
+      key: 'r',
+      ctrl: true,
+      description: 'Refresh connected devices',
+      category: 'Device Management', 
+      action: () => refreshConnectedDevices()
+    }
+  ]
+
+  // Enable keyboard shortcuts for device list
+  useKeyboardShortcuts({
+    shortcuts: deviceShortcuts,
+    enabled: true
+  })
 
   return (
     <section className="card device-list-card">
@@ -298,7 +367,7 @@ export default function DeviceList() {
             )}
             
             <ul>
-              {currentDevices.map(d => (
+              {currentDevices.map((d, index) => (
                 <li key={d.id} className={`device-card ${isConnected(d.id) ? 'connected' : ''} ${(d.name || '').toLowerCase().startsWith('gaitble') ? 'gaitble-device' : ''}`}>
                   <div className="device-header">
                     <div className="device-name-section">
@@ -399,9 +468,13 @@ export default function DeviceList() {
                     {isConnected(d.id) ? (
                       <div className="action-buttons">
                         <button 
+                          ref={el => { deviceButtonRefs.current[startIndex + index] = el }}
                           onClick={() => handleDisconnect(d.id)}
+                          onKeyDown={(e) => handleDeviceKeyDown(e, startIndex + index)}
                           disabled={isConnecting === d.id}
                           className="btn btn-disconnect"
+                          aria-label={`Disconnect ${d.name || 'Unknown Device'} (Arrow keys to navigate, Enter to activate)`}
+                          tabIndex={0}
                         >
                           {isConnecting === d.id ? 'Disconnecting...' : 'Disconnect'}
                         </button>
@@ -409,6 +482,7 @@ export default function DeviceList() {
                           onClick={() => debugServices(d.id)}
                           className="btn btn-debug"
                           title="Debug: List all services on this device"
+                          aria-label={`Debug services for ${d.name || 'Unknown Device'}`}
                         >
                           Debug Services
                         </button>
@@ -416,6 +490,7 @@ export default function DeviceList() {
                           onClick={() => handleRemoveDevice(d.id)}
                           className="btn btn-remove"
                           title="Remove this device from the list"
+                          aria-label={`Remove ${d.name || 'Unknown Device'} from list`}
                         >
                           Remove
                         </button>
@@ -423,10 +498,14 @@ export default function DeviceList() {
                     ) : (
                       <div className="action-buttons">
                         <button 
+                          ref={el => { deviceButtonRefs.current[startIndex + index] = el }}
                           onClick={() => handleConnect(d.id)}
+                          onKeyDown={(e) => handleDeviceKeyDown(e, startIndex + index)}
                           disabled={isConnecting === d.id || !d.connectable}
                           className="btn btn-connect"
                           title={!d.connectable ? 'Device is not connectable' : ''}
+                          aria-label={`Connect to ${d.name || 'Unknown Device'} (Arrow keys to navigate, Enter to activate)`}
+                          tabIndex={0}
                         >
                           {isConnecting === d.id ? 'Connecting...' : 'Connect'}
                         </button>

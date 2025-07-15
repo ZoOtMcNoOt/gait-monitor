@@ -7,26 +7,40 @@ interface Props {
 }
 
 const tabs = [
-  { id: 'connect', label: 'Connect', icon: '🔗' },
-  { id: 'collect', label: 'Collect', icon: '📊' },
-  { id: 'logs', label: 'Logs', icon: '📋' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' }
+  { id: 'connect', label: 'Connect', icon: '🔗', shortcut: 'Ctrl+1' },
+  { id: 'collect', label: 'Collect', icon: '📊', shortcut: 'Ctrl+2' },
+  { id: 'logs', label: 'Logs', icon: '📋', shortcut: 'Ctrl+3' },
+  { id: 'settings', label: 'Settings', icon: '⚙️', shortcut: 'Ctrl+4' }
 ] as const
 
 export default function Sidebar({ page, onChange }: Props) {
+  const handleKeyDown = (e: React.KeyboardEvent, tabId: string) => {
+    // Handle Enter and Space keys for accessibility
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onChange(tabId as 'connect' | 'collect' | 'logs' | 'settings');
+    }
+  };
+
   return (
-    <nav className="sidebar">
+    <nav className="sidebar" role="navigation" aria-label="Main navigation">
       <div className="sidebar-header">
         <h1>Gait Monitor</h1>
       </div>
-      {tabs.map(tab => (
+      {tabs.map((tab, index) => (
         <button
           key={tab.id}
           className={page === tab.id ? 'active' : ''}
           onClick={() => onChange(tab.id)}
+          onKeyDown={(e) => handleKeyDown(e, tab.id)}
+          aria-current={page === tab.id ? 'page' : undefined}
+          aria-label={`${tab.label} tab (${tab.shortcut})`}
+          tabIndex={0}
+          data-tab-index={index + 1}
         >
-          <span className="tab-icon">{tab.icon}</span>
-          {tab.label}
+          <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
+          <span className="tab-label">{tab.label}</span>
+          <span className="tab-shortcut" aria-hidden="true">{tab.shortcut}</span>
         </button>
       ))}
     </nav>
