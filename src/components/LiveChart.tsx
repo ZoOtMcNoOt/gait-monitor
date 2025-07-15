@@ -52,12 +52,12 @@ interface GaitDataPayload {
 }
 
 const CHART_COLORS = {
-  R1: '#ef4444', // red
-  R2: '#f97316', // orange
-  R3: '#eab308', // yellow
-  X: '#22c55e',  // green
-  Y: '#3b82f6',  // blue
-  Z: '#8b5cf6'   // purple
+  R1: 'var(--chart-color-r1, #ef4444)', // red
+  R2: 'var(--chart-color-r2, #f97316)', // orange
+  R3: 'var(--chart-color-r3, #eab308)', // yellow
+  X: 'var(--chart-color-x, #22c55e)',  // green
+  Y: 'var(--chart-color-y, #3b82f6)',  // blue
+  Z: 'var(--chart-color-z, #8b5cf6)'   // purple
 } as const
 
 export default function LiveChart({ isCollecting = false }: Props) {
@@ -66,6 +66,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
   const [showBufferStats, setShowBufferStats] = useState(false)
+  const [showDataTable, setShowDataTable] = useState(false)
+  const [announcementText, setAnnouncementText] = useState('')
   
   // Use global device connection context (read-only)
   const { 
@@ -483,10 +485,189 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, bufferManager])
 
+  // Accessibility helpers
+  const getChartSummary = useCallback((): string => {
+    const stats = bufferManager.getBufferStats()
+    const totalSamples = stats ? stats.totalDataPoints : 0
+    const deviceCount = connectedDevices.length
+    const currentMode = chartMode === 'all' ? 'all channels' : 
+                       chartMode === 'resistance' ? 'resistance channels (R1, R2, R3)' : 
+                       'acceleration channels (X, Y, Z)'
+    
+    if (totalSamples === 0) {
+      return `Gait monitoring chart showing ${currentMode}. No data collected yet. ${deviceCount} device${deviceCount !== 1 ? 's' : ''} connected.`
+    }
+    
+    return `Gait monitoring chart showing ${currentMode}. ${totalSamples} data points collected from ${deviceCount} device${deviceCount !== 1 ? 's' : ''}. Current sample rate: ${getCurrentSampleRateDisplay()}.`
+  }, [bufferManager, connectedDevices.length, chartMode, getCurrentSampleRateDisplay])
+
+  const getLatestDataSummary = useCallback(() => {
+    const chart = chartRef.current
+    if (!chart || !chart.data.datasets.length) {
+      return 'No data available'
+    }
+
+    const summaries: string[] = []
+    chart.data.datasets.forEach(dataset => {
+      const data = dataset.data as { x: number; y: number }[]
+      if (data.length > 0) {
+        const latest = data[data.length - 1]
+        const value = latest.y.toFixed(2)
+        summaries.push(`${dataset.label}: ${value}`)
+      }
+    })
+
+    return summaries.length > 0 ? summaries.join(', ') : 'No current readings'
+  }, [])
+
+  const handleKeyboardNavigation = useCallback((event: React.KeyboardEvent) => {
+    switch (event.key) {
+      case '1':
+        setChartMode('all')
+        setAnnouncementText('Switched to all channels view')
+        break
+      case '2':
+        setChartMode('resistance')
+        setAnnouncementText('Switched to resistance channels view')
+        break
+      case '3':
+        setChartMode('acceleration')
+        setAnnouncementText('Switched to acceleration channels view')
+        break
+      case 't':
+      case 'T':
+        setShowDataTable(prev => {
+          const newState = !prev
+          setAnnouncementText(newState ? 'Data table opened' : 'Data table closed')
+          return newState
+        })
+        break
+      case 's':
+      case 'S':
+        setAnnouncementText(getChartSummary())
+        break
+      case 'd':
+      case 'D':
+        setAnnouncementText(`Latest readings: ${getLatestDataSummary()}`)
+        break
+    }
+  }, [getChartSummary, getLatestDataSummary])
+
+  // Update announcements when chart mode changes
+  useEffect(() => {
+    const modeNames = {
+      'all': 'all channels',
+      'resistance': 'resistance channels',
+      'acceleration': 'acceleration channels'
+    }
+    setAnnouncementText(`Chart view changed to ${modeNames[chartMode]}`)
+  }, [chartMode])
+
+  // Clear announcements after they're read
+  useEffect(() => {
+    if (announcementText) {
+      const timer = setTimeout(() => setAnnouncementText(''), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [announcementText])
+
+  // Data table component for accessibility
+  const DataTable = () => {
+    const chart = chartRef.current
+    if (!chart || !chart.data.datasets.length) {
+      return (
+        <div className="data-table-container">
+          <p>No chart data available to display in table format.</p>
+        </div>
+      )
+    }
+
+    // Get recent data points (last 10 for performance)
+    const recentData: { timestamp: number; [key: string]: number }[] = []
+    const timestamps = new Set<number>()
+
+    chart.data.datasets.forEach(dataset => {
+      const data = dataset.data as { x: number; y: number }[]
+      data.slice(-10).forEach(point => {
+        timestamps.add(point.x)
+      })
+    })
+
+    const sortedTimestamps = Array.from(timestamps).sort((a, b) => b - a)
+
+    sortedTimestamps.forEach(timestamp => {
+      const dataPoint: { timestamp: number; [key: string]: number } = { timestamp }
+      chart.data.datasets.forEach(dataset => {
+        const data = dataset.data as { x: number; y: number }[]
+        const point = data.find(p => p.x === timestamp)
+        if (point) {
+          dataPoint[dataset.label || 'Unknown'] = point.y
+        }
+      })
+      recentData.push(dataPoint)
+    })
+
+    return (
+      <div className="data-table-container">
+        <h3>Recent Chart Data</h3>
+        <table 
+          className="chart-data-table" 
+          aria-label="Recent gait monitoring data in table format"
+        >
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              {chart.data.datasets.map((dataset, index) => (
+                <th key={index} scope="col">{dataset.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recentData.map((row, index) => (
+              <tr key={index}>
+                <th scope="row">
+                  {new Date(row.timestamp).toLocaleTimeString()}
+                </th>
+                {chart.data.datasets.map((dataset, dataIndex) => (
+                  <td key={dataIndex}>
+                    {row[dataset.label || 'Unknown']?.toFixed(2) || 'N/A'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="table-summary">
+          Showing the most recent 10 data points. Use keyboard shortcuts to navigate: 
+          Press 'T' to toggle this table, '1-3' to change chart view, 'S' for summary, 'D' for latest data.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <section className="card">
+    <section 
+      className="card"
+      role="region"
+      aria-labelledby="chart-title"
+      onKeyDown={handleKeyboardNavigation}
+      tabIndex={0}
+    >
+      {/* Screen reader announcements */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only"
+        role="status"
+      >
+        {announcementText}
+      </div>
+
       <div className="chart-header">
-        <h2>Live Gait Data</h2>
+        <h2 id="chart-title">Live Gait Data</h2>
+        <p className="chart-description">
+          {getChartSummary()}
+        </p>
         <div className="chart-controls">
           <div className="chart-status">
             <span className={`status-indicator ${isCollecting ? 'collecting' : 'idle'}`}>
@@ -523,31 +704,62 @@ export default function LiveChart({ isCollecting = false }: Props) {
               </div>
             )}
           </div>
-          <div className="chart-mode-selector">
+          <div className="chart-mode-selector" role="group" aria-label="Chart view options">
             <button 
               className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
               onClick={() => setChartMode('all')}
+              aria-pressed={chartMode === 'all' ? 'true' : 'false'}
+              aria-describedby="chart-mode-help"
             >
-              All Channels
+              All Channels (1)
             </button>
             <button 
               className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
               onClick={() => setChartMode('resistance')}
+              aria-pressed={chartMode === 'resistance' ? 'true' : 'false'}
+              aria-describedby="chart-mode-help"
             >
-              Resistance (R1-R3)
+              Resistance (2)
             </button>
             <button 
               className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
               onClick={() => setChartMode('acceleration')}
+              aria-pressed={chartMode === 'acceleration' ? 'true' : 'false'}
+              aria-describedby="chart-mode-help"
             >
-              Acceleration (XYZ)
+              Acceleration (3)
+            </button>
+          </div>
+          <div className="accessibility-controls">
+            <button
+              onClick={() => setShowDataTable(!showDataTable)}
+              className="btn-secondary"
+              aria-label={`${showDataTable ? 'Hide' : 'Show'} data table for screen readers`}
+              aria-describedby="data-table-help"
+            >
+              {showDataTable ? 'Hide' : 'Show'} Data Table (T)
             </button>
           </div>
         </div>
+        <div className="help-text" id="chart-mode-help">
+          Keyboard shortcuts: 1-3 to switch views, T to toggle data table, S for summary, D for latest data
+        </div>
       </div>
       <div className="chart-container">
-        <canvas ref={canvasRef} />
+        <canvas 
+          ref={canvasRef} 
+          role="img"
+          aria-label={getChartSummary()}
+          aria-describedby="chart-data-summary"
+          tabIndex={-1}
+        />
+        <div id="chart-data-summary" className="sr-only">
+          Latest readings: {getLatestDataSummary()}
+        </div>
       </div>
+      
+      {/* Accessible data table */}
+      {showDataTable && <DataTable />}
       <div className="chart-info">
         <div className="data-info">
           <span>Sample Rate: {getCurrentSampleRateDisplay()}</span>
@@ -581,6 +793,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
       {/* Buffer Statistics Panel (Debug Mode) */}
       {config.debugEnabled && (
         <BufferStatsPanel isVisible={showBufferStats} />
+      )}
+
+      {/* Data Table for Accessibility */}
+      {showDataTable && (
+        <DataTable />
       )}
     </section>
   )

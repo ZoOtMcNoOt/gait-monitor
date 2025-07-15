@@ -339,8 +339,12 @@ describe('LiveChart', () => {
     it('should show average rate for similar rates', async () => {
       mockDeviceContext.activeCollectingDevices = ['device-1', 'device-2']
       mockDeviceContext.getCurrentSampleRate
-        .mockReturnValueOnce(100.0)
-        .mockReturnValueOnce(100.2)
+        .mockReset()
+        .mockImplementation((deviceId: string) => {
+          if (deviceId === 'device-1') return 100.0
+          if (deviceId === 'device-2') return 100.2
+          return null
+        })
       await renderComponent()
       
       const info = container.querySelector('.data-info')
@@ -350,8 +354,12 @@ describe('LiveChart', () => {
     it('should show rate range for different rates', async () => {
       mockDeviceContext.activeCollectingDevices = ['device-1', 'device-2']
       mockDeviceContext.getCurrentSampleRate
-        .mockReturnValueOnce(95.0)
-        .mockReturnValueOnce(105.0)
+        .mockReset()
+        .mockImplementation((deviceId: string) => {
+          if (deviceId === 'device-1') return 95.0
+          if (deviceId === 'device-2') return 105.0
+          return null
+        })
       await renderComponent()
       
       const info = container.querySelector('.data-info')

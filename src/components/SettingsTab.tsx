@@ -32,6 +32,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   })
 
   const [isModified, setIsModified] = useState(false)
+  const [highContrastMode, setHighContrastMode] = useState(false)
   
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
@@ -48,7 +49,25 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         console.error('Failed to parse saved settings:', e)
       }
     }
+
+    // Load high contrast mode preference
+    const savedHighContrast = localStorage.getItem('highContrastMode')
+    if (savedHighContrast === 'true') {
+      setHighContrastMode(true)
+      document.documentElement.classList.add('high-contrast')
+    }
   }, [])
+
+  // Apply high contrast mode changes
+  useEffect(() => {
+    if (highContrastMode) {
+      document.documentElement.classList.add('high-contrast')
+      localStorage.setItem('highContrastMode', 'true')
+    } else {
+      document.documentElement.classList.remove('high-contrast')
+      localStorage.setItem('highContrastMode', 'false')
+    }
+  }, [highContrastMode])
 
   const handleSettingChange = <K extends keyof SettingsData>(
     key: K,
@@ -56,6 +75,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   ) => {
     setSettings(prev => ({ ...prev, [key]: value }))
     setIsModified(true)
+  }
+
+  const toggleHighContrast = () => {
+    setHighContrastMode(prev => !prev)
   }
 
   const handleSaveSettings = () => {
@@ -168,6 +191,24 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
               </label>
               <p className="setting-description">
                 Enable dark mode for better viewing in low-light conditions
+              </p>
+            </div>
+            
+            <div className="setting-item">
+              <label className="setting-label">
+                <span>High Contrast Mode</span>
+                <label className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={highContrastMode}
+                    onChange={toggleHighContrast}
+                    aria-label="Toggle high contrast mode for better accessibility"
+                  />
+                  <span className="toggle-slider"></span>
+                </label>
+              </label>
+              <p className="setting-description">
+                Enhance contrast for improved visibility and accessibility
               </p>
             </div>
           </div>
