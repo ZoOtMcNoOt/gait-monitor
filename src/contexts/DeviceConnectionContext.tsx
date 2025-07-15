@@ -197,31 +197,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
 
   const setConnectedDevices = useCallback((devices: string[]) => {
     setConnectedDevicesState(devices)
-    
-    // Update connection status for all devices
-    setConnectionStatus(prev => {
-      const newMap = new Map(prev)
-      
-      // Mark connected devices
-      devices.forEach(deviceId => {
-        if (availableDevices.includes(deviceId) || expectedDevices.has(deviceId)) {
-          // Only update if we don't have more specific heartbeat info
-          if (!deviceHeartbeats.has(deviceId)) {
-            newMap.set(deviceId, 'connected')
-          }
-        }
-      })
-      
-      // Mark disconnected devices
-      availableDevices.forEach(deviceId => {
-        if (!devices.includes(deviceId) && !deviceHeartbeats.has(deviceId)) {
-          newMap.set(deviceId, 'disconnected')
-        }
-      })
-      
-      return newMap
-    })
-  }, [availableDevices, expectedDevices, deviceHeartbeats])
+  }, [])
 
   // Actions - Scanning & Connection
   const refreshConnectedDevices = useCallback(async () => {
@@ -588,6 +564,33 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
 
     return () => clearInterval(memoryMonitoringInterval)
   }, [deviceHeartbeats, connectionStatus, lastGaitDataTime, connectedDevices])
+
+  // Immediately update connection status when connected devices change
+  useEffect(() => {
+    setConnectionStatus(prev => {
+      const newMap = new Map(prev)
+      
+      // Mark connected devices that are in availableDevices
+      connectedDevices.forEach(deviceId => {
+        if (availableDevices.includes(deviceId) || expectedDevices.has(deviceId)) {
+          // Only update if we don't have more specific heartbeat info that indicates timeout
+          const heartbeat = deviceHeartbeats.get(deviceId)
+          if (!heartbeat || (Date.now() - heartbeat.received_timestamp) <= config.heartbeatTimeout) {
+            newMap.set(deviceId, 'connected')
+          }
+        }
+      })
+      
+      // Mark disconnected devices that are in availableDevices but not connected
+      availableDevices.forEach(deviceId => {
+        if (!connectedDevices.includes(deviceId)) {
+          newMap.set(deviceId, 'disconnected')
+        }
+      })
+      
+      return newMap
+    })
+  }, [connectedDevices, availableDevices, expectedDevices, deviceHeartbeats])
 
   // Actions - Sample Rate
   const getCurrentSampleRate = useCallback((deviceId: string): number | null => {

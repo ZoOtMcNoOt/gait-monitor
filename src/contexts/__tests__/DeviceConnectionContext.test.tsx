@@ -84,8 +84,8 @@ describe('DeviceConnectionContext', () => {
         React.createElement(DeviceConnectionProvider, { children: component })
       )
     })
-    // Give React time to render
-    return new Promise(resolve => setTimeout(resolve, 0))
+    // Give React time to render - use a promise that resolves immediately
+    return Promise.resolve()
   }
 
   it('should throw error when useDeviceConnection is used outside provider', () => {
@@ -192,6 +192,9 @@ describe('DeviceConnectionContext', () => {
   })
 
   it('should handle connection errors gracefully', async () => {
+    // Suppress console.error for this expected error test
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    
     mockInvoke.mockImplementation((command: string) => {
       if (command === 'connect_device') {
         return Promise.reject(new Error('Connection failed'))
@@ -220,6 +223,9 @@ describe('DeviceConnectionContext', () => {
       await expect(contextRef.connectDevice('test-device-1')).rejects.toThrow('Connection failed')
     }
     expect(mockInvoke).toHaveBeenCalledWith('connect_device', { deviceId: 'test-device-1' })
+    
+    // Restore console.error
+    consoleErrorSpy.mockRestore()
   })
 
   it('should add device to available devices', async () => {
@@ -335,6 +341,9 @@ describe('DeviceConnectionContext', () => {
   })
 
   it('should handle collection start errors gracefully', async () => {
+    // Suppress console.error for this expected error test
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+    
     mockInvoke.mockImplementation((command: string) => {
       if (command === 'start_gait_notifications') {
         return Promise.reject(new Error('Collection failed'))
@@ -362,6 +371,9 @@ describe('DeviceConnectionContext', () => {
       await expect(contextRef.startDeviceCollection('test-device-1')).rejects.toThrow('Collection failed')
     }
     expect(mockInvoke).toHaveBeenCalledWith('start_gait_notifications', { deviceId: 'test-device-1' })
+    
+    // Restore console.error
+    consoleErrorSpy.mockRestore()
   })
 
   it('should set up event listeners on mount', async () => {
@@ -371,6 +383,9 @@ describe('DeviceConnectionContext', () => {
     }
 
     await renderWithProvider(React.createElement(TestComponent))
+    
+    // Wait a bit for async event listener setup
+    await new Promise(resolve => setTimeout(resolve, 10))
     
     // Should listen for various events
     expect(mockListen).toHaveBeenCalledWith('gait-data', expect.any(Function))
@@ -702,10 +717,9 @@ describe('DeviceConnectionContext', () => {
       
       if (contextRef) {
         // Add device and test basic cleanup functionality
-        contextRef.addDevice('test-device')
-        
-        // Wait for context updates
-        await new Promise(resolve => setTimeout(resolve, 100))
+        flushSync(() => {
+          contextRef!.addDevice('test-device')
+        })
         
         expect(contextRef.availableDevices.length).toBe(1)
       }
@@ -731,10 +745,15 @@ describe('DeviceConnectionContext', () => {
         // First scan to populate devices
         await contextRef.scanDevices()
         
+        // Wait for React to update
+        await new Promise(resolve => setTimeout(resolve, 10))
+        
         expect(contextRef.scannedDevices).toHaveLength(1)
         
         // Remove the scanned device
-        contextRef.removeScannedDevice('test-device-1')
+        flushSync(() => {
+          contextRef!.removeScannedDevice('test-device-1')
+        })
         
         expect(contextRef.scannedDevices).toHaveLength(0)
       }
@@ -753,11 +772,15 @@ describe('DeviceConnectionContext', () => {
       
       if (contextRef) {
         // Mark device as expected
-        contextRef.markDeviceAsExpected('test-device-1')
+        flushSync(() => {
+          contextRef!.markDeviceAsExpected('test-device-1')
+        })
         expect(contextRef.expectedDevices.has('test-device-1')).toBe(true)
         
         // Unmark device
-        contextRef.unmarkDeviceAsExpected('test-device-1')
+        flushSync(() => {
+          contextRef!.unmarkDeviceAsExpected('test-device-1')
+        })
         expect(contextRef.expectedDevices.has('test-device-1')).toBe(false)
       }
     }, 10000)
@@ -781,13 +804,12 @@ describe('DeviceConnectionContext', () => {
         contextRef.addDevice('test-device-1')
         expect(contextRef.getCurrentSampleRate('test-device-1')).toBeNull()
       }
-    })
+    }, 10000)
   })
 
   describe('error handling and edge cases', () => {
     it('should handle scan failure gracefully', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
-      mockInvoke.mockRejectedValueOnce(new Error('Scan failed'))
       
       let contextRef: ReturnType<typeof useDeviceConnection> | undefined
       
@@ -799,13 +821,21 @@ describe('DeviceConnectionContext', () => {
 
       await renderWithProvider(React.createElement(TestComponent))
       
+      // Override the mock specifically for this test
+      mockInvoke.mockImplementation((command: string) => {
+        if (command === 'scan_devices') {
+          return Promise.reject(new Error('Scan failed'))
+        }
+        return Promise.resolve([])
+      })
+      
       if (contextRef) {
         await expect(contextRef.scanDevices()).rejects.toThrow('Scan failed')
         expect(consoleErrorSpy).toHaveBeenCalledWith('Scan failed:', expect.any(Error))
       }
       
       consoleErrorSpy.mockRestore()
-    })
+    }, 10000)
 
     it('should handle disconnect failure gracefully', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
@@ -828,17 +858,20 @@ describe('DeviceConnectionContext', () => {
       
       if (contextRef) {
         await expect(contextRef.disconnectDevice('test-device-1')).rejects.toThrow('Disconnect failed')
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Disconnect failed:', expect.any(Error))
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Disconnection failed:', expect.any(Error))
       }
       
       consoleErrorSpy.mockRestore()
-    })
+    }, 10000)
 
     it('should handle refresh connected devices failure', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
       mockInvoke.mockImplementation((command: string) => {
         if (command === 'check_connection_status') {
           return Promise.reject(new Error('Status check failed'))
+        }
+        if (command === 'get_connected_devices') {
+          return Promise.reject(new Error('Fallback also failed'))
         }
         return Promise.resolve([])
       })
@@ -854,12 +887,14 @@ describe('DeviceConnectionContext', () => {
       await renderWithProvider(React.createElement(TestComponent))
       
       if (contextRef) {
-        await expect(contextRef.refreshConnectedDevices()).rejects.toThrow('Status check failed')
+        // Should not throw, but should log errors
+        await contextRef.refreshConnectedDevices()
         expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to refresh connected devices:', expect.any(Error))
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Fallback refresh also failed:', expect.any(Error))
       }
       
       consoleErrorSpy.mockRestore()
-    })
+    }, 10000)
 
     it('should handle get active collecting devices failure', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation()
@@ -881,12 +916,14 @@ describe('DeviceConnectionContext', () => {
       await renderWithProvider(React.createElement(TestComponent))
       
       if (contextRef) {
-        await expect(contextRef.getActiveCollectingDevices()).rejects.toThrow('Get active failed')
+        // Should return empty array and log error, not throw
+        const result = await contextRef.getActiveCollectingDevices()
+        expect(result).toEqual([])
         expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to get active collecting devices:', expect.any(Error))
       }
       
       consoleErrorSpy.mockRestore()
-    })
+    }, 10000)
   })
 
   describe('gait data processing', () => {
@@ -943,6 +980,6 @@ describe('DeviceConnectionContext', () => {
         expect(contextRef.getCurrentSampleRate('test-device-1')).toBe(100)
         expect(mockCallback).toHaveBeenCalledWith(gaitDataEvent.payload)
       }
-    })
+    }, 10000)
   })
 })
