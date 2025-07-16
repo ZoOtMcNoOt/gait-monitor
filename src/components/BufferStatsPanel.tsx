@@ -15,8 +15,13 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
     if (!isVisible) return
 
     const updateStats = () => {
-      const currentStats = bufferManager.getBufferStats()
-      setStats(currentStats)
+      try {
+        const currentStats = bufferManager.getBufferStats()
+        setStats(currentStats)
+      } catch (error) {
+        console.error('Error getting buffer stats:', error)
+        setStats(null)
+      }
     }
 
     // Update immediately
