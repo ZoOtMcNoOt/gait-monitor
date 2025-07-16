@@ -12,15 +12,28 @@ jest.mock('@tauri-apps/api/core', () => ({
 import { withCSRFProtection, protectedOperations, securityMonitor, csrfService } from '../csrfProtection';
 
 describe('CSRF Protection Service', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockInvoke.mockClear();
     mockInvoke.mockReset();
     
+    // Mock console methods to suppress expected error messages during tests
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    
     // Reset singleton service state
     (csrfService as unknown as { currentToken: string | null; isInitialized: boolean; tokenRefreshPromise: Promise<string> | null }).currentToken = null;
     (csrfService as unknown as { currentToken: string | null; isInitialized: boolean; tokenRefreshPromise: Promise<string> | null }).isInitialized = false;
     (csrfService as unknown as { currentToken: string | null; isInitialized: boolean; tokenRefreshPromise: Promise<string> | null }).tokenRefreshPromise = null;
+  });
+
+  afterEach(() => {
+    // Restore console methods
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe('Rate Limiting Integration', () => {
@@ -231,8 +244,8 @@ describe('CSRF Protection Service', () => {
       await csrfService.initialize();
       
       // Create specific mock implementations for each operation
-      mockInvoke.mockImplementation(async (command, args) => {
-        console.log(`Mock invoke called with command: ${command}, args:`, args);
+      mockInvoke.mockImplementation(async (command) => {
+        // Debug logging is suppressed by our console.log spy
         
         switch (command) {
           case 'get_csrf_token':
@@ -263,13 +276,6 @@ describe('CSRF Protection Service', () => {
       ];
       
       const results = await Promise.allSettled(operations);
-      
-      // Debug: Log the results to see what's happening
-      console.log('Results:', results.map((r, i) => ({
-        index: i,
-        status: r.status,
-        reason: r.status === 'rejected' ? (r as PromiseRejectedResult).reason?.message : undefined
-      })));
       
       expect(results[0].status).toBe('fulfilled');
       expect(results[1].status).toBe('fulfilled');
@@ -469,16 +475,15 @@ describe('CSRF Protection Service', () => {
 
   describe('Security Monitoring', () => {
     let consoleWarnSpy: jest.SpyInstance;
-    let consoleErrorSpy: jest.SpyInstance;
 
     beforeEach(() => {
       consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      // The console.error spy is already set up in the main beforeEach
     });
 
     afterEach(() => {
       consoleWarnSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+      // The console.error spy is restored in the main afterEach
     });
 
     test('should start and stop security monitoring', () => {
