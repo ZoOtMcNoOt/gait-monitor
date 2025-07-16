@@ -11,7 +11,7 @@ import {
   parseString,
   loadConfig,
   type AppConfig
-} from '../index'
+} from '../test-index'
 
 describe('Config Module', () => {
   // Mock console to prevent log spam during tests

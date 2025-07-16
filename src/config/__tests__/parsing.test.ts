@@ -1,5 +1,5 @@
 // Tests for environment variable parsing functions from config/index.ts
-import { parseBoolean, parseNumber, parseString } from '../index'
+import { parseBoolean, parseNumber, parseString } from '../test-index'
 
 describe('Environment Variable Parsing', () => {
   // Store original environment

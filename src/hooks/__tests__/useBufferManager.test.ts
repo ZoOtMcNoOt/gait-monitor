@@ -103,11 +103,18 @@ describe('useBufferManager', () => {
 
   it('should handle multiple devices', async () => {
     await renderHook()
+    
+    // Wait for the hook to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
     const device1Data = createMockGaitData({ device_id: 'device-1' })
     const device2Data = createMockGaitData({ device_id: 'device-2' })
 
     hookResult!.addData(device1Data)
     hookResult!.addData(device2Data)
+
+    // Give the buffer manager time to process the data
+    await new Promise(resolve => setTimeout(resolve, 10))
 
     expect(hookResult!.getTotalDevices()).toBe(2)
   })
