@@ -330,6 +330,7 @@ impl CSRFToken {
 // Rate limiter configuration
 const TOKEN_REFRESH_QUOTA: Quota = Quota::per_minute(nonzero!(10u32));
 const TOKEN_VALIDATION_QUOTA: Quota = Quota::per_minute(nonzero!(100u32));
+const FILE_OPERATION_QUOTA: Quota = Quota::per_minute(nonzero!(30u32)); // 30 file operations per minute
 
 #[derive(Clone)]
 pub struct CSRFTokenState {
@@ -337,6 +338,7 @@ pub struct CSRFTokenState {
     token_lifetime: Duration,
     refresh_rate_limiter: Arc<DefaultDirectRateLimiter>,
     validation_rate_limiter: Arc<DefaultDirectRateLimiter>,
+    file_operation_rate_limiter: Arc<DefaultDirectRateLimiter>,
     security_events: Arc<Mutex<Vec<SecurityEvent>>>,
     attack_attempts: Arc<DashMap<String, u32>>,
 }
@@ -351,6 +353,7 @@ impl CSRFTokenState {
             token_lifetime,
             refresh_rate_limiter: Arc::new(RateLimiter::direct(TOKEN_REFRESH_QUOTA)),
             validation_rate_limiter: Arc::new(RateLimiter::direct(TOKEN_VALIDATION_QUOTA)),
+            file_operation_rate_limiter: Arc::new(RateLimiter::direct(FILE_OPERATION_QUOTA)),
             security_events: Arc::new(Mutex::new(Vec::new())),
             attack_attempts: Arc::new(DashMap::new()),
         };
@@ -510,6 +513,22 @@ impl CSRFTokenState {
         self.security_events.lock().await.clone()
     }
     
+    async fn validate_file_operation(&self, operation_name: &str) -> bool {
+        // Check rate limit for file operations
+        if self.file_operation_rate_limiter.check().is_err() {
+            warn!("File operation rate limit exceeded for: {}", operation_name);
+            self.log_security_event(SecurityEvent::RateLimitExceeded {
+                timestamp: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                operation: operation_name.to_string(),
+            }).await;
+            return false;
+        }
+        true
+    }
+    
     async fn cleanup_expired_attack_attempts(&self) {
         // Remove old attack attempt records (older than 1 hour)
         self.attack_attempts.retain(|_, _| {
@@ -525,6 +544,18 @@ macro_rules! validate_csrf {
     ($csrf_state:expr, $token:expr) => {
         if !$csrf_state.validate_token($token).await {
             return Err("Invalid or expired CSRF token. Please refresh and try again.".to_string());
+        }
+    };
+}
+
+// Enhanced macro to validate CSRF token AND rate limiting for file operations
+macro_rules! validate_file_operation {
+    ($csrf_state:expr, $token:expr, $operation_name:expr) => {
+        if !$csrf_state.validate_token($token).await {
+            return Err("Invalid or expired CSRF token. Please refresh and try again.".to_string());
+        }
+        if !$csrf_state.validate_file_operation($operation_name).await {
+            return Err("Rate limit exceeded for file operations. Please wait before trying again.".to_string());
         }
     };
 }
@@ -1400,8 +1431,8 @@ async fn save_session_data(
   csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
-  // CSRF Protection
-  validate_csrf!(csrf_state, &csrf_token);
+  // CSRF Protection with rate limiting
+  validate_file_operation!(csrf_state, &csrf_token, "save_session_data");
   
   use tokio::fs;
   use std::path::Path;
@@ -1556,8 +1587,8 @@ async fn delete_session(
   csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<(), String> {
-  // CSRF Protection
-  validate_csrf!(csrf_state, &csrf_token);
+  // CSRF Protection with rate limiting
+  validate_file_operation!(csrf_state, &csrf_token, "delete_session");
   
   let sessions = get_sessions(path_config.clone()).await?;
 
@@ -1590,8 +1621,8 @@ async fn choose_storage_directory(
   csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<Option<String>, String> {
-  // CSRF Protection
-  validate_csrf!(csrf_state, &csrf_token);
+  // CSRF Protection with rate limiting
+  validate_file_operation!(csrf_state, &csrf_token, "choose_storage_directory");
   
   use tauri_plugin_dialog::DialogExt;
   
@@ -1741,8 +1772,8 @@ async fn copy_file_to_downloads(
   csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
-  // CSRF Protection
-  validate_csrf!(csrf_state, &csrf_token);
+  // CSRF Protection with rate limiting
+  validate_file_operation!(csrf_state, &csrf_token, "copy_file_to_downloads");
   
   use tokio::fs;
   use std::path::Path;
@@ -1969,8 +2000,8 @@ async fn save_filtered_data(
   csrf_state: tauri::State<'_, CSRFTokenState>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<String, String> {
-  // CSRF Protection
-  validate_csrf!(csrf_state, &csrf_token);
+  // CSRF Protection with rate limiting
+  validate_file_operation!(csrf_state, &csrf_token, "save_filtered_data");
   
   let config = path_config.0.lock().await;
   

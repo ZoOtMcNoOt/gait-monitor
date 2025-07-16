@@ -15,7 +15,7 @@ export type SecurityEvent =
   | { SuspiciousActivity: { timestamp: number; details: string } }
   | { CSRFAttackDetected: { timestamp: number; provided_token: string; expected_token: string } };
 
-class CSRFProtectionService {
+export class CSRFProtectionService {
   private currentToken: string | null = null;
   private tokenRefreshPromise: Promise<string> | null = null;
   private securityEventListeners: ((event: SecurityEvent) => void)[] = [];
@@ -33,7 +33,8 @@ class CSRFProtectionService {
       console.log('CSRF Protection Service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize CSRF protection:', error);
-      throw new Error('CSRF protection initialization failed');
+      // Don't throw error to allow graceful fallback
+      this.isInitialized = false;
     }
   }
 
@@ -46,7 +47,14 @@ class CSRFProtectionService {
     }
 
     if (!this.currentToken) {
-      return this.refreshToken();
+      // Get initial token
+      try {
+        this.currentToken = await invoke<string>('get_csrf_token');
+        return this.currentToken;
+      } catch (error) {
+        console.error('Failed to get initial CSRF token:', error);
+        throw new Error('Failed to get CSRF token');
+      }
     }
 
     // Validate current token before returning
@@ -90,8 +98,20 @@ class CSRFProtectionService {
       return newToken;
     } catch (error) {
       console.error('Failed to refresh CSRF token:', error);
-      if (error instanceof Error && error.message.includes('rate limit')) {
-        throw new Error('CSRF token refresh rate limited. Please wait before trying again.');
+      if (error instanceof Error) {
+        // Re-throw specific error messages from backend
+        if (error.message.includes('rate limit')) {
+          throw new Error('CSRF token refresh rate limited. Please wait before trying again.');
+        }
+        if (error.message.includes('Invalid or expired CSRF token')) {
+          throw error; // Re-throw original error with specific message
+        }
+        if (error.message.includes('Rate limit exceeded for file operations')) {
+          throw error; // Re-throw original error with specific message
+        }
+        if (error.message.includes('Network')) {
+          throw error; // Re-throw network errors
+        }
       }
       throw new Error('Failed to refresh CSRF token');
     }
@@ -112,6 +132,14 @@ class CSRFProtectionService {
         return await operation(token);
       } catch (error) {
         lastError = error as Error;
+        
+        // Re-throw specific backend errors immediately
+        if (lastError.message.includes('Rate limit exceeded for file operations')) {
+          throw lastError;
+        }
+        if (lastError.message.includes('Network')) {
+          throw lastError;
+        }
         
         // If it's a CSRF error and we have retries left, refresh token and try again
         if (lastError.message.includes('CSRF') && attempt < maxRetries) {
@@ -316,5 +344,4 @@ export class SecurityMonitor {
 // Export the security monitor instance
 export const securityMonitor = new SecurityMonitor();
 
-// Auto-initialize the service when the module is imported
-csrfService.initialize().catch(console.error);
+// Note: Service initialization is deferred to first use to avoid issues in tests
