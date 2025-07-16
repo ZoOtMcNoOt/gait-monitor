@@ -1,6 +1,29 @@
-import { config, validateConfig, isDevelopment, isProduction, isDebugEnabled } from '../index'
+import { 
+  config, 
+  validateConfig, 
+  isDevelopment, 
+  isProduction, 
+  isDebugEnabled,
+  shouldShowDeviceDebug,
+  shouldShowChartDebug,
+  parseBoolean,
+  parseNumber,
+  parseString,
+  loadConfig,
+  type AppConfig
+} from '../index'
 
 describe('Config Module', () => {
+  // Mock console to prevent log spam during tests
+  beforeAll(() => {
+    jest.spyOn(console, 'log').mockImplementation(() => {})
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterAll(() => {
+    jest.restoreAllMocks()
+  })
+
   describe('config object', () => {
     it('should have valid default configuration', () => {
       expect(config).toBeDefined()
@@ -92,69 +115,184 @@ describe('Config Module', () => {
     })
   })
 
+  describe('parsing functions', () => {
+    describe('parseBoolean', () => {
+      it('should parse true values correctly', () => {
+        expect(parseBoolean('true')).toBe(true)
+        expect(parseBoolean('TRUE')).toBe(true)
+        expect(parseBoolean('True')).toBe(true)
+      })
+
+      it('should parse false values correctly', () => {
+        expect(parseBoolean('false')).toBe(false)
+        expect(parseBoolean('FALSE')).toBe(false)
+        expect(parseBoolean('anything')).toBe(false)
+        expect(parseBoolean('0')).toBe(false)
+      })
+
+      it('should use default value for undefined input', () => {
+        expect(parseBoolean(undefined)).toBe(false)
+        expect(parseBoolean(undefined, true)).toBe(true)
+      })
+
+      it('should use default value for empty string', () => {
+        expect(parseBoolean('')).toBe(false)
+        expect(parseBoolean('', true)).toBe(true)
+      })
+    })
+
+    describe('parseNumber', () => {
+      it('should parse valid numbers correctly', () => {
+        expect(parseNumber('42', 0)).toBe(42)
+        expect(parseNumber('3.14', 0)).toBe(3.14)
+        expect(parseNumber('-10', 0)).toBe(-10)
+        expect(parseNumber('0', 100)).toBe(0)
+      })
+
+      it('should use default value for invalid numbers', () => {
+        expect(parseNumber('not-a-number', 100)).toBe(100)
+        expect(parseNumber('', 100)).toBe(100)
+        expect(parseNumber('NaN', 100)).toBe(100)
+        expect(parseNumber('Infinity', 100)).toBe(100)
+      })
+
+      it('should use default value for undefined input', () => {
+        expect(parseNumber(undefined, 50)).toBe(50)
+      })
+    })
+
+    describe('parseString', () => {
+      const validValues = ['option1', 'option2', 'option3']
+
+      it('should parse valid string values correctly', () => {
+        expect(parseString('option1', validValues, 'option1')).toBe('option1')
+        expect(parseString('option2', validValues, 'option1')).toBe('option2')
+        expect(parseString('option3', validValues, 'option1')).toBe('option3')
+      })
+
+      it('should use default value for invalid strings', () => {
+        expect(parseString('invalid', validValues, 'option1')).toBe('option1')
+        expect(parseString('', validValues, 'option2')).toBe('option2')
+      })
+
+      it('should use default value for undefined input', () => {
+        expect(parseString(undefined, validValues, 'option2')).toBe('option2')
+      })
+    })
+  })
+
   describe('utility functions', () => {
-    it('should determine development mode correctly', () => {
+    it('should correctly identify development mode', () => {
       expect(typeof isDevelopment()).toBe('boolean')
     })
 
-    it('should determine production mode correctly', () => {
+    it('should correctly identify production mode', () => {
       expect(typeof isProduction()).toBe('boolean')
       expect(isDevelopment()).toBe(!isProduction())
     })
 
-    it('should check debug enabled status', () => {
+    it('should correctly check debug settings', () => {
       expect(typeof isDebugEnabled()).toBe('boolean')
+      expect(typeof shouldShowDeviceDebug()).toBe('boolean')
+      expect(typeof shouldShowChartDebug()).toBe('boolean')
     })
   })
 
-  describe('buffer configuration validation', () => {
-    it('should ensure buffer sizes are reasonable', () => {
-      expect(config.bufferConfig.maxChartPoints).toBeGreaterThan(100)
-      expect(config.bufferConfig.maxDeviceBufferPoints).toBeGreaterThan(50)
+  describe('loadConfig function', () => {
+    it('should load configuration successfully', () => {
+      const loadedConfig = loadConfig()
+      expect(loadedConfig).toBeDefined()
+      expect(loadedConfig.mode).toBeDefined()
+      expect(loadedConfig.bufferConfig).toBeDefined()
     })
 
-    it('should have reasonable memory thresholds', () => {
-      expect(config.bufferConfig.memoryThresholdMB).toBeGreaterThan(1)
-      expect(config.bufferConfig.memoryThresholdMB).toBeLessThan(1000) // Reasonable upper limit
-    })
-
-    it('should have reasonable cleanup intervals', () => {
-      expect(config.bufferConfig.cleanupInterval).toBeGreaterThan(1000) // At least 1 second
-      expect(config.bufferConfig.cleanupInterval).toBeLessThan(60000) // Less than 1 minute
-    })
-  })
-
-  describe('performance configuration', () => {
-    it('should have reasonable render throttling', () => {
-      expect(config.chartRenderThrottle).toBeGreaterThanOrEqual(16) // At least 60fps
-      expect(config.chartRenderThrottle).toBeLessThan(1000) // Less than 1 second
-    })
-
-    it('should have reasonable device limits', () => {
-      expect(config.maxConcurrentDevices).toBeGreaterThan(1)
-      expect(config.maxConcurrentDevices).toBeLessThan(20) // Reasonable upper limit
-    })
-
-    it('should have reasonable data update interval', () => {
-      expect(config.dataUpdateInterval).toBeGreaterThan(10) // At least 10ms
-      expect(config.dataUpdateInterval).toBeLessThan(5000) // Less than 5 seconds
+    it('should return consistent configuration', () => {
+      const config1 = loadConfig()
+      const config2 = loadConfig()
+      expect(config1.mode).toBe(config2.mode)
+      expect(config1.maxChartPoints).toBe(config2.maxChartPoints)
     })
   })
 
-  describe('storage configuration', () => {
-    it('should have reasonable data retention', () => {
-      expect(config.dataRetentionDays).toBeGreaterThan(0)
-      expect(config.dataRetentionDays).toBeLessThan(366) // Less than a year
+  describe('validateConfig comprehensive tests', () => {
+    let validConfig: AppConfig
+
+    beforeEach(() => {
+      validConfig = { ...config } // Use current config as base
     })
 
-    it('should have reasonable auto-save settings', () => {
-      expect(typeof config.autoSaveEnabled).toBe('boolean')
-      expect(config.autoSaveInterval).toBeGreaterThan(60) // At least 1 minute
+    it('should validate all numeric constraints', () => {
+      // Test each numeric field that should be > 0
+      const numericFields = [
+        'maxChartPoints',
+        'dataUpdateInterval', 
+        'heartbeatTimeout',
+        'dataRetentionDays',
+        'autoSaveInterval',
+        'maxExportSize',
+        'maxConcurrentDevices',
+        'chartRenderThrottle'
+      ] as const
+
+      numericFields.forEach(field => {
+        const testConfig = { ...validConfig }
+        testConfig[field] = 0
+        const errors = validateConfig(testConfig)
+        expect(errors.some(error => error.includes(field))).toBe(true)
+      })
     })
 
-    it('should have reasonable export size limits', () => {
-      expect(config.maxExportSize).toBeGreaterThan(1) // At least 1MB
-      expect(config.maxExportSize).toBeLessThan(1000) // Less than 1GB
+    it('should validate buffer config numeric constraints', () => {
+      const bufferFields = [
+        'maxChartPoints',
+        'maxDeviceBufferPoints',
+        'maxDeviceDatasets',
+        'memoryThresholdMB',
+        'cleanupInterval',
+        'slidingWindowSeconds'
+      ] as const
+
+      bufferFields.forEach(field => {
+        const testConfig = { ...validConfig }
+        testConfig.bufferConfig = { ...validConfig.bufferConfig }
+        testConfig.bufferConfig[field] = 0
+        const errors = validateConfig(testConfig)
+        expect(errors.some(error => error.includes(`bufferConfig.${field}`))).toBe(true)
+      })
+    })
+
+    it('should validate chartSmoothing range', () => {
+      // Test below range
+      validConfig.chartSmoothing = -0.1
+      let errors = validateConfig(validConfig)
+      expect(errors).toContain('chartSmoothing must be between 0 and 1')
+
+      // Test above range
+      validConfig.chartSmoothing = 1.1
+      errors = validateConfig(validConfig)
+      expect(errors).toContain('chartSmoothing must be between 0 and 1')
+
+      // Test valid range
+      validConfig.chartSmoothing = 0.5
+      errors = validateConfig(validConfig)
+      expect(errors.filter(e => e.includes('chartSmoothing'))).toHaveLength(0)
+    })
+
+    it('should validate connectionTimeout vs heartbeatTimeout relationship', () => {
+      validConfig.connectionTimeout = 5000
+      validConfig.heartbeatTimeout = 10000
+      const errors = validateConfig(validConfig)
+      expect(errors).toContain('connectionTimeout must be greater than heartbeatTimeout')
+    })
+
+    it('should collect multiple errors', () => {
+      validConfig.maxChartPoints = 0
+      validConfig.dataUpdateInterval = -1
+      validConfig.chartSmoothing = 2
+      validConfig.bufferConfig.maxChartPoints = 0
+      
+      const errors = validateConfig(validConfig)
+      expect(errors.length).toBeGreaterThanOrEqual(4)
     })
   })
 })

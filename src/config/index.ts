@@ -62,7 +62,7 @@ export const parseBoolean = (value: string | undefined, defaultValue: boolean = 
 export const parseNumber = (value: string | undefined, defaultValue: number): number => {
   if (!value) return defaultValue
   const parsed = Number(value)
-  return isNaN(parsed) ? defaultValue : parsed
+  return (isNaN(parsed) || !isFinite(parsed)) ? defaultValue : parsed
 }
 
 // Helper function to parse string environment variables with validation

@@ -77,8 +77,8 @@ describe('Environment Variable Parsing', () => {
     })
 
     it('should handle edge cases', () => {
-      expect(parseNumber('Infinity', 0)).toBe(Infinity)
-      expect(parseNumber('-Infinity', 0)).toBe(-Infinity)
+      expect(parseNumber('Infinity', 100)).toBe(100) // Infinity should return default
+      expect(parseNumber('-Infinity', 100)).toBe(100) // -Infinity should return default
       expect(parseNumber('NaN', 100)).toBe(100) // NaN should return default
     })
   })
