@@ -7,12 +7,7 @@ module.exports = {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '^.+\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '^@tauri-apps/api/(.*)$': '<rootDir>/src/test/mocks/tauri-$1.ts',
-    // Redirect config imports to mock to avoid import.meta in tests
-    '^\\.\\./index$': '<rootDir>/src/test/mocks/config.ts',
-    '^\\.\\./config$': '<rootDir>/src/test/mocks/config.ts',
-    '^\\.\\./config/index$': '<rootDir>/src/test/mocks/config.ts',
-    '^\\.\\./\\.\\./config$': '<rootDir>/src/test/mocks/config.ts',
-    '^\\.\\./\\.\\./config/index$': '<rootDir>/src/test/mocks/config.ts',
+    // Config imports now go to the real config file for proper coverage
   },
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {

@@ -75,62 +75,105 @@ export const parseString = <T extends string>(
   return value as T
 }
 
+// Helper function to get environment variables with defaults (Jest-friendly)
+const getEnvVar = (key: string): string | undefined => {
+  // Try process.env first (works in Node.js/Jest)
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key]
+  }
+  
+  // Fallback to sensible defaults
+  const defaults: Record<string, string> = {
+    VITE_APP_MODE: 'development',
+    VITE_DEBUG_ENABLED: 'true',
+    VITE_DEBUG_DEVICES: 'true',
+    VITE_DEBUG_CHARTS: 'false',
+    VITE_MAX_CHART_POINTS: '1000',
+    VITE_DATA_UPDATE_INTERVAL: '100',
+    VITE_HEARTBEAT_TIMEOUT: '10000',
+    VITE_CONNECTION_TIMEOUT: '30000',
+    VITE_MAX_DEVICE_BUFFER_POINTS: '500',
+    VITE_MAX_DEVICE_DATASETS: '12',
+    VITE_MEMORY_THRESHOLD_MB: '50',
+    VITE_BUFFER_CLEANUP_INTERVAL: '5000',
+    VITE_SLIDING_WINDOW_SECONDS: '10',
+    VITE_ENABLE_CIRCULAR_BUFFERS: 'true',
+    VITE_DEFAULT_THEME: 'auto',
+    VITE_ANIMATIONS_ENABLED: 'true',
+    VITE_CHART_SMOOTHING: '0.3',
+    VITE_TOAST_DURATION: '5000',
+    VITE_DATA_RETENTION_DAYS: '30',
+    VITE_AUTO_SAVE_ENABLED: 'true',
+    VITE_AUTO_SAVE_INTERVAL: '300',
+    VITE_MAX_EXPORT_SIZE: '100',
+    VITE_PERFORMANCE_MONITORING: 'true',
+    VITE_MAX_CONCURRENT_DEVICES: '4',
+    VITE_CHART_RENDER_THROTTLE: '16',
+    VITE_ENABLE_MOCK_DATA: 'false',
+    VITE_MOCK_DEVICE_COUNT: '2',
+    VITE_REACT_DEVTOOLS: 'true',
+    VITE_HOT_RELOAD: 'true'
+  }
+  
+  return defaults[key]
+}
+
 // Load and validate configuration from environment variables
 export const loadConfig = (): AppConfig => {
   return {
     // Application settings
     mode: parseString(
-      import.meta.env.VITE_APP_MODE, 
+      getEnvVar('VITE_APP_MODE'), 
       ['development', 'production'], 
       'development'
     ),
-    debugEnabled: parseBoolean(import.meta.env.VITE_DEBUG_ENABLED, true),
-    debugDevices: parseBoolean(import.meta.env.VITE_DEBUG_DEVICES, true),
-    debugCharts: parseBoolean(import.meta.env.VITE_DEBUG_CHARTS, false),
+    debugEnabled: parseBoolean(getEnvVar('VITE_DEBUG_ENABLED'), true),
+    debugDevices: parseBoolean(getEnvVar('VITE_DEBUG_DEVICES'), true),
+    debugCharts: parseBoolean(getEnvVar('VITE_DEBUG_CHARTS'), false),
     
     // Data collection settings
-    maxChartPoints: parseNumber(import.meta.env.VITE_MAX_CHART_POINTS, 1000),
-    dataUpdateInterval: parseNumber(import.meta.env.VITE_DATA_UPDATE_INTERVAL, 100),
-    heartbeatTimeout: parseNumber(import.meta.env.VITE_HEARTBEAT_TIMEOUT, 10000),
-    connectionTimeout: parseNumber(import.meta.env.VITE_CONNECTION_TIMEOUT, 30000),
+    maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 1000),
+    dataUpdateInterval: parseNumber(getEnvVar('VITE_DATA_UPDATE_INTERVAL'), 100),
+    heartbeatTimeout: parseNumber(getEnvVar('VITE_HEARTBEAT_TIMEOUT'), 10000),
+    connectionTimeout: parseNumber(getEnvVar('VITE_CONNECTION_TIMEOUT'), 30000),
     
     // Buffer management settings
     bufferConfig: {
-      maxChartPoints: parseNumber(import.meta.env.VITE_MAX_CHART_POINTS, 1000),
-      maxDeviceBufferPoints: parseNumber(import.meta.env.VITE_MAX_DEVICE_BUFFER_POINTS, 500),
-      maxDeviceDatasets: parseNumber(import.meta.env.VITE_MAX_DEVICE_DATASETS, 12),
-      memoryThresholdMB: parseNumber(import.meta.env.VITE_MEMORY_THRESHOLD_MB, 50),
-      cleanupInterval: parseNumber(import.meta.env.VITE_BUFFER_CLEANUP_INTERVAL, 5000),
-      slidingWindowSeconds: parseNumber(import.meta.env.VITE_SLIDING_WINDOW_SECONDS, 10),
-      enableCircularBuffers: parseBoolean(import.meta.env.VITE_ENABLE_CIRCULAR_BUFFERS, true),
+      maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 1000),
+      maxDeviceBufferPoints: parseNumber(getEnvVar('VITE_MAX_DEVICE_BUFFER_POINTS'), 500),
+      maxDeviceDatasets: parseNumber(getEnvVar('VITE_MAX_DEVICE_DATASETS'), 12),
+      memoryThresholdMB: parseNumber(getEnvVar('VITE_MEMORY_THRESHOLD_MB'), 50),
+      cleanupInterval: parseNumber(getEnvVar('VITE_BUFFER_CLEANUP_INTERVAL'), 5000),
+      slidingWindowSeconds: parseNumber(getEnvVar('VITE_SLIDING_WINDOW_SECONDS'), 10),
+      enableCircularBuffers: parseBoolean(getEnvVar('VITE_ENABLE_CIRCULAR_BUFFERS'), true),
     },
     
     // UI settings
     defaultTheme: parseString(
-      import.meta.env.VITE_DEFAULT_THEME,
+      getEnvVar('VITE_DEFAULT_THEME'),
       ['light', 'dark', 'auto'],
       'auto'
     ),
-    animationsEnabled: parseBoolean(import.meta.env.VITE_ANIMATIONS_ENABLED, true),
-    chartSmoothing: parseNumber(import.meta.env.VITE_CHART_SMOOTHING, 0.3),
-    toastDuration: parseNumber(import.meta.env.VITE_TOAST_DURATION, 5000),
+    animationsEnabled: parseBoolean(getEnvVar('VITE_ANIMATIONS_ENABLED'), true),
+    chartSmoothing: parseNumber(getEnvVar('VITE_CHART_SMOOTHING'), 0.3),
+    toastDuration: parseNumber(getEnvVar('VITE_TOAST_DURATION'), 5000),
     
     // Storage settings
-    dataRetentionDays: parseNumber(import.meta.env.VITE_DATA_RETENTION_DAYS, 30),
-    autoSaveEnabled: parseBoolean(import.meta.env.VITE_AUTO_SAVE_ENABLED, true),
-    autoSaveInterval: parseNumber(import.meta.env.VITE_AUTO_SAVE_INTERVAL, 300),
-    maxExportSize: parseNumber(import.meta.env.VITE_MAX_EXPORT_SIZE, 100),
+    dataRetentionDays: parseNumber(getEnvVar('VITE_DATA_RETENTION_DAYS'), 30),
+    autoSaveEnabled: parseBoolean(getEnvVar('VITE_AUTO_SAVE_ENABLED'), true),
+    autoSaveInterval: parseNumber(getEnvVar('VITE_AUTO_SAVE_INTERVAL'), 300),
+    maxExportSize: parseNumber(getEnvVar('VITE_MAX_EXPORT_SIZE'), 100),
     
     // Performance settings
-    performanceMonitoring: parseBoolean(import.meta.env.VITE_PERFORMANCE_MONITORING, true),
-    maxConcurrentDevices: parseNumber(import.meta.env.VITE_MAX_CONCURRENT_DEVICES, 4),
-    chartRenderThrottle: parseNumber(import.meta.env.VITE_CHART_RENDER_THROTTLE, 16),
+    performanceMonitoring: parseBoolean(getEnvVar('VITE_PERFORMANCE_MONITORING'), true),
+    maxConcurrentDevices: parseNumber(getEnvVar('VITE_MAX_CONCURRENT_DEVICES'), 4),
+    chartRenderThrottle: parseNumber(getEnvVar('VITE_CHART_RENDER_THROTTLE'), 16),
     
     // Development settings
-    enableMockData: parseBoolean(import.meta.env.VITE_ENABLE_MOCK_DATA, false),
-    mockDeviceCount: parseNumber(import.meta.env.VITE_MOCK_DEVICE_COUNT, 2),
-    reactDevTools: parseBoolean(import.meta.env.VITE_REACT_DEVTOOLS, true),
-    hotReload: parseBoolean(import.meta.env.VITE_HOT_RELOAD, true)
+    enableMockData: parseBoolean(getEnvVar('VITE_ENABLE_MOCK_DATA'), false),
+    mockDeviceCount: parseNumber(getEnvVar('VITE_MOCK_DEVICE_COUNT'), 2),
+    reactDevTools: parseBoolean(getEnvVar('VITE_REACT_DEVTOOLS'), true),
+    hotReload: parseBoolean(getEnvVar('VITE_HOT_RELOAD'), true)
   }
 }
 

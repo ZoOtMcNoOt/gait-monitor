@@ -11,11 +11,42 @@ import {
   parseString,
   loadConfig,
   type AppConfig
-} from '../test-index'
+} from '../index'
 
 describe('Config Module', () => {
   // Mock console to prevent log spam during tests
   beforeAll(() => {
+    // Set up test environment variables
+    process.env.VITE_APP_MODE = 'development'
+    process.env.VITE_DEBUG_ENABLED = 'true'
+    process.env.VITE_DEBUG_DEVICES = 'true'
+    process.env.VITE_DEBUG_CHARTS = 'false'
+    process.env.VITE_MAX_CHART_POINTS = '1000'
+    process.env.VITE_DATA_UPDATE_INTERVAL = '100'
+    process.env.VITE_HEARTBEAT_TIMEOUT = '10000'
+    process.env.VITE_CONNECTION_TIMEOUT = '30000'
+    process.env.VITE_MAX_DEVICE_BUFFER_POINTS = '500'
+    process.env.VITE_MAX_DEVICE_DATASETS = '12'
+    process.env.VITE_MEMORY_THRESHOLD_MB = '50'
+    process.env.VITE_BUFFER_CLEANUP_INTERVAL = '5000'
+    process.env.VITE_SLIDING_WINDOW_SECONDS = '10'
+    process.env.VITE_ENABLE_CIRCULAR_BUFFERS = 'true'
+    process.env.VITE_DEFAULT_THEME = 'auto'
+    process.env.VITE_ANIMATIONS_ENABLED = 'true'
+    process.env.VITE_CHART_SMOOTHING = '0.3'
+    process.env.VITE_TOAST_DURATION = '5000'
+    process.env.VITE_DATA_RETENTION_DAYS = '30'
+    process.env.VITE_AUTO_SAVE_ENABLED = 'true'
+    process.env.VITE_AUTO_SAVE_INTERVAL = '300'
+    process.env.VITE_MAX_EXPORT_SIZE = '100'
+    process.env.VITE_PERFORMANCE_MONITORING = 'true'
+    process.env.VITE_MAX_CONCURRENT_DEVICES = '4'
+    process.env.VITE_CHART_RENDER_THROTTLE = '16'
+    process.env.VITE_ENABLE_MOCK_DATA = 'false'
+    process.env.VITE_MOCK_DEVICE_COUNT = '2'
+    process.env.VITE_REACT_DEVTOOLS = 'true'
+    process.env.VITE_HOT_RELOAD = 'true'
+    
     jest.spyOn(console, 'log').mockImplementation(() => {})
     jest.spyOn(console, 'error').mockImplementation(() => {})
   })
