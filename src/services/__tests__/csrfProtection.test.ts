@@ -9,7 +9,7 @@ jest.mock('@tauri-apps/api/core', () => ({
   invoke: mockInvoke
 }));
 
-import { withCSRFProtection, CSRFProtectionService, protectedOperations, securityMonitor, csrfService } from '../csrfProtection';
+import { withCSRFProtection, protectedOperations, securityMonitor, csrfService } from '../csrfProtection';
 
 describe('CSRF Protection Service', () => {
   beforeEach(() => {
