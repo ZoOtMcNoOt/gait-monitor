@@ -83,9 +83,16 @@ describe('useBufferManager', () => {
 
   it('should provide buffer statistics', async () => {
     await renderHook()
+    
+    // Wait a bit more for the hook to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
     const testData = createMockGaitData()
 
     hookResult!.addData(testData)
+    
+    // Give the buffer manager time to process the data
+    await new Promise(resolve => setTimeout(resolve, 10))
 
     const stats = hookResult!.getBufferStats()
     expect(stats).toBeTruthy()
