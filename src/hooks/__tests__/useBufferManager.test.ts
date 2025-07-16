@@ -88,6 +88,7 @@ describe('useBufferManager', () => {
     hookResult!.addData(testData)
 
     const stats = hookResult!.getBufferStats()
+    expect(stats).toBeTruthy()
     expect(stats?.totalDevices).toBe(1)
     expect(stats?.totalDataPoints).toBe(1)
     expect(stats?.memoryUsageMB).toBeGreaterThan(0)
