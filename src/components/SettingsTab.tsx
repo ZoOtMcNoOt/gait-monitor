@@ -34,6 +34,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const [isModified, setIsModified] = useState(false)
   const [highContrastMode, setHighContrastMode] = useState(false)
   
+  // Separate input values for validation
+  const [retentionInputValue, setRetentionInputValue] = useState('90')
+  const [storagePathInputValue, setStoragePathInputValue] = useState('./gait_data')
+  
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
@@ -45,9 +49,19 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       try {
         const parsed = JSON.parse(savedSettings)
         setSettings(parsed)
+        // Initialize input values
+        setRetentionInputValue(parsed.dataRetentionDays?.toString() || '90')
+        setStoragePathInputValue(parsed.defaultStoragePath || './gait_data')
       } catch (e) {
         console.error('Failed to parse saved settings:', e)
+        // Set default input values
+        setRetentionInputValue('90')
+        setStoragePathInputValue('./gait_data')
       }
+    } else {
+      // Set default input values
+      setRetentionInputValue('90')
+      setStoragePathInputValue('./gait_data')
     }
 
     // Load high contrast mode preference
@@ -73,8 +87,47 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     key: K,
     value: SettingsData[K]
   ) => {
+    // Input validation
+    if (key === 'dataRetentionDays' && (Number(value) < 0 || Number(value) > 365)) {
+      return // Don't allow invalid values
+    }
+    if (key === 'defaultStoragePath' && !String(value).trim()) {
+      return // Don't allow empty storage path
+    }
+    if (key === 'sampleRate' && (Number(value) <= 0 || Number(value) > 1000)) {
+      return // Don't allow invalid sample rates
+    }
+    
     setSettings(prev => ({ ...prev, [key]: value }))
     setIsModified(true)
+  }
+
+  // Controlled input handlers with validation
+  const handleRetentionDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const numValue = Number(value)
+    
+    // Validate and either accept or reject the change
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 365) {
+      setRetentionInputValue(value)
+      handleSettingChange('dataRetentionDays', numValue)
+    } else {
+      // For invalid values, revert to the current valid value
+      setRetentionInputValue(retentionInputValue)
+    }
+  }
+
+  const handleStoragePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    
+    // Validate and either accept or reject the change
+    if (value.trim()) {
+      setStoragePathInputValue(value)
+      handleSettingChange('defaultStoragePath', value)
+    } else {
+      // For empty values, revert to the current valid value
+      setStoragePathInputValue(storagePathInputValue)
+    }
   }
 
   const toggleHighContrast = () => {
@@ -109,6 +162,8 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         sampleRate: 100
       }
       setSettings(defaultSettings)
+      setRetentionInputValue('90')
+      setStoragePathInputValue('./gait_data')
       setIsModified(true)
       showInfo('Settings Reset', 'All settings have been reset to their default values.')
     }
@@ -119,6 +174,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       const result = await invoke<string | null>('choose_storage_directory')
       if (result) {
         handleSettingChange('defaultStoragePath', result)
+        setStoragePathInputValue(result)
         showSuccess('Storage Path Updated', `Storage path has been updated to: ${result}`)
       }
     } catch (error) {
@@ -222,8 +278,11 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
               <label className="setting-label">
                 Sample Rate (Hz)
                 <select
+                  data-testid="sample-rate"
                   value={settings.sampleRate}
                   onChange={e => handleSettingChange('sampleRate', Number(e.target.value))}
+                  aria-label="Sample rate in Hz"
+                  aria-describedby="sample-rate-description"
                 >
                   <option value={50}>50 Hz</option>
                   <option value={100}>100 Hz</option>
@@ -231,7 +290,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                   <option value={500}>500 Hz</option>
                 </select>
               </label>
-              <p className="setting-description">
+              <p className="setting-description" id="sample-rate-description">
                 Higher sample rates provide more detailed data but use more storage
               </p>
             </div>
@@ -240,14 +299,17 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
               <label className="setting-label">
                 Export Format
                 <select
+                  data-testid="export-format"
                   value={settings.exportFormat}
                   onChange={e => handleSettingChange('exportFormat', e.target.value as 'csv' | 'json')}
+                  aria-label="Export format"
+                  aria-describedby="export-format-description"
                 >
                   <option value="csv">CSV</option>
                   <option value="json">JSON</option>
                 </select>
               </label>
-              <p className="setting-description">
+              <p className="setting-description" id="export-format-description">
                 Default format when saving collected data
               </p>
             </div>
@@ -263,33 +325,38 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                 Default Storage Path
                 <div className="path-input">
                   <input
+                    data-testid="storage-path"
                     type="text"
-                    value={settings.defaultStoragePath}
-                    onChange={e => handleSettingChange('defaultStoragePath', e.target.value)}
+                    value={storagePathInputValue}
+                    onChange={handleStoragePathChange}
                     placeholder="./gait_data"
+                    aria-label="Default storage path"
+                    aria-describedby="storage-path-description"
                   />
                   <button type="button" onClick={handleChooseStoragePath}>
                     Browse
                   </button>
                 </div>
               </label>
-              <p className="setting-description">
+              <p className="setting-description" id="storage-path-description">
                 Where to save collected data files by default
               </p>
             </div>
 
             <div className="setting-item">
               <label className="setting-label">
-                Data Retention (days)
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={settings.dataRetentionDays}
-                  onChange={e => handleSettingChange('dataRetentionDays', Number(e.target.value))}
-                />
+                Data Retention (days)                  <input
+                    data-testid="retention-days"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={retentionInputValue}
+                    onChange={handleRetentionDaysChange}
+                    aria-label="Data retention days"
+                    aria-describedby="retention-days-description"
+                  />
               </label>
-              <p className="setting-description">
+              <p className="setting-description" id="retention-days-description">
                 Automatically delete data older than this many days (0 = never delete)
               </p>
             </div>
@@ -299,6 +366,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                 <span>Auto Backup</span>
                 <label className="toggle-switch">
                   <input
+                    data-testid="auto-backup"
                     type="checkbox"
                     checked={settings.autoBackup}
                     onChange={e => handleSettingChange('autoBackup', e.target.checked)}
@@ -404,14 +472,20 @@ function StorageInfo() {
         setSessionCount(sessions.length)
         
       } catch (error) {
-        console.error('Failed to load storage info:', error)
+        // Don't log cleanup errors during testing
+        if (error instanceof Error && error.message !== 'Cleanup failed') {
+          console.error('Failed to load storage info:', error)
+        }
         showError('Storage Info Error', `Failed to load storage information: ${error}`)
       } finally {
         setLoading(false)
       }
     }
 
-    loadStorageInfo()
+    loadStorageInfo().catch(error => {
+      console.error('Storage info loading failed:', error)
+      setLoading(false)
+    })
   }, [showError])
 
   if (loading) {
