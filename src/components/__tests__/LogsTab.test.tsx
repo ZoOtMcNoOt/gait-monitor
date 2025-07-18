@@ -414,9 +414,11 @@ describe('LogsTab', () => {
 
   describe('Error Handling', () => {
     it('should handle log loading errors', async () => {
-      // Suppress console.error during this test
+      // Suppress console.error and console.log during this test
       const originalError = console.error
+      const originalLog = console.log
       console.error = jest.fn()
+      console.log = jest.fn()
 
       try {
         mockInvoke.mockRejectedValue(new Error('Failed to load logs'))
@@ -433,13 +435,16 @@ describe('LogsTab', () => {
         )
       } finally {
         console.error = originalError
+        console.log = originalLog
       }
     })
 
     it('should handle deletion errors', async () => {
-      // Suppress console.error during this test
+      // Suppress console.error and console.log during this test
       const originalError = console.error
+      const originalLog = console.log
       console.error = jest.fn()
+      console.log = jest.fn()
 
       try {
         mockInvoke.mockImplementation((command) => {
@@ -470,6 +475,7 @@ describe('LogsTab', () => {
         }
       } finally {
         console.error = originalError
+        console.log = originalLog
       }
     })
 
