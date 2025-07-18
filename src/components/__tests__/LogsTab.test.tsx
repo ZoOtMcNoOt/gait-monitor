@@ -150,15 +150,38 @@ describe('LogsTab', () => {
     })
 
     it('should display loading state initially', () => {
-      mockInvoke.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)))
+      // Suppress console.error during this test since mock might cause expected errors
+      const originalError = console.error
+      const originalLog = console.log
+      console.error = jest.fn()
+      console.log = jest.fn()
 
-      flushSync(() => {
-        root.render(<LogsTab />)
-      })
+      try {
+        mockInvoke.mockImplementation((command) => {
+          if (command === 'get_sessions') {
+            return new Promise(resolve => setTimeout(() => resolve(mockLogEntries), 1000))
+          }
+          if (command === 'get_logs_stats') {
+            return new Promise(resolve => setTimeout(() => resolve({
+              totalSessions: 2,
+              totalDataPoints: 3500,
+              lastSession: 1640995800000
+            }), 1000))
+          }
+          return new Promise(resolve => setTimeout(resolve, 1000))
+        })
 
-      // The component loads so quickly that it may not show loading state
-      // Instead, check that the container exists and invoke is called
-      expect(container).toBeInTheDocument()
+        flushSync(() => {
+          root.render(<LogsTab />)
+        })
+
+        // The component loads so quickly that it may not show loading state
+        // Instead, check that the container exists and invoke is called
+        expect(container).toBeInTheDocument()
+      } finally {
+        console.error = originalError
+        console.log = originalLog
+      }
     })
 
     it('should load session logs on mount', async () => {
@@ -480,20 +503,31 @@ describe('LogsTab', () => {
     })
 
     it('should handle empty logs list', async () => {
-      mockInvoke.mockImplementation((command) => {
-        if (command === 'get_session_logs') {
-          return Promise.resolve([])
-        }
-        return Promise.resolve({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
-      })
+      // Suppress console.error during this test since we're testing error handling
+      const originalError = console.error
+      const originalLog = console.log
+      console.error = jest.fn()
+      console.log = jest.fn()
 
-      flushSync(() => {
-        root.render(<LogsTab />)
-      })
+      try {
+        mockInvoke.mockImplementation((command) => {
+          if (command === 'get_sessions') {
+            return Promise.resolve([])
+          }
+          return Promise.resolve({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
+        })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+        flushSync(() => {
+          root.render(<LogsTab />)
+        })
 
-      expect(container.textContent).toContain('No data logs found')
+        await new Promise(resolve => setTimeout(resolve, 0))
+
+        expect(container.textContent).toContain('No data logs found')
+      } finally {
+        console.error = originalError
+        console.log = originalLog
+      }
     })
   })
 
