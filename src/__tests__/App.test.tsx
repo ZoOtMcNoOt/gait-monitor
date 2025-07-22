@@ -292,10 +292,12 @@ describe('App', () => {
 
     await flushSync(async () => {
       root.render(React.createElement(App))
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 100)) // Increased timeout
     })
 
     expect(mockLocalStorage.getItem).toHaveBeenCalledWith('darkMode')
+    // Wait a bit more for dark mode to be applied
+    await new Promise(resolve => setTimeout(resolve, 50))
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 

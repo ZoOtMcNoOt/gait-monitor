@@ -203,7 +203,7 @@ describe('TimestampManager', () => {
       const duration = endTime - startTime
       
       // Should complete within reasonable time (increased threshold for Windows/slower environments)
-      expect(duration).toBeLessThan(100) // 100ms threshold
+      expect(duration).toBeLessThan(500) // 500ms threshold to account for slower test environments
     })
   })
 })

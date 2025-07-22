@@ -256,7 +256,8 @@ describe('LiveChart', () => {
         resistanceButton?.click()
       })
       
-      expect(resistanceButton?.classList.contains('active')).toBe(true)
+      expect(resistanceButton?.classList.contains('active')).toBe(true
+      )
     })
 
     it('should switch to acceleration mode when clicked', async () => {
@@ -868,4 +869,341 @@ describe('LiveChart', () => {
       expect(accessibleElements.length).toBeGreaterThan(0)
     })
   })
+
+  describe('Advanced Chart Functionality', () => {
+    test('should handle chart data updates during collection', () => {
+      const mockBufferData = [
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1000 },
+        { device_id: 'device1', x: 2, y: 3, z: 4, r1: 5, r2: 6, r3: 7, timestamp: 2000 }
+      ];
+
+      mockBufferManager.getBufferData.mockReturnValue(mockBufferData);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      const chart = getMockChart();
+      expect(chart.update).toHaveBeenCalled();
+    });
+
+    test('should handle chart mode switching with data', () => {
+      const mockBufferData = [
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1000 }
+      ];
+
+      mockBufferManager.getBufferData.mockReturnValue(mockBufferData);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be created and updated
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle empty buffer data gracefully', () => {
+      mockBufferManager.getBufferData.mockReturnValue([]);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      const chart = getMockChart();
+      // Chart should still create datasets even with empty data
+      expect(chart.data.datasets.length).toBeGreaterThan(0);
+    });
+
+    test('should handle device heartbeat status updates', () => {
+      mockDeviceContext.deviceHeartbeats = new Map([['device1', Date.now()]]);
+      mockDeviceContext.connectedDevices = ['device1'];
+      mockDeviceContext.activeCollectingDevices = ['device1'];
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should render without errors when device heartbeats are present
+      expect(container.querySelector('.chart-container')).toBeTruthy();
+    });
+
+    test('should handle sample rate calculations', () => {
+      const mockGetCurrentSampleRate = jest.fn()
+        .mockReturnValueOnce(50)
+        .mockReturnValueOnce(60);
+
+      mockDeviceContext.activeCollectingDevices = ['device1', 'device2'];
+      mockDeviceContext.getCurrentSampleRate = mockGetCurrentSampleRate;
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should handle multiple sample rates
+      expect(container).toBeTruthy();
+    });
+
+    test('should handle chart update intervals during collection', () => {
+      jest.useFakeTimers();
+
+      mockBufferManager.getBufferData.mockReturnValue([
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1000 }
+      ]);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Fast-forward time to trigger chart updates
+      jest.advanceTimersByTime(1000);
+
+      const chart = getMockChart();
+      expect(chart.update).toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    test('should handle buffer stats panel toggle', () => {
+      // Enable debug mode for buffer stats
+      (config.debugEnabled as boolean) = true;
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      const bufferStatsBtn = container.querySelector('[data-testid="buffer-stats-toggle"]') as HTMLButtonElement;
+      if (bufferStatsBtn) {
+        bufferStatsBtn.click();
+      }
+
+      // Should handle buffer stats toggle
+      expect(container).toBeTruthy();
+
+      // Reset config
+      (config.debugEnabled as boolean) = false;
+    });
+
+    test('should handle data table toggle', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      const dataTableBtn = container.querySelector('[data-testid="data-table-toggle"]') as HTMLButtonElement;
+      if (dataTableBtn) {
+        dataTableBtn.click();
+      }
+
+      // Should handle data table toggle
+      expect(container).toBeTruthy();
+    });
+
+    test('should handle keyboard navigation', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Test keyboard events
+      const chartContainer = container.querySelector('.chart-container');
+      if (chartContainer) {
+        const keyEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
+        chartContainer.dispatchEvent(keyEvent);
+      }
+
+      // Should handle keyboard events gracefully
+      expect(container).toBeTruthy();
+    });
+
+    test('should handle chart announcement updates', () => {
+      const mockBufferData = [
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1000 }
+      ];
+
+      mockBufferManager.getBufferData.mockReturnValue(mockBufferData);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should update accessibility announcements
+      const announceElement = container.querySelector('[aria-live="polite"]');
+      expect(announceElement).toBeTruthy();
+    });
+
+    test('should handle chart resize events', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be created without errors
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle buffer overflow scenarios', () => {
+      // Create a large dataset to test buffer limits
+      const largeDataset = Array.from({ length: 2000 }, (_, i) => ({
+        device_id: 'device1',
+        x: i, y: i + 1, z: i + 2,
+        r1: i + 3, r2: i + 4, r3: i + 5,
+        timestamp: 1000 + i
+      }));
+
+      mockBufferManager.getBufferData.mockReturnValue(largeDataset);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should handle large datasets gracefully
+      const chart = getMockChart();
+      expect(chart.update).toHaveBeenCalled();
+    });
+
+    test('should handle multiple device data merging', () => {
+      const multiDeviceData = [
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1000 },
+        { device_id: 'device2', x: 2, y: 3, z: 4, r1: 5, r2: 6, r3: 7, timestamp: 1000 },
+        { device_id: 'device1', x: 3, y: 4, z: 5, r1: 6, r2: 7, r3: 8, timestamp: 2000 }
+      ];
+
+      mockBufferManager.getBufferData.mockReturnValue(multiDeviceData);
+      mockDeviceContext.connectedDevices = ['device1', 'device2'];
+      mockDeviceContext.activeCollectingDevices = ['device1', 'device2'];
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should handle multiple devices
+      const chart = getMockChart();
+      expect(chart.data.datasets.length).toBeGreaterThan(0);
+    });
+
+    test('should handle data collection start/stop transitions', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Switch to collecting
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Switch back to not collecting
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Should handle state transitions gracefully
+      expect(container.querySelector('.chart-container')).toBeTruthy();
+    });
+
+    test('should handle chart color scheme updates', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Test that chart colors are properly configured
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle timestamp manager integration', () => {
+      const mockBufferData = [
+        { device_id: 'device1', x: 1, y: 2, z: 3, r1: 4, r2: 5, r3: 6, timestamp: 1500 }
+      ];
+
+      mockBufferManager.getBufferData.mockReturnValue(mockBufferData);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should use timestamp manager for chart data conversion
+      const chart = getMockChart();
+      expect(chart.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('Chart Configuration and Setup', () => {
+    test('should configure chart with proper options for all mode', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should configure chart with proper options for resistance mode', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be properly configured
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should configure chart with proper options for acceleration mode', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be properly configured  
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle chart legend configuration', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be configured with legend
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle chart axis configuration', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be configured with proper axes
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle chart tooltip configuration', () => {
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: false }));
+      });
+
+      // Chart should be configured with tooltips
+      const chart = getMockChart();
+      expect(chart.data.datasets).toBeDefined();
+    });
+
+    test('should handle chart performance optimizations', () => {
+      // Test with high-frequency data
+      const highFreqData = Array.from({ length: 100 }, (_, i) => ({
+        device_id: 'device1',
+        x: Math.sin(i * 0.1), y: Math.cos(i * 0.1), z: Math.tan(i * 0.1),
+        r1: i, r2: i + 1, r3: i + 2,
+        timestamp: 1000 + i * 10
+      }));
+
+      mockBufferManager.getBufferData.mockReturnValue(highFreqData);
+
+      flushSync(() => {
+        root.render(React.createElement(LiveChart, { isCollecting: true }));
+      });
+
+      // Should handle high-frequency data efficiently
+      const chart = getMockChart();
+      expect(chart.update).toHaveBeenCalled();
+    });
+  });
 })

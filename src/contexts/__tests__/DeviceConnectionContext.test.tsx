@@ -166,10 +166,11 @@ describe('DeviceConnectionContext', () => {
       await contextRef.scanDevices()
     }
     
-    // Wait for state update
-    await new Promise(resolve => setTimeout(resolve, 10))
+    // Wait for state update and re-render
+    await new Promise(resolve => setTimeout(resolve, 100))
     
     expect(mockInvoke).toHaveBeenCalledWith('scan_devices')
+    // After scanning, the scanned devices should be populated
     expect(container.querySelector('[data-testid="scanned-count"]')?.textContent).toBe('1')
   })
 
@@ -591,13 +592,13 @@ describe('DeviceConnectionContext', () => {
         contextRef.addDevice('test-device-1')
         contextRef.setConnectedDevices(['test-device-1'])
         
-        // Wait for status update
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Wait for the heartbeat monitoring interval to run at least once
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // When a device is connected without heartbeat data, it should be 'connected'
+        // Device is BLE connected but has no heartbeat data - should be 'connected' 
         expect(contextRef.connectionStatus.get('test-device-1')).toBe('connected')
       }
-    })
+    }, 10000)
 
     it('should handle device with gait data', async () => {
       let contextRef: ReturnType<typeof useDeviceConnection> | undefined
@@ -619,11 +620,11 @@ describe('DeviceConnectionContext', () => {
         contextRef.updateGaitDataTime('test-device-1')
         
         // Wait for status update
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         expect(contextRef.connectionStatus.get('test-device-1')).toBe('connected')
       }
-    })
+    }, 10000)
 
     it('should handle device that is BLE connected but has no data yet', async () => {
       let contextRef: ReturnType<typeof useDeviceConnection> | undefined
@@ -641,12 +642,13 @@ describe('DeviceConnectionContext', () => {
         contextRef.addDevice('test-device-1')
         contextRef.setConnectedDevices(['test-device-1'])
         
-        // Wait for status update
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Wait for heartbeat monitoring to run
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
-        expect(contextRef.connectionStatus.get('test-device-1')).toBe('connected')
+        // Device is BLE connected but has no data yet - should be 'connected' 
+        expect(contextRef.connectionStatus.get('test-device-1')).toBe('connected');
       }
-    })
+    }, 10000)
 
     it('should handle device connection status', async () => {
       let contextRef: ReturnType<typeof useDeviceConnection> | undefined
@@ -665,11 +667,11 @@ describe('DeviceConnectionContext', () => {
         contextRef.setConnectedDevices(['test-device-1'])
         
         // Wait for status update
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         expect(contextRef.connectionStatus.get('test-device-1')).toBe('connected')
       }
-    })
+    }, 10000)
   })
 
   describe('advanced device management', () => {
