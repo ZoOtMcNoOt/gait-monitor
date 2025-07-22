@@ -137,4 +137,150 @@ describe('useBufferManager', () => {
     // Should maintain the same data
     expect(hookResult!.getTotalDevices()).toBe(firstDeviceCount)
   })
+
+  describe('new API methods', () => {
+    beforeEach(async () => {
+      await renderHook()
+      // Wait for initialization
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    it('should handle addDataPoint method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      
+      expect(hookResult!.getTotalDevices()).toBe(1)
+    })
+
+    it('should handle getDeviceTimeWindow method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      
+      const windowData = hookResult!.getDeviceTimeWindow(testData.device_id, 10)
+      expect(windowData).toHaveLength(1)
+      expect(windowData[0]).toEqual(testData)
+    })
+
+    it('should handle getDeviceRecent method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      
+      const recentData = hookResult!.getDeviceRecent(testData.device_id, 5)
+      expect(recentData).toHaveLength(1)
+      expect(recentData[0]).toEqual(testData)
+    })
+
+    it('should handle removeDevice method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      expect(hookResult!.getTotalDevices()).toBe(1)
+      
+      hookResult!.removeDevice(testData.device_id)
+      expect(hookResult!.getTotalDevices()).toBe(0)
+    })
+
+    it('should handle clearAll method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      expect(hookResult!.getTotalDevices()).toBe(1)
+      
+      hookResult!.clearAll()
+      expect(hookResult!.getTotalDevices()).toBe(0)
+    })
+
+    it('should handle getMemoryUsage method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      
+      const memoryUsage = hookResult!.getMemoryUsage()
+      expect(typeof memoryUsage).toBe('number')
+      expect(memoryUsage).toBeGreaterThanOrEqual(0)
+    })
+
+    it('should handle performCleanup method', () => {
+      const testData = createMockGaitData()
+      hookResult!.addDataPoint(testData.device_id, testData)
+      
+      // Should not throw an error
+      expect(() => hookResult!.performCleanup()).not.toThrow()
+    })
+
+    it('should handle getDeviceData with time range', async () => {
+      // Use second-based timestamps to work with BufferManager's expectations
+      const baseTime = Math.floor(Date.now() / 1000) // Convert to seconds
+      const testData1 = createMockGaitData({ timestamp: baseTime })
+      const testData2 = createMockGaitData({ timestamp: baseTime + 2 })
+      const testData3 = createMockGaitData({ timestamp: baseTime + 4 })
+      
+      hookResult!.addDataPoint(testData1.device_id, testData1)
+      hookResult!.addDataPoint(testData1.device_id, testData2)
+      hookResult!.addDataPoint(testData1.device_id, testData3)
+      
+      // Wait a bit for the data to be processed
+      await new Promise(resolve => setTimeout(resolve, 10))
+      
+      // Test time range filtering
+      const rangeData = hookResult!.getDeviceData(testData1.device_id, baseTime, baseTime + 2.5)
+      expect(rangeData).toHaveLength(2)
+      expect(rangeData[0].timestamp).toBe(baseTime)
+      expect(rangeData[1].timestamp).toBe(baseTime + 2)
+    })
+
+    it('should handle clear with specific deviceId', () => {
+      const testData1 = createMockGaitData({ device_id: 'device-1' })
+      const testData2 = createMockGaitData({ device_id: 'device-2' })
+      
+      hookResult!.addDataPoint(testData1.device_id, testData1)
+      hookResult!.addDataPoint(testData2.device_id, testData2)
+      expect(hookResult!.getTotalDevices()).toBe(2)
+      
+      hookResult!.clear('device-1')
+      expect(hookResult!.getTotalDevices()).toBe(1)
+    })
+  })
+
+  describe('error conditions and null states', () => {
+    it('should handle methods gracefully when called immediately', async () => {
+      // Create a fresh hook instance
+      function TestComponentImmediate() {
+        const hook = useBufferManager()
+        // Test methods immediately on render, before useEffect runs
+        
+        // These should handle null gracefully since useEffect hasn't run yet
+        expect(hook.getBufferStats()).toBeNull()
+        expect(hook.getMemoryUsage()).toBe(0)
+        expect(() => hook.performCleanup()).not.toThrow()
+        expect(hook.getDeviceData('test')).toEqual([])
+        expect(hook.getTotalDevices()).toBe(0)
+        expect(hook.getDeviceTimeWindow('test')).toEqual([])
+        expect(hook.getDeviceRecent('test', 5)).toEqual([])
+        expect(() => hook.addDataPoint('test', createMockGaitData())).not.toThrow()
+        expect(() => hook.removeDevice('test')).not.toThrow()
+        expect(() => hook.clearAll()).not.toThrow()
+        expect(() => hook.addData(createMockGaitData())).not.toThrow()
+        expect(() => hook.clear()).not.toThrow()
+        
+        hookResult = hook
+        return null
+      }
+
+      container = document.createElement('div')
+      root = createRoot(container)
+      root.render(React.createElement(TestComponentImmediate))
+
+      // Wait for the render to complete
+      await new Promise(resolve => setTimeout(resolve, 1))
+    })
+  })
+
+  describe('buffer configuration', () => {
+    it('should expose buffer configuration', async () => {
+      await renderHook()
+      
+      expect(hookResult!.bufferConfig).toBeDefined()
+      expect(hookResult!.bufferConfig.maxChartPoints).toBe(1000)
+      expect(hookResult!.bufferConfig.maxDeviceBufferPoints).toBe(500)
+      expect(hookResult!.bufferConfig.memoryThresholdMB).toBe(50)
+    })
+  })
 })
