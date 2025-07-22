@@ -15,7 +15,7 @@ A professional real-time gait analysis application built with **Tauri**, **React
 
 ### Frontend (React + TypeScript)
 - **Vite** - Fast build tool and dev server
-- **React 18** - UI framework with hooks
+- **React 19** - UI framework with hooks
 - **Chart.js** - Real-time data visualization
 - **Tauri API** - Native system integration
 
