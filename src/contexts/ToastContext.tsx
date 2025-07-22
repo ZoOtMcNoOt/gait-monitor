@@ -38,6 +38,12 @@ interface ToastProviderProps {
 export const ToastProvider = ({ children }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const toastsRef = useRef<Toast[]>([]);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    toastsRef.current = toasts;
+  }, [toasts]);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -60,12 +66,14 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
     // Auto remove after duration with proper cleanup
     const duration = toast.duration || config.toastDuration;
     const timeoutId = setTimeout(() => {
-      removeToast(id);
+      // Use direct state update to avoid closure issues
+      setToasts(prev => prev.filter(t => t.id !== id));
+      timeoutRefs.current.delete(id);
     }, duration);
     
     // Store timeout reference for cleanup
     timeoutRefs.current.set(id, timeoutId);
-  }, [removeToast]);
+  }, []); // Remove removeToast dependency to avoid re-creating timeouts
 
   // Cleanup all timeouts on unmount
   useEffect(() => {

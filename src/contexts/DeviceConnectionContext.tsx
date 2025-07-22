@@ -266,16 +266,15 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       const device = scannedDevices.find(d => d.id === deviceId)
       let errorMessage = `Failed to connect to ${device?.name || 'device'}:\n\n${error}`
       
-      if (typeof error === 'string') {
-        if (error.includes('not connectable')) {
-          errorMessage += '\n\nThis device may not support connections or may be in a non-connectable mode.'
-        } else if (error.includes('not found')) {
-          errorMessage += '\n\nThe device may have moved out of range. Try scanning again.'
-        } else if (error.includes('timeout') || error.includes('failed after')) {
-          errorMessage += '\n\nConnection timeout. The device may be busy, already connected to another device, or out of range.'
-        } else if (error.includes('Connection refused') || error.includes('refused')) {
-          errorMessage += '\n\nThe device refused the connection. It may be paired with another device or in a non-connectable state.'
-        }
+      const errorString = typeof error === 'string' ? error : (error as Error).message || String(error)
+      if (errorString.includes('not connectable')) {
+        errorMessage += '\n\nThis device may not support connections or may be in a non-connectable mode.'
+      } else if (errorString.includes('not found')) {
+        errorMessage += '\n\nThe device may have moved out of range. Try scanning again.'
+      } else if (errorString.includes('timeout') || errorString.includes('failed after')) {
+        errorMessage += '\n\nConnection timeout. The device may be busy, already connected to another device, or out of range.'
+      } else if (errorString.includes('Connection refused') || errorString.includes('refused')) {
+        errorMessage += '\n\nThe device refused the connection. It may be paired with another device or in a non-connectable state.'
       }
       
       throw new Error(errorMessage)
@@ -512,7 +511,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     }, config.dataUpdateInterval * 50) // Check every 50 update intervals
     
     return () => clearInterval(heartbeatInterval)
-  }, [availableDevices, connectedDevices, deviceHeartbeats, lastGaitDataTime, connectionStatus])
+  }, [availableDevices, connectedDevices, deviceHeartbeats, lastGaitDataTime])
 
   // Memory monitoring and cleanup for Maps to prevent memory leaks
   useEffect(() => {
