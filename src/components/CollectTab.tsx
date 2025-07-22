@@ -457,7 +457,7 @@ export default function CollectTab() {
                 <button 
                   className="btn-primary" 
                   onClick={handleSaveData}
-                  disabled={isSaving || !collectedData?.dataPoints.length}
+                  disabled={isSaving}
                 >
                   {isSaving ? 'Saving...' : 'Save Session'}
                 </button>
