@@ -3,23 +3,26 @@ import '../styles/forms.css'
 
 // Input validation utilities
 const validateSessionName = (name: string): string | null => {
-  if (!name.trim()) return 'Session name is required'
-  if (name.length < 3) return 'Session name must be at least 3 characters'
-  if (name.length > 100) return 'Session name must be less than 100 characters'
-  if (!/^[a-zA-Z0-9\s\-_.]+$/.test(name)) return 'Session name contains invalid characters'
+  const trimmed = name.trim()
+  if (!trimmed) return 'Session name is required'
+  if (trimmed.length < 3) return 'Session name must be at least 3 characters'
+  if (trimmed.length > 100) return 'Session name must be less than 100 characters'
+  if (!/^[a-zA-Z0-9\s\-_.]+$/.test(trimmed)) return 'Session name contains invalid characters'
   return null
 }
 
 const validateSubjectId = (id: string): string | null => {
-  if (!id.trim()) return 'Subject ID is required'
-  if (id.length < 2) return 'Subject ID must be at least 2 characters'
-  if (id.length > 50) return 'Subject ID must be less than 50 characters'
-  if (!/^[a-zA-Z0-9\-_]+$/.test(id)) return 'Subject ID can only contain letters, numbers, hyphens, and underscores'
+  const trimmed = id.trim()
+  if (!trimmed) return 'Subject ID is required'
+  if (trimmed.length < 2) return 'Subject ID must be at least 2 characters'
+  if (trimmed.length > 50) return 'Subject ID must be less than 50 characters'
+  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) return 'Subject ID can only contain letters, numbers, hyphens, and underscores'
   return null
 }
 
 const validateNotes = (notes: string): string | null => {
-  if (notes.length > 1000) return 'Notes must be less than 1000 characters'
+  const trimmed = notes.trim()
+  if (trimmed.length > 1000) return 'Notes must be less than 1000 characters'
   return null
 }
 
