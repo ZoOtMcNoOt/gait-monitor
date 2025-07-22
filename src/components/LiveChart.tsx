@@ -553,24 +553,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [getChartSummary, getLatestDataSummary])
 
-  // Update announcements when chart mode changes
-  useEffect(() => {
-    const modeNames = {
-      'all': 'all channels',
-      'resistance': 'resistance channels',
-      'acceleration': 'acceleration channels'
-    }
-    setAnnouncementText(`Chart view changed to ${modeNames[chartMode]}`)
-  }, [chartMode])
-
-  // Clear announcements after they're read
-  useEffect(() => {
-    if (announcementText) {
-      const timer = setTimeout(() => setAnnouncementText(''), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [announcementText])
-
   // Data table component for accessibility
   const DataTable = () => {
     const chart = chartRef.current
@@ -618,7 +600,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <tr>
               <th scope="col">Time</th>
               {chart.data.datasets.map((dataset, index) => (
-                <th key={index} scope="col">{dataset.label}</th>
+                <th key={index} scope="col">{dataset.label || 'Unknown'}</th>
               ))}
             </tr>
           </thead>
