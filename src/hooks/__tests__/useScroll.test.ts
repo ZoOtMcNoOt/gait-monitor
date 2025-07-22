@@ -139,4 +139,24 @@ describe('useScroll', () => {
       );
     });
   });
+
+  test('throws error when context is undefined', () => {
+    // Mock React.useContext to return undefined
+    const originalUseContext = React.useContext;
+    const mockUseContext = jest.fn().mockReturnValue(undefined);
+    React.useContext = mockUseContext;
+
+    try {
+      // This should throw an error when called
+      expect(() => {
+        useScroll();
+      }).toThrow('useScroll must be used within a ScrollProvider');
+
+      // Verify useContext was called with ScrollContext
+      expect(mockUseContext).toHaveBeenCalledWith(ScrollContext);
+    } finally {
+      // Restore original useContext
+      React.useContext = originalUseContext;
+    }
+  });
 });

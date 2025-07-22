@@ -312,6 +312,107 @@ describe('useTimestampManager', () => {
         }));
       });
     });
+
+    test('does not auto-set base timestamp when base is already set', (done) => {
+      flushSync(() => {
+        root.render(React.createElement(TestTimestampManagerComponent, {
+          options: { autoSetBase: true },
+          onHookReady: (hook) => {
+            // First call should set the base timestamp
+            hook.normalizeTimestamp(1000);
+            expect(mockManager.setBaseTimestamp).toHaveBeenCalledWith(1000);
+            
+            // Reset the mock to verify second call doesn't set base again
+            mockManager.setBaseTimestamp.mockClear();
+            
+            // Second call should not set base timestamp again
+            hook.normalizeTimestamp(2000);
+            expect(mockManager.setBaseTimestamp).not.toHaveBeenCalled();
+            expect(mockManager.normalizeTimestamp).toHaveBeenCalledWith(2000);
+            done();
+          }
+        }));
+      });
+    });
+
+    test('getChartTimestamp does not auto-set base when base is already set', (done) => {
+      mockManager.getChartTimestamp.mockReturnValue(500);
+      
+      flushSync(() => {
+        root.render(React.createElement(TestTimestampManagerComponent, {
+          options: { autoSetBase: true },
+          onHookReady: (hook) => {
+            // First call should set the base timestamp
+            hook.getChartTimestamp(1000);
+            expect(mockManager.setBaseTimestamp).toHaveBeenCalledWith(1000);
+            
+            // Reset the mock to verify second call doesn't set base again
+            mockManager.setBaseTimestamp.mockClear();
+            
+            // Second call should not set base timestamp again
+            hook.getChartTimestamp(2000);
+            expect(mockManager.setBaseTimestamp).not.toHaveBeenCalled();
+            expect(mockManager.getChartTimestamp).toHaveBeenCalledWith(2000);
+            done();
+          }
+        }));
+      });
+    });
+  });
+
+  describe('cleanup behavior', () => {
+    test('clears cache on unmount when using non-global instance', (done) => {
+      let hookInstance: ReturnType<typeof useTimestampManager>;
+      
+      const TestComponent = () => {
+        hookInstance = useTimestampManager({ useGlobalInstance: false });
+        return React.createElement('div', null, 'Test');
+      };
+
+      flushSync(() => {
+        root.render(React.createElement(TestComponent));
+      });
+
+      // Verify manager was created
+      expect(hookInstance!.manager).toBeDefined();
+
+      // Unmount component
+      flushSync(() => {
+        root.render(React.createElement('div', null, 'Empty'));
+      });
+
+      // Verify clearCache was called during cleanup
+      expect(mockManager.clearCache).toHaveBeenCalled();
+      done();
+    });
+
+    test('does not clear cache on unmount when using global instance', (done) => {
+      let hookInstance: ReturnType<typeof useTimestampManager>;
+      
+      const TestComponent = () => {
+        hookInstance = useTimestampManager({ useGlobalInstance: true });
+        return React.createElement('div', null, 'Test');
+      };
+
+      flushSync(() => {
+        root.render(React.createElement(TestComponent));
+      });
+
+      // Verify manager was created
+      expect(hookInstance!.manager).toBeDefined();
+
+      // Clear the mock to ensure we only track cleanup calls
+      mockManager.clearCache.mockClear();
+
+      // Unmount component
+      flushSync(() => {
+        root.render(React.createElement('div', null, 'Empty'));
+      });
+
+      // Verify clearCache was NOT called during cleanup for global instance
+      expect(mockManager.clearCache).not.toHaveBeenCalled();
+      done();
+    });
   });
 });
 
