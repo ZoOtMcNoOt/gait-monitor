@@ -73,7 +73,7 @@ export function useKeyboardShortcuts({
   }, [handleKeyDown]);
 
   return {
-    shortcuts: shortcutsRef.current
+    shortcuts: shortcuts
   };
 }
 

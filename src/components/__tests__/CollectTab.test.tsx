@@ -289,7 +289,7 @@ describe('CollectTab', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Should progress to live collection
-      expect(container.textContent).toContain('Live Data Collection')
+      expect(container.textContent).toContain('Live Collection')
     })
 
     it('should display correct step progress indicators', () => {

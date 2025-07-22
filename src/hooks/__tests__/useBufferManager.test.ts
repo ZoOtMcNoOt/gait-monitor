@@ -72,6 +72,10 @@ describe('useBufferManager', () => {
 
   it('should clear buffer data', async () => {
     await renderHook()
+    
+    // Wait a tick for useEffect to complete
+    await new Promise(resolve => setTimeout(resolve, 0))
+    
     const testData = createMockGaitData()
 
     hookResult!.addData(testData)
