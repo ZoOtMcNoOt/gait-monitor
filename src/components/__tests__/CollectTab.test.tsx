@@ -95,7 +95,7 @@ jest.mock('../ErrorBoundary', () => {
 
 // Import after mocking
 import { useDeviceConnection } from '../../contexts/DeviceConnectionContext'
-import { securityMonitor, protectedOperations } from '../../services/csrfProtection'
+import { securityMonitor } from '../../services/csrfProtection'
 
 interface GaitDataPoint {
   device_id: string

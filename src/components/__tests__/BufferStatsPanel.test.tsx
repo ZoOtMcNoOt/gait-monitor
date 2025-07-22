@@ -2,7 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { flushSync } from 'react-dom'
 import BufferStatsPanel from '../BufferStatsPanel'
-import type { BufferStats, DeviceBufferStats } from '../../utils/BufferManager'
+import type { BufferStats } from '../../utils/BufferManager'
 
 // Mock the useBufferManager hook
 const mockBufferManager = {

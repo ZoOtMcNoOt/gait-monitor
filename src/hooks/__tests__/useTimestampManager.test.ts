@@ -154,7 +154,7 @@ describe('useTimestampManager', () => {
       flushSync(() => {
         root.render(React.createElement(TestTimestampManagerComponent, {
           options: config,
-          onHookReady: (hook) => {
+          onHookReady: () => {
             expect(MockedTimestampManager.getInstance).toHaveBeenCalledWith({
               useRelativeTime: true,
               cacheSize: 500,
