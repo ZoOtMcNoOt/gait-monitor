@@ -227,6 +227,64 @@ input:checked + .toggle-slider:before {
   }
 }
 
+/*────────────────────────────────────────────────────────
+  Dark Mode Support
+────────────────────────────────────────────────────────*/
+.dark .setting-group {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .setting-group h3 {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .setting-label {
+  color: var(--color-text);
+}
+
+.dark .setting-description {
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+.dark .toggle-switch {
+  background: var(--color-border);
+}
+
+.dark .toggle-switch.active {
+  background: var(--color-primary);
+}
+
+.dark .toggle-slider {
+  background: var(--color-text-light);
+}
+
+.dark .range-input {
+  background: var(--color-border);
+}
+
+.dark .range-input::-webkit-slider-thumb {
+  background: var(--color-primary);
+}
+
+.dark .range-input::-moz-range-thumb {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark .range-value {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .settings-actions {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
 @media (max-width: 480px) {
   .settings-grid {
     gap: 1rem;
