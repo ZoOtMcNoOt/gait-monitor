@@ -412,3 +412,55 @@
     justify-content: center;
   }
 }
+
+/*────────────────────────────────────────────────────────
+  Dark Mode Support
+────────────────────────────────────────────────────────*/
+.dark .data-viewer-modal,
+.dark .confirmation-modal {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .data-viewer-header,
+.dark .confirmation-modal-header {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .data-viewer-controls,
+.dark .confirmation-modal-content {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.dark .search-input {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .search-input::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.dark .table-container {
+  border-color: var(--color-border);
+}
+
+.dark .table th,
+.dark .table td {
+  border-color: var(--color-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.dark .table th {
+  background: var(--color-bg);
+}
+
+.dark .table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
