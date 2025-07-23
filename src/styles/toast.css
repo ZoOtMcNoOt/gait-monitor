@@ -140,7 +140,7 @@
   animation: toast-slide-out 0.2s ease-in forwards;
 }
 
-/* Dark mode support if the app uses it */
+/* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .toast {
     background: #1f2937;
@@ -160,6 +160,27 @@
     background: #374151;
     color: #f9fafb;
   }
+}
+
+/* Dark mode class support */
+.dark .toast {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .toast-title {
+  color: var(--color-text);
+}
+
+.dark .toast-message {
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.dark .toast-close:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 /* Responsive adjustments */

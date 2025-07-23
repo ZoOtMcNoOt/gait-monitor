@@ -193,6 +193,68 @@ tbody tr:hover {
   }
 }
 
+/*────────────────────────────────────────────────────────
+  Dark Mode Support
+────────────────────────────────────────────────────────*/
+.dark table {
+  color: var(--color-text);
+}
+
+.dark thead {
+  background: var(--color-bg);
+}
+
+.dark th,
+.dark td {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark tbody tr:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.dark .stat-card {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .stat-card h3 {
+  color: var(--color-text);
+}
+
+.dark .table-container {
+  border-color: var(--color-border);
+}
+
+.dark .table-actions {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .logs-table th {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dark .logs-table td {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.dark .logs-table .severity-high {
+  color: #fca5a5;
+}
+
+.dark .logs-table .severity-medium {
+  color: #fde047;
+}
+
+.dark .logs-table .severity-low {
+  color: #86efac;
+}
+
 @media (max-width: 480px) {
   .table-container {
     margin: 0 -var(--spacing);
