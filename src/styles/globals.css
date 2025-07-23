@@ -754,6 +754,206 @@ tbody tr:hover {
   --color-dark-card:     #1f2937;
   --color-dark-border:   #374151;
   --color-dark-text:     #f3f4f6;
+  --accent-color:        #10b981;
+  --accent-hover:        #059669;
+  --success-color:       #10b981;
+  --success-bg:          #064e3b;
+  --error-color:         #f87171;
+  --error-bg:            #7f1d1d;
+  --text-color:          #f3f4f6;
+  --text-secondary:      #d1d5db;
+  --bg-color:            #1f2937;
+  --border-color:        #374151;
+}
+
+/*────────────────────────────────────────────────────────
+  8.1. Dark Mode Button & Control Styles
+────────────────────────────────────────────────────────*/
+.dark button {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.dark button:hover {
+  background: var(--color-primary-light);
+}
+
+.dark .btn-secondary {
+  background: #4b5563;
+  border-color: #4b5563;
+  color: var(--color-text-light);
+}
+
+.dark .btn-secondary:hover {
+  background: #6b7280;
+}
+
+.dark .btn-tertiary {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .btn-tertiary:hover {
+  background: var(--color-bg);
+}
+
+.dark .btn-danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: var(--color-text-light);
+}
+
+.dark .btn-danger:hover {
+  background: #dc2626;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.dark button:focus,
+.dark .btn:focus,
+.dark [role="button"]:focus,
+.dark a:focus,
+.dark [href]:focus {
+  outline-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.dark .btn-primary:focus {
+  outline-color: var(--color-primary-light);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);
+}
+
+/*────────────────────────────────────────────────────────
+  8.2. Dark Mode Device & Component Styles
+────────────────────────────────────────────────────────*/
+.dark .device-card {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .device-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+.dark .device-card.gaitble-device {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-card.gaitble-device:hover {
+  border-color: var(--color-primary);
+}
+
+.dark .device-card.gaitble-device .device-name {
+  color: var(--color-text);
+}
+
+.dark .wizard-progress {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .step-indicator {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .step-indicator.active {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.dark .step-indicator.completed {
+  background: var(--success-color);
+  color: var(--color-text-light);
+}
+
+.dark .step-label {
+  color: var(--color-text);
+}
+
+.dark .wizard-step-content h2 {
+  color: var(--color-text);
+}
+
+.dark .multi-device-selector .collection-toggle {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .multi-device-selector .collection-toggle.start {
+  background: var(--success-color);
+  color: var(--color-text-light);
+}
+
+.dark .multi-device-selector .collection-toggle:hover {
+  background: var(--color-primary);
+}
+
+/*────────────────────────────────────────────────────────
+  8.3. Dark Mode Collection & Layout Styles
+────────────────────────────────────────────────────────*/
+.dark .collection-controls {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .collection-info {
+  color: var(--color-text);
+}
+
+.dark .collection-info p {
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.dark .collection-layout {
+  background: var(--color-bg);
+}
+
+.dark .main-collection-area {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .collection-sidebar {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .collection-sidebar h3 {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .multi-device-selector .collection-summary {
+  color: var(--color-text);
+}
+
+.dark .multi-device-selector .loading {
+  color: var(--color-text);
+}
+
+.dark .multi-device-selector .loading-spinner {
+  border-color: var(--color-border);
+  border-top-color: var(--color-primary);
 }
 
 /*────────────────────────────────────────────────────────
