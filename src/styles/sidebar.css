@@ -125,6 +125,41 @@
   animation: pulse-sidebar 2s infinite;
 }
 
+/*────────────────────────────────────────────────────────
+  Dark Mode Support
+────────────────────────────────────────────────────────*/
+.dark .sidebar {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.dark .sidebar button {
+  color: inherit;
+}
+
+.dark .sidebar button:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.dark .sidebar button.active {
+  background: var(--color-primary-light);
+}
+
+.dark .collection-sidebar {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .collection-sidebar h3 {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .sidebar-empty {
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
 /* Responsive sidebar */
 @media (max-width: 768px) {
   .sidebar {
