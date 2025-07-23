@@ -40,6 +40,58 @@
   color: #f3f4f6;
 }
 
+/* Additional dark mode chart styles */
+.dark .chart-header h2 {
+  color: var(--color-text);
+}
+
+.dark .chart-mode-selector {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .mode-btn {
+  color: var(--color-text);
+}
+
+.dark .mode-btn:hover {
+  background: var(--color-card-bg);
+}
+
+.dark .mode-btn.active {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+}
+
+.dark .chart-container {
+  border-color: var(--color-border);
+}
+
+.dark .chart-data-table {
+  border-color: var(--color-border);
+}
+
+.dark .chart-data-table th,
+.dark .chart-data-table td {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .chart-data-table th {
+  background: var(--color-bg);
+}
+
+.dark .help-text {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .data-table-container {
+  border-color: var(--color-border);
+}
+
 /* Chart header and controls */
 .chart-header {
   display: flex;
