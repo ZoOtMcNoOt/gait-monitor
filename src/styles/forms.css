@@ -129,6 +129,47 @@
   border-color: var(--success-color);
 }
 
+/*────────────────────────────────────────────────────────
+  Dark Mode Support
+────────────────────────────────────────────────────────*/
+.dark .form-group label {
+  color: var(--color-text);
+}
+
+.dark .form-group input,
+.dark .form-group textarea,
+.dark .form-group select {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .form-group input:focus,
+.dark .form-group textarea:focus,
+.dark .form-group select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.dark .form-group input::placeholder,
+.dark .form-group textarea::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.dark .legacy-fields {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .legacy-fields summary {
+  color: var(--color-text);
+}
+
+.dark .legacy-fields summary:hover {
+  background: var(--color-bg);
+}
+
 /* Responsive form adjustments */
 @media (max-width: 768px) {
   .form-row {
