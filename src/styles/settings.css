@@ -285,6 +285,135 @@ input:checked + .toggle-slider:before {
   border-color: var(--color-border);
 }
 
+/*────────────────────────────────────────────────────────
+  High Contrast Mode Support
+────────────────────────────────────────────────────────*/
+.high-contrast .setting-group {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+.high-contrast .setting-group h3 {
+  color: var(--color-text) !important;
+  border-bottom: 2px solid var(--color-border) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .setting-label {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .setting-description {
+  color: var(--color-text-secondary) !important;
+  opacity: 1 !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .toggle-switch {
+  border: 2px solid var(--color-border) !important;
+  border-radius: 1.5rem !important;
+  padding: 2px !important;
+  width: 3.25rem !important;
+  height: 1.75rem !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .toggle-slider {
+  background: var(--color-bg-secondary) !important;
+  border: none !important;
+  border-radius: 1.5rem !important;
+  top: 2px !important;
+  left: 2px !important;
+  right: 2px !important;
+  bottom: 2px !important;
+}
+
+.high-contrast .toggle-slider:before {
+  background: var(--color-text) !important;
+  border: 2px solid var(--color-border) !important;
+  height: 0.9rem !important;
+  width: 0.9rem !important;
+  left: 0.1rem !important;
+  bottom: 0.1rem !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast input:checked + .toggle-slider {
+  background: var(--color-primary) !important;
+}
+
+.high-contrast input:checked + .toggle-slider:before {
+  background: var(--color-bg) !important;
+  border-color: var(--color-border) !important;
+  transform: translateX(1.25rem) !important;
+}
+
+.high-contrast .toggle-slider:hover {
+  box-shadow: 0 0 0 3px var(--color-primary) !important;
+}
+
+.high-contrast .path-input input {
+  background: var(--color-bg) !important;
+  border: 2px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .path-input input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px var(--color-primary) !important;
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast .path-input button {
+  background: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+  border: 2px solid var(--color-border) !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .path-input button:hover {
+  background: var(--color-text) !important;
+  color: var(--color-bg) !important;
+  border-color: var(--color-border) !important;
+}
+
+.high-contrast .settings-actions {
+  background: var(--color-bg) !important;
+  border-top: 3px solid var(--color-border) !important;
+}
+
+.high-contrast .unsaved-changes {
+  color: var(--color-warning) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .settings-panel {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+}
+
+.high-contrast .settings-panel-header {
+  background: var(--color-bg-secondary) !important;
+  border-bottom: 2px solid var(--color-border) !important;
+}
+
+.high-contrast .settings-panel-header h3 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .settings-panel-body {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
 @media (max-width: 480px) {
   .settings-grid {
     gap: 1rem;

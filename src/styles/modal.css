@@ -464,3 +464,105 @@
 .dark .table tbody tr:hover {
   background: rgba(59, 130, 246, 0.1);
 }
+
+/*────────────────────────────────────────────────────────
+  High Contrast Mode Support
+────────────────────────────────────────────────────────*/
+.high-contrast .data-viewer-overlay,
+.high-contrast .modal-overlay {
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: none !important;
+}
+
+.high-contrast .data-viewer-modal,
+.high-contrast .confirmation-modal {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-shadow: 0 0 20px var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .data-viewer-header,
+.high-contrast .confirmation-modal-header {
+  background: var(--color-bg-secondary) !important;
+  border-bottom: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .data-viewer-header h2,
+.high-contrast .confirmation-modal-header h2 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .data-viewer-controls,
+.high-contrast .confirmation-modal-content {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+.high-contrast .search-input {
+  background: var(--color-bg) !important;
+  border: 2px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .search-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px var(--color-primary) !important;
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast .search-input::placeholder {
+  color: var(--color-text-secondary) !important;
+  opacity: 1 !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .table-container {
+  border: 3px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .table th,
+.high-contrast .table td {
+  border: 2px solid var(--color-border) !important;
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .table th {
+  background: var(--color-bg-secondary) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .table tbody tr:hover {
+  background: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+}
+
+.high-contrast .confirmation-modal-actions button {
+  border: 2px solid var(--color-border) !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .close-button {
+  background: var(--color-error) !important;
+  color: var(--color-text) !important;
+  border: 2px solid var(--color-border) !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .close-button:hover {
+  background: var(--color-text) !important;
+  color: var(--color-bg) !important;
+}

@@ -269,3 +269,111 @@
     min-width: auto;
   }
 }
+
+/*────────────────────────────────────────────────────────
+  High Contrast Mode Support
+────────────────────────────────────────────────────────*/
+.high-contrast .keyboard-help-overlay {
+  background: rgba(0, 0, 0, 0.95) !important;
+}
+
+.high-contrast .keyboard-help-dialog {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-shadow: 0 0 20px var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-help-header,
+.high-contrast .keyboard-help-footer,
+.high-contrast .keyboard-help-actions {
+  background: var(--color-bg-secondary) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-help-header h2 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .keyboard-help-section {
+  background: var(--color-bg) !important;
+  border: 2px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-help-section h3 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-help-close {
+  background: var(--color-error) !important;
+  color: var(--color-text) !important;
+  border: 2px solid var(--color-border) !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-help-close:hover {
+  background: var(--color-text) !important;
+  color: var(--color-bg) !important;
+  border-color: var(--color-border) !important;
+}
+
+.high-contrast .keyboard-help-close:focus {
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px var(--color-primary) !important;
+}
+
+.high-contrast .keyboard-help-tip kbd,
+.high-contrast .keyboard-shortcut-key {
+  background: var(--color-bg-secondary) !important;
+  border: 2px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 4px var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-shortcut-item {
+  border-bottom: 2px solid var(--color-border) !important;
+  background: var(--color-bg) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .keyboard-shortcut-description {
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .keyboard-help-content {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+.high-contrast .keyboard-help-content::-webkit-scrollbar {
+  width: 16px !important;
+}
+
+.high-contrast .keyboard-help-content::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary) !important;
+  border: 2px solid var(--color-border) !important;
+}
+
+.high-contrast .keyboard-help-content::-webkit-scrollbar-thumb {
+  background: var(--color-primary) !important;
+  border: 2px solid var(--color-border) !important;
+}
+
+.high-contrast .keyboard-help-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text) !important;
+}

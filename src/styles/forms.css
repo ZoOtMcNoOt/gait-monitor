@@ -170,6 +170,84 @@
   background: var(--color-bg);
 }
 
+/*────────────────────────────────────────────────────────
+  High Contrast Mode Support
+────────────────────────────────────────────────────────*/
+.high-contrast .form-group label {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .form-group input,
+.high-contrast .form-group textarea,
+.high-contrast .form-group select {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  border: 2px solid var(--color-border) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .form-group input:focus,
+.high-contrast .form-group textarea:focus,
+.high-contrast .form-group select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px var(--color-primary) !important;
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast .form-group input::placeholder,
+.high-contrast .form-group textarea::placeholder {
+  color: var(--color-text-secondary) !important;
+  opacity: 1 !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .legacy-fields {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .legacy-fields summary {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+  border: 2px solid transparent !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .legacy-fields summary:hover {
+  background: var(--color-bg-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+
+.high-contrast .form-group .error {
+  color: var(--color-error) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .form-group .success {
+  color: var(--color-success) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .form-group input.error,
+.high-contrast .form-group textarea.error,
+.high-contrast .form-group select.error {
+  border-color: var(--color-error) !important;
+  border-width: 3px !important;
+}
+
+.high-contrast .form-group input.success,
+.high-contrast .form-group textarea.success,
+.high-contrast .form-group select.success {
+  border-color: var(--color-success) !important;
+  border-width: 3px !important;
+}
+
 /* Responsive form adjustments */
 @media (max-width: 768px) {
   .form-row {

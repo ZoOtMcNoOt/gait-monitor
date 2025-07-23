@@ -255,6 +255,130 @@ tbody tr:hover {
   color: #86efac;
 }
 
+/*────────────────────────────────────────────────────────
+  High Contrast Mode Support
+────────────────────────────────────────────────────────*/
+.high-contrast table {
+  border: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast thead {
+  background: var(--color-bg-secondary) !important;
+}
+
+.high-contrast th,
+.high-contrast td {
+  border: 2px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  background: var(--color-bg) !important;
+  box-sizing: border-box !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast th {
+  background: var(--color-bg-secondary) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast tbody tr:hover {
+  background: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+}
+
+.high-contrast .stat-card {
+  background: var(--color-bg) !important;
+  border: 3px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  box-shadow: 0 0 10px var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .stat-card h3 {
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .stat-card .stat-value {
+  color: var(--color-primary) !important;
+  font-weight: 700 !important;
+  text-shadow: 2px 2px 0 var(--color-bg) !important;
+}
+
+.high-contrast .table-container {
+  border: 3px solid var(--color-border) !important;
+  background: var(--color-bg) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .table-actions {
+  background: var(--color-bg-secondary) !important;
+  border: 2px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .device-list-container table {
+  border: 3px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .device-list-container th,
+.high-contrast .device-list-container td {
+  border: 2px solid var(--color-border) !important;
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  box-sizing: border-box !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .data-viewer-table {
+  border: 3px solid var(--color-border) !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .data-viewer-table th,
+.high-contrast .data-viewer-table td {
+  border: 2px solid var(--color-border) !important;
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+.high-contrast .logs-table th {
+  background: var(--color-bg-secondary) !important;
+  color: var(--color-text) !important;
+  font-weight: 700 !important;
+}
+
+.high-contrast .logs-table td {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast .logs-table .severity-high {
+  color: var(--color-error) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .logs-table .severity-medium {
+  color: var(--color-warning) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .logs-table .severity-low {
+  color: var(--color-success) !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
 @media (max-width: 480px) {
   .table-container {
     margin: 0 -var(--spacing);
