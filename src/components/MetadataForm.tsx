@@ -1,30 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { validationService, getValidationErrorMessage } from '../services/validation'
 import '../styles/forms.css'
-
-// Input validation utilities
-const validateSessionName = (name: string): string | null => {
-  const trimmed = name.trim()
-  if (!trimmed) return 'Session name is required'
-  if (trimmed.length < 3) return 'Session name must be at least 3 characters'
-  if (trimmed.length > 100) return 'Session name must be less than 100 characters'
-  if (!/^[a-zA-Z0-9\s\-_.]+$/.test(trimmed)) return 'Session name contains invalid characters'
-  return null
-}
-
-const validateSubjectId = (id: string): string | null => {
-  const trimmed = id.trim()
-  if (!trimmed) return 'Subject ID is required'
-  if (trimmed.length < 2) return 'Subject ID must be at least 2 characters'
-  if (trimmed.length > 50) return 'Subject ID must be less than 50 characters'
-  if (!/^[a-zA-Z0-9\-_]+$/.test(trimmed)) return 'Subject ID can only contain letters, numbers, hyphens, and underscores'
-  return null
-}
-
-const validateNotes = (notes: string): string | null => {
-  const trimmed = notes.trim()
-  if (trimmed.length > 1000) return 'Notes must be less than 1000 characters'
-  return null
-}
 
 interface Props {
   onSubmit?: (metadata: { sessionName: string; subjectId: string; notes: string }) => void
@@ -50,64 +26,83 @@ export default function MetadataForm({ onSubmit }: Props) {
     notes?: boolean;
   }>({})
 
-  // Validate individual fields
-  const validateField = (field: string, value: string) => {
-    switch (field) {
-      case 'sessionName':
-        return validateSessionName(value)
-      case 'subjectId':
-        return validateSubjectId(value)
-      case 'notes':
-        return validateNotes(value)
-      default:
-        return null
+  // Backend validation function
+  const validateField = useCallback(async (field: string, value: string): Promise<string | null> => {
+    try {
+      switch (field) {
+        case 'sessionName':
+          await validationService.validateSessionName(value)
+          return null
+        case 'subjectId':
+          await validationService.validateSubjectId(value)
+          return null
+        case 'notes':
+          await validationService.validateNotes(value)
+          return null
+        default:
+          return null
+      }
+    } catch (error) {
+      return getValidationErrorMessage(error)
     }
-  }
+  }, [])
 
-  // Handle field changes with validation
-  const handleFieldChange = (field: string, value: string) => {
+  // Handle field changes with async validation
+  const handleFieldChange = async (field: string, value: string) => {
     setMetadata(prev => ({ ...prev, [field]: value }))
     
     // Validate if field has been touched
     if (touched[field as keyof typeof touched]) {
-      const error = validateField(field, value)
+      const error = await validateField(field, value)
       setErrors(prev => ({ ...prev, [field]: error }))
     }
   }
 
   // Handle field blur (mark as touched and validate)
-  const handleFieldBlur = (field: string) => {
+  const handleFieldBlur = async (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }))
     const value = metadata[field as keyof typeof metadata] as string
-    const error = validateField(field, value)
+    const error = await validateField(field, value)
     setErrors(prev => ({ ...prev, [field]: error }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate all fields
-    const sessionNameError = validateSessionName(metadata.sessionName)
-    const subjectIdError = validateSubjectId(metadata.subjectId)
-    const notesError = validateNotes(metadata.notes)
-    
-    const validationErrors = {
-      sessionName: sessionNameError,
-      subjectId: subjectIdError,
-      notes: notesError,
-    }
-    
-    setErrors(validationErrors)
-    setTouched({ sessionName: true, subjectId: true, notes: true })
-    
-    // Check if there are any errors
-    const hasErrors = Object.values(validationErrors).some(error => error !== null)
-    
-    if (!hasErrors && onSubmit) {
-      onSubmit({
-        sessionName: metadata.sessionName.trim(),
-        subjectId: metadata.subjectId.trim(),
-        notes: metadata.notes.trim()
+    // Validate all fields using backend validation
+    try {
+      const [sessionNameError, subjectIdError, notesError] = await Promise.all([
+        validateField('sessionName', metadata.sessionName),
+        validateField('subjectId', metadata.subjectId),
+        validateField('notes', metadata.notes)
+      ])
+      
+      const validationErrors = {
+        sessionName: sessionNameError,
+        subjectId: subjectIdError,
+        notes: notesError,
+      }
+      
+      setErrors(validationErrors)
+      setTouched({ sessionName: true, subjectId: true, notes: true })
+      
+      // Check if there are any errors
+      const hasErrors = Object.values(validationErrors).some(error => error !== null)
+      
+      if (!hasErrors && onSubmit) {
+        onSubmit({
+          sessionName: metadata.sessionName.trim(),
+          subjectId: metadata.subjectId.trim(),
+          notes: metadata.notes.trim()
+        })
+      }
+    } catch (error) {
+      console.error('Validation failed:', error)
+      // Show general error message
+      setErrors({
+        sessionName: 'Validation failed. Please check your input.',
+        subjectId: null,
+        notes: null
       })
     }
   }

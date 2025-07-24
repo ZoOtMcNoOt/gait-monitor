@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react'
 import { useBufferManager } from '../hooks/useBufferManager'
-import type { BufferStats } from '../utils/BufferManager'
 
 interface Props {
   isVisible?: boolean
 }
 
+// Convert new BufferMetrics to legacy BufferStats format for display
+interface BufferStats {
+  totalDevices: number
+  totalDataPoints: number
+  memoryUsageMB: number
+  oldestTimestamp: number
+  newestTimestamp: number
+  deviceStats: Map<string, {
+    dataPoints: number
+    memoryUsageMB: number
+    oldestTimestamp: number
+    newestTimestamp: number
+    sampleRate: number
+  }>
+}
+
 export default function BufferStatsPanel({ isVisible = false }: Props) {
-  const bufferManager = useBufferManager()
+  const { state: { globalMetrics, metrics }, actions: { cleanupOldData, forceMemoryCleanup } } = useBufferManager()
   const [stats, setStats] = useState<BufferStats | null>(null)
   const [refreshInterval, setRefreshInterval] = useState(1000) // ms
 
@@ -16,10 +31,53 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
 
     const updateStats = () => {
       try {
-        const currentStats = bufferManager.getBufferStats()
+        if (!globalMetrics || !metrics) {
+          setStats(null)
+          return
+        }
+
+        // Convert new metrics format to legacy stats format
+        const deviceStats = new Map()
+        let totalDataPoints = 0
+        let oldestTimestamp = Date.now()
+        let newestTimestamp = 0
+
+        Object.entries(metrics).forEach(([deviceId, deviceMetrics]) => {
+          totalDataPoints += deviceMetrics.total_samples
+          
+          // Calculate approximate timestamps from age
+          const now = Date.now()
+          const oldest = deviceMetrics.oldest_sample_age_ms > 0 ? now - deviceMetrics.oldest_sample_age_ms : 0
+          const newest = deviceMetrics.newest_sample_age_ms > 0 ? now - deviceMetrics.newest_sample_age_ms : now
+
+          if (oldest > 0 && oldest < oldestTimestamp) {
+            oldestTimestamp = oldest
+          }
+          if (newest > newestTimestamp) {
+            newestTimestamp = newest
+          }
+
+          deviceStats.set(deviceId, {
+            dataPoints: deviceMetrics.total_samples,
+            memoryUsageMB: deviceMetrics.memory_usage_bytes / (1024 * 1024),
+            oldestTimestamp: oldest,
+            newestTimestamp: newest,
+            sampleRate: deviceMetrics.data_rate_hz
+          })
+        })
+
+        const currentStats: BufferStats = {
+          totalDevices: globalMetrics.total_devices,
+          totalDataPoints,
+          memoryUsageMB: globalMetrics.total_memory_usage / (1024 * 1024),
+          oldestTimestamp: oldestTimestamp === Date.now() ? 0 : oldestTimestamp,
+          newestTimestamp,
+          deviceStats
+        }
+
         setStats(currentStats)
       } catch (error) {
-        console.error('Error getting buffer stats:', error)
+        console.error('Error processing buffer stats:', error)
         setStats(null)
       }
     }
@@ -33,7 +91,7 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
     return () => {
       clearInterval(interval)
     }
-  }, [isVisible, refreshInterval, bufferManager])
+  }, [isVisible, refreshInterval, globalMetrics, metrics])
 
   if (!isVisible || !stats) {
     return null
@@ -52,7 +110,8 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
   }
 
   const getMemoryStatus = (usage: number): 'good' | 'warning' | 'critical' => {
-    const threshold = bufferManager.bufferConfig.memoryThresholdMB
+    // Use a reasonable default memory threshold (128MB)
+    const threshold = 128
     if (usage < threshold * 0.7) return 'good'
     if (usage < threshold * 0.9) return 'warning'
     return 'critical'
@@ -110,7 +169,7 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
             {formatBytes(stats.memoryUsageMB)}
           </div>
           <div className="text-xs text-gray-500">
-            Limit: {formatBytes(bufferManager.bufferConfig.memoryThresholdMB)}
+            Limit: {formatBytes(128)} {/* Default 128MB threshold */}
           </div>
         </div>
         
@@ -127,27 +186,27 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
 
       {/* Configuration Display */}
       <div className="mb-6">
-        <h4 className="text-md font-semibold text-gray-700 mb-2">Buffer Configuration</h4>
+        <h4 className="text-md font-semibold text-gray-700 mb-2">Streaming Configuration</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <div>
-            <span className="text-gray-600">Max Chart Points:</span>
-            <span className="font-mono ml-2">{bufferManager.bufferConfig.maxChartPoints}</span>
+            <span className="text-gray-600">Max Subscribers:</span>
+            <span className="font-mono ml-2">{globalMetrics?.total_devices || 0}</span>
           </div>
           <div>
-            <span className="text-gray-600">Max Device Buffer:</span>
-            <span className="font-mono ml-2">{bufferManager.bufferConfig.maxDeviceBufferPoints}</span>
+            <span className="text-gray-600">Total Memory:</span>
+            <span className="font-mono ml-2">{formatBytes((globalMetrics?.total_memory_usage || 0) / (1024 * 1024))}</span>
           </div>
           <div>
-            <span className="text-gray-600">Sliding Window:</span>
-            <span className="font-mono ml-2">{bufferManager.bufferConfig.slidingWindowSeconds}s</span>
+            <span className="text-gray-600">Cleanup Runs:</span>
+            <span className="font-mono ml-2">{globalMetrics?.cleanup_runs || 0}</span>
           </div>
           <div>
-            <span className="text-gray-600">Cleanup Interval:</span>
-            <span className="font-mono ml-2">{bufferManager.bufferConfig.cleanupInterval}ms</span>
+            <span className="text-gray-600">Dropped Samples:</span>
+            <span className="font-mono ml-2">{globalMetrics?.total_dropped_samples || 0}</span>
           </div>
           <div>
-            <span className="text-gray-600">Circular Buffers:</span>
-            <span className="font-mono ml-2">{bufferManager.bufferConfig.enableCircularBuffers ? 'ON' : 'OFF'}</span>
+            <span className="text-gray-600">Average Utilization:</span>
+            <span className="font-mono ml-2">{(globalMetrics?.average_utilization || 0).toFixed(1)}%</span>
           </div>
         </div>
       </div>
@@ -196,16 +255,16 @@ export default function BufferStatsPanel({ isVisible = false }: Props) {
       <div className="mt-6 pt-4 border-t border-gray-200">
         <div className="flex gap-2">
           <button
-            onClick={() => bufferManager.performCleanup()}
+            onClick={() => cleanupOldData()}
             className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
           >
-            Force Cleanup
+            Cleanup Old Data
           </button>
           <button
-            onClick={() => bufferManager.clearAll()}
+            onClick={() => forceMemoryCleanup()}
             className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
           >
-            Clear All Buffers
+            Force Memory Cleanup
           </button>
         </div>
       </div>

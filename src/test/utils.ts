@@ -1,16 +1,17 @@
 // Test utilities for creating mock data
-import type { GaitDataPoint } from '../utils/BufferManager'
+import type { GaitDataPoint } from '../types'
 
 export function createMockGaitData(overrides: Partial<GaitDataPoint> = {}): GaitDataPoint {
   return {
     device_id: 'test-device-1',
-    R1: 1000,
-    R2: 1500,
-    R3: 2000,
-    X: 0.1,
-    Y: 0.2,
-    Z: 0.3,
+    r1: 1000,
+    r2: 1500,
+    r3: 2000,
+    x: 0.1,
+    y: 0.2,
+    z: 0.3,
     timestamp: Date.now(),
+    sequence: 1,
     ...overrides,
   }
 }
@@ -21,12 +22,13 @@ export function createMockGaitDataArray(count: number, deviceId = 'test-device-1
     createMockGaitData({
       device_id: deviceId,
       timestamp: baseTimestamp + index * 100, // 100ms intervals to avoid time-based cleanup
-      R1: 1000 + Math.random() * 100,
-      R2: 1500 + Math.random() * 100,
-      R3: 2000 + Math.random() * 100,
-      X: Math.random() * 0.5,
-      Y: Math.random() * 0.5,
-      Z: Math.random() * 0.5,
+      r1: 1000 + Math.random() * 100,
+      r2: 1500 + Math.random() * 100,
+      r3: 2000 + Math.random() * 100,
+      x: Math.random() * 0.5,
+      y: Math.random() * 0.5,
+      z: Math.random() * 0.5,
+      sequence: index + 1,
     })
   )
 }

@@ -53,7 +53,6 @@ const mockDeviceConnection = {
     ['device1', 'disconnected'],
     ['device2', 'disconnected']
   ]),
-  deviceHeartbeats: new Map(),
   isScanning: false,
   isConnecting: null as string | null,
   scanDevices: mockScanDevices,

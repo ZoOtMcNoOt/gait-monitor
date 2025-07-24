@@ -26,10 +26,6 @@ const mockGetActiveCollectingDevices = jest.fn();
 jest.mock('../../contexts/DeviceConnectionContext', () => ({
   useDeviceConnection: () => ({
     connectedDevices: ['device1', 'device2'],
-    deviceHeartbeats: new Map([
-      ['device1', { sequence: 123 }],
-      ['device2', { sequence: 456 }]
-    ]),
     startDeviceCollection: mockStartDeviceCollection,
     stopDeviceCollection: mockStopDeviceCollection,
     getActiveCollectingDevices: mockGetActiveCollectingDevices
@@ -103,12 +99,10 @@ describe('MultiDeviceSelector', () => {
     const deviceItems = container.querySelectorAll('.device-item');
     expect(deviceItems.length).toBe(2);
     
-    // Check device names include heartbeat sequence
+    // Check device names (no longer include heartbeat sequence)
     const deviceNames = container.querySelectorAll('.device-name');
     expect(deviceNames[0].textContent).toContain('Device evice1');
-    expect(deviceNames[0].textContent).toContain('♥123');
     expect(deviceNames[1].textContent).toContain('Device evice2');
-    expect(deviceNames[1].textContent).toContain('♥456');
   });
 
   test('should show collection summary', async () => {

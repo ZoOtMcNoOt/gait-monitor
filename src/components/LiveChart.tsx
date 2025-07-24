@@ -32,6 +32,7 @@ interface Props {
   isCollecting?: boolean
 }
 
+// Legacy GaitData format for the chart component
 interface GaitData {
   device_id: string
   R1: number
@@ -74,14 +75,13 @@ export default function LiveChart({ isCollecting = false }: Props) {
     connectedDevices, 
     activeCollectingDevices,
     connectionStatus, 
-    deviceHeartbeats,
     subscribeToGaitData,
     lastGaitDataTime,
     getCurrentSampleRate
   } = useDeviceConnection()
   
   // Initialize unified buffer manager
-  const bufferManager = useBufferManager()
+  const { state: bufferState, actions: { addDataPoint, forceMemoryCleanup } } = useBufferManager()
   
   // Optimized timestamp management with caching
   const { getChartTimestamp } = useTimestampManager({
@@ -150,9 +150,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     ]
     
     const getDeviceColor = (baseColor: string) => {
-      // Get all active device IDs from buffer manager for consistent indexing
-      const bufferStats = bufferManager.getBufferStats()
-      const deviceIds = bufferStats ? Array.from(bufferStats.deviceStats.keys()) : []
+      // Get all active device IDs from buffer state for consistent indexing
+      const deviceIds = Object.keys(bufferState.metrics)
       const deviceIndex = deviceIds.indexOf(deviceId)
       
       // If it's the first device or simulation, use base colors
@@ -246,7 +245,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
 
     chart.update('none')
-  }, [chartMode, bufferManager])
+  }, [chartMode, bufferState.metrics])
 
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
@@ -259,16 +258,17 @@ export default function LiveChart({ isCollecting = false }: Props) {
       timestamp: relativeTime 
     }
     
-    // Add to unified buffer manager
-    bufferManager.addDataPoint(deviceId, {
+    // Add to unified buffer manager - convert to backend format
+    addDataPoint(deviceId, {
       device_id: deviceId,
-      R1: normalizedGaitData.R1,
-      R2: normalizedGaitData.R2,
-      R3: normalizedGaitData.R3,
-      X: normalizedGaitData.X,
-      Y: normalizedGaitData.Y,
-      Z: normalizedGaitData.Z,
-      timestamp: relativeTime
+      acceleration_x: normalizedGaitData.X,
+      acceleration_y: normalizedGaitData.Y,
+      acceleration_z: normalizedGaitData.Z,
+      gyroscope_x: normalizedGaitData.R1,
+      gyroscope_y: normalizedGaitData.R2,
+      gyroscope_z: normalizedGaitData.R3,
+      timestamp: relativeTime.toString(),
+      sequence_number: Date.now() // Use timestamp as sequence
     })
     
     // Update chart with new data
@@ -276,12 +276,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
       updateChartForDevice(deviceId, normalizedGaitData)
       
       // Get buffer stats for debugging
-      const bufferStats = bufferManager.getBufferStats()
-      if (bufferStats && bufferStats.totalDataPoints % 100 === 0) { // Log every 100 points
-        console.log(`📈 BufferManager: ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
+      if (bufferState.globalMetrics && bufferState.globalMetrics.total_data_points % 100 === 0) { // Log every 100 points
+        console.log(`📈 BufferManager: ${bufferState.globalMetrics.total_data_points} total points across ${bufferState.globalMetrics.total_devices} devices, memory: ${(bufferState.globalMetrics.total_memory_usage / (1024 * 1024)).toFixed(2)}MB`)
       }
     }
-  }, [updateChartForDevice, bufferManager, getChartTimestamp])
+  }, [updateChartForDevice, addDataPoint, getChartTimestamp, bufferState.globalMetrics])
 
   // Initialize chart with original UI style
   useEffect(() => {
@@ -426,7 +425,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     let simulationInterval: ReturnType<typeof setInterval> | null = null
     
     // Clear buffers when starting collection (TimestampManager handles base timestamp)
-    bufferManager.clearAll()
+    forceMemoryCleanup()
     
     // Clear existing chart data
     if (chartRef.current) {
@@ -483,12 +482,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
         clearInterval(simulationInterval)
       }
     }
-  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, bufferManager])
+  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, forceMemoryCleanup])
 
   // Accessibility helpers
   const getChartSummary = useCallback((): string => {
-    const stats = bufferManager.getBufferStats()
-    const totalSamples = stats ? stats.totalDataPoints : 0
+    const totalSamples = bufferState.globalMetrics ? bufferState.globalMetrics.total_data_points : 0
     const deviceCount = connectedDevices.length
     const currentMode = chartMode === 'all' ? 'all channels' : 
                        chartMode === 'resistance' ? 'resistance channels (R1, R2, R3)' : 
@@ -499,7 +497,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
     
     return `Gait monitoring chart showing ${currentMode}. ${totalSamples} data points collected from ${deviceCount} device${deviceCount !== 1 ? 's' : ''}. Current sample rate: ${getCurrentSampleRateDisplay()}.`
-  }, [bufferManager, connectedDevices.length, chartMode, getCurrentSampleRateDisplay])
+  }, [bufferState.globalMetrics, connectedDevices.length, chartMode, getCurrentSampleRateDisplay])
 
   const getLatestDataSummary = useCallback(() => {
     const chart = chartRef.current
@@ -660,7 +658,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
               <div className="device-status">
                 {connectedDevices.map(deviceId => {
                   const status = connectionStatus.get(deviceId) || 'disconnected'
-                  const lastHeartbeat = deviceHeartbeats.get(deviceId)
                   const lastGait = lastGaitDataTime.get(deviceId)
                   const now = Date.now()
                   
@@ -670,11 +667,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
                       <span className={`connection-indicator ${status}`}>
                         {status === 'connected' ? '🟢' : status === 'timeout' ? '🟡' : '🔴'}
                       </span>
-                      {lastHeartbeat && (
-                        <span className="heartbeat-info" title={`Seq: ${lastHeartbeat.sequence}, Device time: ${lastHeartbeat.device_timestamp}ms ago: ${now - lastHeartbeat.received_timestamp}ms`}>
-                          ♥#{lastHeartbeat.sequence}
-                        </span>
-                      )}
                       {lastGait && (
                         <span className="gait-info" title={`Last gait data: ${now - lastGait}ms ago`}>
                           📊{Math.round((now - lastGait) / 1000)}s
@@ -690,7 +682,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
               onClick={() => setChartMode('all')}
-              aria-pressed={chartMode === 'all' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               All Channels (1)
@@ -698,7 +689,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
               onClick={() => setChartMode('resistance')}
-              aria-pressed={chartMode === 'resistance' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               Resistance (2)
@@ -706,7 +696,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
               onClick={() => setChartMode('acceleration')}
-              aria-pressed={chartMode === 'acceleration' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               Acceleration (3)
@@ -748,10 +737,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           <span>•</span>
           <span>Devices: {connectedDevices.length}</span>
           <span>•</span>
-          <span>Total Samples: {(() => {
-            const stats = bufferManager.getBufferStats()
-            return stats ? stats.totalDataPoints : 0
-          })()}</span>
+          <span>Total Samples: {bufferState.globalMetrics ? bufferState.globalMetrics.total_data_points : 0}</span>
           <span>•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
           {config.debugEnabled && (
