@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 use tokio::fs;
-use chrono::{DateTime, Utc};
 
 use crate::security::CSRFTokenState;
 use crate::path_manager::PathConfig;
@@ -246,8 +244,6 @@ pub async fn delete_session(
 
 // Choose storage directory using system dialog
 pub async fn choose_storage_directory() -> Result<Option<String>, String> {
-    use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-    
     // This is a simplified version - in a real implementation,
     // you would use the dialog API properly
     Ok(None) // Placeholder for dialog selection

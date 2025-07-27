@@ -9,7 +9,7 @@ use tauri::Emitter;
 use btleplug::platform::{Peripheral, Manager};
 use btleplug::api::{Central, Manager as _, Peripheral as _, ScanFilter};
 
-use crate::security::{RateLimitingState, CustomRateLimiter};
+use crate::security::RateLimitingState;
 use crate::data_processing::{
     SampleRateState, parse_gait_data, GaitDataWithRate
 };
@@ -68,7 +68,7 @@ pub struct BluetoothDeviceInfo {
 pub async fn scan_devices(
     discovered_devices: &DiscoveredDevicesState,
     bt_manager: &BluetoothManagerState,
-    rate_limiting: &RateLimitingState,
+    _rate_limiting: &RateLimitingState,
 ) -> Result<Vec<BluetoothDeviceInfo>, String> {
     
     println!("Starting Bluetooth scan...");
@@ -171,7 +171,7 @@ pub async fn connect_device(
     device_id: &str,
     connected_devices: &ConnectedDevicesState,
     discovered_devices: &DiscoveredDevicesState,
-    rate_limiting: &RateLimitingState,
+    _rate_limiting: &RateLimitingState,
 ) -> Result<String, String> {
     
     println!("Attempting to connect to device: {}", device_id);

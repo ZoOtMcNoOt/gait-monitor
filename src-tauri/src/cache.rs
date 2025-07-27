@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
 
 // Cache entry with metadata
 #[derive(Debug, Clone)]

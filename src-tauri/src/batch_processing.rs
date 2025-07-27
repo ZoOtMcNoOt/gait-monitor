@@ -271,6 +271,7 @@ pub struct BatchProcessor {
     worker_tx: mpsc::UnboundedSender<WorkerMessage>,
     stats: Arc<Mutex<QueueStats>>,
     running_jobs: Arc<Mutex<HashMap<String, Instant>>>,
+    worker_rx: Arc<Mutex<Option<mpsc::UnboundedReceiver<WorkerMessage>>>>, // Store receiver for deferred startup
 }
 
 impl BatchProcessor {
@@ -296,14 +297,19 @@ impl BatchProcessor {
                 worker_utilization: 0.0,
             })),
             running_jobs: Arc::new(Mutex::new(HashMap::new())),
+            worker_rx: Arc::new(Mutex::new(Some(worker_rx))),
         };
 
-        // Start worker tasks
-        processor.start_workers(worker_rx);
-        processor.start_scheduler();
-        processor.start_cleanup_task();
-
         processor
+    }
+
+    // Initialize background tasks - call this after Tauri runtime is ready
+    pub fn start_background_tasks(&self) {
+        if let Some(worker_rx) = self.worker_rx.lock().unwrap().take() {
+            self.start_workers(worker_rx);
+            self.start_scheduler();
+            self.start_cleanup_task();
+        }
     }
 
     // Submit a new job to the queue
@@ -469,10 +475,10 @@ impl BatchProcessor {
         let stats = Arc::clone(&self.stats);
         let running_jobs = Arc::clone(&self.running_jobs);
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             while let Some(message) = worker_rx.recv().await {
                 match message {
-                    WorkerMessage::ProcessJob(mut job, result_tx) => {
+                    WorkerMessage::ProcessJob(job, result_tx) => {
                         let job_id = job.id.clone();
                         let start_time = Instant::now();
                         
@@ -569,7 +575,7 @@ impl BatchProcessor {
         let max_concurrent = self.config.max_concurrent_jobs;
         let running_jobs = Arc::clone(&self.running_jobs);
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut scheduler_interval = interval(Duration::from_millis(1000));
             
             loop {
@@ -624,7 +630,7 @@ impl BatchProcessor {
         let stats = Arc::clone(&self.stats);
         let cleanup_hours = self.config.cleanup_completed_jobs_after_hours;
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut cleanup_interval = interval(Duration::from_secs(3600)); // Run every hour
             
             loop {
@@ -662,9 +668,9 @@ impl BatchProcessor {
     // Process different job types
     async fn process_job_type(job: &BatchJob) -> JobResult {
         match &job.job_type {
-            JobType::DataExport { session_ids, export_format, output_path } => {
+            JobType::DataExport { session_ids, export_format: _, output_path } => {
                 // Simulate export processing
-                for (i, session_id) in session_ids.iter().enumerate() {
+                for (_i, _session_id) in session_ids.iter().enumerate() {
                     // Check for cancellation
                     if job.status == JobStatus::Cancelled {
                         return JobResult::Cancel;
@@ -680,39 +686,39 @@ impl BatchProcessor {
                 JobResult::Success(Some(format!("Exported {} sessions to {}", session_ids.len(), output_path)))
             }
             
-            JobType::DataAnalysis { session_ids, analysis_type, parameters } => {
+            JobType::DataAnalysis { session_ids, analysis_type, parameters: _ } => {
                 // Simulate analysis processing
                 sleep(Duration::from_secs(2)).await;
                 JobResult::Success(Some(format!("Analyzed {} sessions with {}", session_ids.len(), analysis_type)))
             }
             
-            JobType::DataValidation { session_ids, validation_rules } => {
+            JobType::DataValidation { session_ids, validation_rules: _ } => {
                 // Simulate validation processing
-                for session_id in session_ids {
+                for _session_id in session_ids {
                     sleep(Duration::from_millis(200)).await;
                 }
                 JobResult::Success(Some(format!("Validated {} sessions", session_ids.len())))
             }
             
-            JobType::DataCleanup { older_than_days, preserve_important } => {
+            JobType::DataCleanup { older_than_days, preserve_important: _ } => {
                 // Simulate cleanup processing
                 sleep(Duration::from_secs(1)).await;
                 JobResult::Success(Some(format!("Cleaned up data older than {} days", older_than_days)))
             }
             
-            JobType::BufferOptimization { device_ids, optimization_type } => {
+            JobType::BufferOptimization { device_ids, optimization_type: _ } => {
                 // Simulate buffer optimization
                 sleep(Duration::from_millis(800)).await;
                 JobResult::Success(Some(format!("Optimized {} device buffers", device_ids.len())))
             }
             
-            JobType::BackupOperation { backup_type, include_sessions, include_config } => {
+            JobType::BackupOperation { backup_type, include_sessions: _, include_config: _ } => {
                 // Simulate backup processing
                 sleep(Duration::from_secs(3)).await;
                 JobResult::Success(Some(format!("Created {} backup", backup_type)))
             }
             
-            JobType::ReportGeneration { report_type, time_range, recipients } => {
+            JobType::ReportGeneration { report_type, time_range: _, recipients } => {
                 // Simulate report generation
                 sleep(Duration::from_secs(2)).await;
                 JobResult::Success(Some(format!("Generated {} report for {} recipients", report_type, recipients.len())))

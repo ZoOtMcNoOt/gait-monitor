@@ -234,6 +234,8 @@ pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String>
 /// # Examples
 /// 
 /// ```rust
+/// use app_lib::data_processing::{validate_gait_data, GaitData};
+/// 
 /// let valid_data = GaitData {
 ///     device_id: "sensor_001".to_string(),
 ///     r1: 250.0, r2: 300.0, r3: 275.0,
@@ -688,7 +690,7 @@ impl CSVStreamer {
         
         // Calculate progress
         let elapsed = self.start_time.elapsed();
-        let samples_per_second = if elapsed.as_secs() > 0 {
+        let _samples_per_second = if elapsed.as_secs() > 0 {
             self.samples_processed as f64 / elapsed.as_secs_f64()
         } else {
             0.0

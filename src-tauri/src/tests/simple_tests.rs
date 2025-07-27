@@ -1,10 +1,10 @@
 use crate::data_processing::GaitData;
 use crate::buffer_manager::GaitDataPoint;
-use crate::analytics::{AnalyticsEngine, SessionStatistics};
+use crate::analytics::AnalyticsEngine;
 use crate::validation::Validator;
 use crate::file_operations::SessionMetadata;
 use crate::buffer_manager::BufferManager;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::collections::HashMap;
 use tokio::time::timeout;
 use std::time::Duration;

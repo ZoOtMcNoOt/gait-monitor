@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use tokio::fs;
@@ -499,7 +499,7 @@ impl BackupManager {
         }
     }
 
-    async fn verify_restoration(&self, metadata: &BackupMetadata, options: &RecoveryOptions) -> Result<(), String> {
+    async fn verify_restoration(&self, _metadata: &BackupMetadata, options: &RecoveryOptions) -> Result<(), String> {
         // This would implement verification that restored files match the backup
         // For now, just check that the target directory exists and has content
         
@@ -660,7 +660,7 @@ impl BackupManager {
         &self, 
         files: &[FileInfo], 
         backup_path: &Path, 
-        compression_level: &CompressionLevel
+        _compression_level: &CompressionLevel
     ) -> Result<(), String> {
         // Ensure backup directory exists
         if let Some(parent) = backup_path.parent() {
@@ -812,19 +812,19 @@ impl BackupManager {
         }
     }
 
-    async fn schedule_daily_backup(&self, hour: u8) -> Result<(), String> {
+    async fn schedule_daily_backup(&self, _hour: u8) -> Result<(), String> {
         // This would implement daily backup scheduling
         // For now, just return Ok
         Ok(())
     }
 
-    async fn schedule_weekly_backup(&self, day: u8, hour: u8) -> Result<(), String> {
+    async fn schedule_weekly_backup(&self, _day: u8, _hour: u8) -> Result<(), String> {
         // This would implement weekly backup scheduling
         // For now, just return Ok
         Ok(())
     }
 
-    async fn schedule_monthly_backup(&self, day: u8, hour: u8) -> Result<(), String> {
+    async fn schedule_monthly_backup(&self, _day: u8, _hour: u8) -> Result<(), String> {
         // This would implement monthly backup scheduling
         // For now, just return Ok
         Ok(())

@@ -7,7 +7,7 @@ use governor::{Quota, RateLimiter, DefaultDirectRateLimiter};
 use nonzero_ext::*;
 use sha2::{Sha256, Digest};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use tracing::{info, warn, error};
 use tauri;
 

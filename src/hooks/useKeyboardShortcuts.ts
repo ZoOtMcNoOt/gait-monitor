@@ -41,8 +41,21 @@ export function useKeyboardShortcuts({
 
     const { key, ctrlKey, altKey, shiftKey } = event;
     
+    // Debug logging for troubleshooting
+    if (process.env.NODE_ENV === 'development') {
+      const invalidShortcuts = shortcutsRef.current.filter(s => !s.key || typeof s.key !== 'string');
+      if (invalidShortcuts.length > 0) {
+        console.warn('Found shortcuts with invalid keys:', invalidShortcuts);
+      }
+    }
+    
     // Find matching shortcut
     const matchingShortcut = shortcutsRef.current.find(shortcut => {
+      // Skip shortcuts with invalid key values
+      if (!shortcut.key || typeof shortcut.key !== 'string') {
+        return false;
+      }
+      
       const keyMatches = shortcut.key.toLowerCase() === key.toLowerCase();
       const ctrlMatches = !!shortcut.ctrl === ctrlKey;
       const altMatches = !!shortcut.alt === altKey;

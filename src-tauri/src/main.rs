@@ -18,23 +18,22 @@ mod cache;
 mod batch_processing;
 mod backup_system;
 
-use security::{CSRFTokenState, SecurityEvent, RateLimitingState, CustomRateLimiter, get_csrf_token, refresh_csrf_token, get_security_events, validate_csrf_token};
-use path_manager::PathConfig;
-use validation::{Validator, ValidationError, ValidatedSessionMetadata};
+use security::{CSRFTokenState, RateLimitingState, get_csrf_token, refresh_csrf_token, get_security_events, validate_csrf_token};
+use validation::{Validator, ValidatedSessionMetadata};
 use analytics::{AnalyticsEngine, SessionStatistics, DataSummary, DevicePerformanceAnalysis};
-use config::{ConfigurationState, AppConfig, ConfigValidationError, ConfigurationHistory};
+use config::{ConfigurationState, AppConfig, ConfigurationHistory};
 use buffer_manager::{BufferManagerState, GaitDataPoint, BufferMetrics, GlobalBufferMetrics, ConnectionMetrics, StreamingConfig};
 use monitoring::{
-    PerformanceMonitor, PerformanceMetrics, HealthStatus, SystemMetrics, AlertConfig, AlertNotification, HistoricalMetrics,
+    PerformanceMonitor,
     get_performance_metrics, get_health_status, get_system_metrics, get_historical_metrics,
     get_active_alerts, update_alert_config, get_alert_config, record_performance_measurement
 };
-use cache::{CacheManager, CacheConfig, CacheStats, CacheKey};
+use cache::{CacheManager, CacheConfig, CacheStats};
 use batch_processing::{BatchProcessor, BatchProcessorConfig, BatchJob, JobType, JobPriority, JobStatus, QueueStats};
 use backup_system::{BackupManager, BackupConfig, BackupType, BackupMetadata, BackupStats, RecoveryOptions};
 use data_processing::{
-    SampleRateState, GaitData, GaitDataWithRate,
-    parse_gait_data, validate_gait_data, filter_by_time_range, filter_by_devices,
+    SampleRateState, GaitData,
+    validate_gait_data, filter_by_time_range, filter_by_devices,
     extract_field_values, convert_units, normalize_data, DataField, UnitConversion, 
     NormalizationMethod, ExportFormat, CSVStreamer
 };
@@ -44,20 +43,16 @@ use device_management::{
     start_gait_notifications, stop_gait_notifications, get_sample_rate
 };
 use file_operations::{
-    SessionMetadata, SaveResult, PathConfigState,
+    SessionMetadata, PathConfigState,
 };
 
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::path::Path;
 use async_std::sync::Mutex;
-use uuid::Uuid;
-use futures::StreamExt;
 use tauri::Emitter;
-use std::time::{Duration, Instant};
-use dashmap::DashMap;
-use tracing::{info, warn, error};
+use std::time::Duration;
+use tracing::{info, error};
 
 // Global validator state
 #[derive(Clone)]
@@ -1196,6 +1191,10 @@ fn main() {
 
   info!("All application states initialized successfully");
   
+  // Start batch processor background tasks using Tauri async runtime
+  batch_processor.start_background_tasks();
+  info!("Batch processor background tasks started");
+  
   // Start background task for performance monitoring
   let monitor_clone = performance_monitor.clone();
   tauri::async_runtime::spawn(async move {
@@ -1239,7 +1238,7 @@ fn main() {
     .manage(buffer_manager_state)
     .manage(performance_monitor)
     .manage(cache_manager)
-    .manage(batch_processor)
+    .manage(batch_processor.clone())
     .manage(backup_manager)
     .invoke_handler(tauri::generate_handler![
       scan_devices_cmd, 
