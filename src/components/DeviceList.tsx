@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
@@ -150,9 +151,7 @@ export default function DeviceList() {
   const debugServices = async (deviceId: string) => {
     try {
       console.log(`Debug: Getting services for device: ${deviceId}`)
-      // This functionality would need to be moved to context if needed
-      // For now, keeping the direct invoke call
-      const { invoke } = await import('@tauri-apps/api/core')
+      // Using statically imported invoke to avoid dynamic import warnings
       const services: string[] = await invoke('debug_device_services', { deviceId })
       console.log('Debug: Services found:', services)
       

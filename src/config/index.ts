@@ -13,9 +13,11 @@ const isDev = (): boolean => {
   
   // Fallback to import.meta for Vite (wrapped in try-catch for Jest)
   try {
-    // Use eval to avoid static analysis issues with Jest
-    const importMeta = eval('import.meta');
-    return importMeta?.env?.DEV === true;
+    // Safe check for import.meta without eval
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return import.meta.env.DEV === true;
+    }
+    return false;
   } catch {
     // Default to false in environments that don't support import.meta
     return false;
