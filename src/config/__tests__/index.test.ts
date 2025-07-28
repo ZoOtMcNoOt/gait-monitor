@@ -8,12 +8,14 @@ import ConfigurationService, {
   shouldShowChartDebug,
   type AppConfig
 } from '../index'
+import { invoke } from '@tauri-apps/api/core'
 
 // Mock Tauri's invoke function for testing
-const mockInvoke = jest.fn()
 jest.mock('@tauri-apps/api/core', () => ({
-  invoke: mockInvoke
+  invoke: jest.fn()
 }))
+
+const mockInvoke = invoke as jest.MockedFunction<typeof invoke>
 
 describe('Config Module', () => {
   beforeEach(() => {

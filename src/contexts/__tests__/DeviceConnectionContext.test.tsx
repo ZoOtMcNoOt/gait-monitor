@@ -9,6 +9,14 @@ import { listen, type EventCallback } from '@tauri-apps/api/event'
 jest.mock('@tauri-apps/api/core')
 jest.mock('@tauri-apps/api/event')
 
+// Mock the config
+jest.mock('../../config', () => ({
+  config: {
+    app: { debug: true }
+  },
+  isDebugEnabled: () => true
+}))
+
 const mockInvoke = invoke as jest.MockedFunction<typeof invoke>
 const mockListen = listen as jest.MockedFunction<typeof listen>
 
@@ -38,7 +46,7 @@ describe('DeviceConnectionContext', () => {
               service_data: []
             }
           ])
-        case 'scan_devices':
+        case 'scan_devices_cmd':  // Updated to match implementation
           return Promise.resolve([
             { 
               id: 'test-device-1', 
@@ -51,17 +59,17 @@ describe('DeviceConnectionContext', () => {
               service_data: []
             }
           ])
-        case 'connect_device':
-          return Promise.resolve({ success: true })
-        case 'disconnect_device':
-          return Promise.resolve({ success: true })
-        case 'start_gait_notifications':
-          return Promise.resolve({ success: true })
-        case 'stop_gait_notifications':
-          return Promise.resolve({ success: true })
+        case 'connect_device_cmd':  // Updated to match implementation
+          return Promise.resolve('Connected successfully')
+        case 'disconnect_device_cmd':  // Updated to match implementation
+          return Promise.resolve('Disconnected successfully')
+        case 'start_gait_notifications_cmd':  // Updated to match implementation
+          return Promise.resolve('Notifications started')
+        case 'stop_gait_notifications_cmd':  // Updated to match implementation
+          return Promise.resolve('Notifications stopped')
         case 'check_connection_status':
           return Promise.resolve([])  // Start with no connected devices
-        case 'get_connected_devices':
+        case 'get_connected_devices_cmd':  // Updated to match implementation
           return Promise.resolve([])  // Start with no connected devices
         case 'get_active_notifications':
           return Promise.resolve(['test-device-1'])
@@ -169,7 +177,7 @@ describe('DeviceConnectionContext', () => {
     // Wait for state update and re-render
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    expect(mockInvoke).toHaveBeenCalledWith('scan_devices')
+    expect(mockInvoke).toHaveBeenCalledWith('scan_devices_cmd')
     // After scanning, the scanned devices should be populated
     expect(container.querySelector('[data-testid="scanned-count"]')?.textContent).toBe('1')
   })
@@ -189,7 +197,7 @@ describe('DeviceConnectionContext', () => {
       await contextRef.connectDevice('test-device-1')
     }
     
-    expect(mockInvoke).toHaveBeenCalledWith('connect_device', { deviceId: 'test-device-1' })
+    expect(mockInvoke).toHaveBeenCalledWith('connect_device_cmd', { deviceId: 'test-device-1' })
   })
 
   it('should handle connection errors gracefully', async () => {
@@ -197,7 +205,7 @@ describe('DeviceConnectionContext', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     
     mockInvoke.mockImplementation((command: string) => {
-      if (command === 'connect_device') {
+      if (command === 'connect_device_cmd') {
         return Promise.reject(new Error('Connection failed'))
       }
       if (command === 'check_connection_status') {
@@ -223,7 +231,7 @@ describe('DeviceConnectionContext', () => {
     if (contextRef) {
       await expect(contextRef.connectDevice('test-device-1')).rejects.toThrow('Connection failed')
     }
-    expect(mockInvoke).toHaveBeenCalledWith('connect_device', { deviceId: 'test-device-1' })
+    expect(mockInvoke).toHaveBeenCalledWith('connect_device_cmd', { deviceId: 'test-device-1' })
     
     // Restore console.error
     consoleErrorSpy.mockRestore()
@@ -320,7 +328,7 @@ describe('DeviceConnectionContext', () => {
       await contextRef.startDeviceCollection('test-device-1')
     }
     
-    expect(mockInvoke).toHaveBeenCalledWith('start_gait_notifications', { deviceId: 'test-device-1' })
+    expect(mockInvoke).toHaveBeenCalledWith('start_gait_notifications_cmd', { deviceId: 'test-device-1' })
   })
 
   it('should stop device collection successfully', async () => {
@@ -338,7 +346,7 @@ describe('DeviceConnectionContext', () => {
       await contextRef.stopDeviceCollection('test-device-1')
     }
     
-    expect(mockInvoke).toHaveBeenCalledWith('stop_gait_notifications', { deviceId: 'test-device-1' })
+    expect(mockInvoke).toHaveBeenCalledWith('stop_gait_notifications_cmd', { deviceId: 'test-device-1' })
   })
 
   it('should handle collection start errors gracefully', async () => {
@@ -346,7 +354,7 @@ describe('DeviceConnectionContext', () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
     
     mockInvoke.mockImplementation((command: string) => {
-      if (command === 'start_gait_notifications') {
+      if (command === 'start_gait_notifications_cmd') {
         return Promise.reject(new Error('Collection failed'))
       }
       if (command === 'check_connection_status') {
@@ -371,7 +379,7 @@ describe('DeviceConnectionContext', () => {
     if (contextRef) {
       await expect(contextRef.startDeviceCollection('test-device-1')).rejects.toThrow('Collection failed')
     }
-    expect(mockInvoke).toHaveBeenCalledWith('start_gait_notifications', { deviceId: 'test-device-1' })
+    expect(mockInvoke).toHaveBeenCalledWith('start_gait_notifications_cmd', { deviceId: 'test-device-1' })
     
     // Restore console.error
     consoleErrorSpy.mockRestore()
@@ -562,7 +570,7 @@ describe('DeviceConnectionContext', () => {
         })
         
         await expect(contextRef.disconnectDevice('test-device-1')).resolves.toBeUndefined()
-        expect(mockInvoke).toHaveBeenCalledWith('disconnect_device', { deviceId: 'test-device-1' })
+        expect(mockInvoke).toHaveBeenCalledWith('disconnect_device_cmd', { deviceId: 'test-device-1' })
       }
     })
 
@@ -581,7 +589,7 @@ describe('DeviceConnectionContext', () => {
       if (contextRef) {
         // Mock disconnection failure
         mockInvoke.mockImplementation((command: string) => {
-          if (command === 'disconnect_device') {
+          if (command === 'disconnect_device_cmd') {
             return Promise.reject(new Error('Disconnection failed'))
           }
           return Promise.resolve({ success: true })
@@ -648,9 +656,14 @@ describe('DeviceConnectionContext', () => {
         // Remove device
         contextRef.removeDevice('test-device-1')
         
-        // Give React time to process the state update
-        await new Promise(resolve => setTimeout(resolve, 10))
-        await new Promise(resolve => setTimeout(resolve, 10))
+        // Give React time to process the state update and all effects to run
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        // Force multiple re-renders to ensure all effects have processed
+        flushSync(() => {})
+        await new Promise(resolve => setTimeout(resolve, 100))
+        flushSync(() => {})
+        await new Promise(resolve => setTimeout(resolve, 100))
         
         // Verify cleanup
         expect(contextRef.availableDevices).not.toContain('test-device-1')
@@ -679,7 +692,7 @@ describe('DeviceConnectionContext', () => {
       if (contextRef) {
         // Mock scan failure
         mockInvoke.mockImplementation((command: string) => {
-          if (command === 'scan_devices') {
+          if (command === 'scan_devices_cmd') {
             return Promise.reject(new Error('Scan failed'))
           }
           return Promise.resolve([])
@@ -707,7 +720,7 @@ describe('DeviceConnectionContext', () => {
       if (contextRef) {
         // Mock scan with mixed device types
         mockInvoke.mockImplementation((command: string) => {
-          if (command === 'scan_devices') {
+          if (command === 'scan_devices_cmd') {
             return Promise.resolve([
               { id: 'unknown-1', name: '', rssi: -80, connectable: true, address_type: 'random', services: [], manufacturer_data: [], service_data: [] },
               { id: 'named-2', name: 'Device B', rssi: -60, connectable: true, address_type: 'random', services: [], manufacturer_data: [], service_data: [] },
@@ -821,7 +834,7 @@ describe('DeviceConnectionContext', () => {
           if (command === 'check_connection_status') {
             return Promise.reject(new Error('Status check failed'))
           }
-          if (command === 'get_connected_devices') {
+          if (command === 'get_connected_devices_cmd') {
             return Promise.resolve(['device-1', 'device-2'])
           }
           return Promise.resolve([])
@@ -857,7 +870,7 @@ describe('DeviceConnectionContext', () => {
           if (command === 'check_connection_status') {
             return Promise.reject(new Error('Status check failed'))
           }
-          if (command === 'get_connected_devices') {
+          if (command === 'get_connected_devices_cmd') {
             return Promise.reject(new Error('Fallback also failed'))
           }
           return Promise.resolve([])

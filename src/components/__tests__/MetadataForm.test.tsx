@@ -3,6 +3,58 @@ import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import MetadataForm from '../MetadataForm';
 
+// Mock Tauri API
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: jest.fn()
+}));
+
+// Mock validation service
+jest.mock('../../services/validation', () => ({
+  validationService: {
+    validateSessionName: jest.fn().mockImplementation((value: string) => {
+      if (!value.trim()) {
+        throw new Error('Session name validation failed: Session name is required');
+      }
+      if (value.trim().length < 3) {
+        throw new Error('Session name validation failed: Session name must be at least 3 characters');
+      }
+      return Promise.resolve(value);
+    }),
+    validateSubjectId: jest.fn().mockImplementation((value: string) => {
+      if (!value.trim()) {
+        throw new Error('Subject ID validation failed: Subject ID is required');
+      }
+      if (value.trim().length < 2) {
+        throw new Error('Subject ID validation failed: Subject ID must be at least 2 characters');
+      }
+      if (!/^[A-Z0-9_-]+$/i.test(value.trim())) {
+        throw new Error('Subject ID validation failed: Subject ID can only contain letters, numbers, hyphens, and underscores');
+      }
+      return Promise.resolve(value);
+    }),
+    validateNotes: jest.fn().mockImplementation((value: string) => {
+      if (value.length > 1000) {
+        throw new Error('Notes validation failed: Notes must be less than 1000 characters');
+      }
+      return Promise.resolve(value);
+    })
+  },
+  getValidationErrorMessage: jest.fn().mockImplementation((error: Error | string) => {
+    if (typeof error === 'string') {
+      return error;
+    }
+    if (error instanceof Error) {
+      // Extract the original error message, removing the "validation failed:" prefix
+      const message = error.message;
+      if (message.includes('validation failed:')) {
+        return message.split('validation failed:')[1]?.trim() || message;
+      }
+      return message;
+    }
+    return String(error);
+  })
+}));
+
 // Helper function to properly simulate user input and trigger React events
 const simulateUserInput = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   // Focus the element first
@@ -328,7 +380,7 @@ describe('MetadataForm', () => {
       expect(notesInput.value).toBe('Test notes');
     });
 
-    test('should show validation errors on blur', () => {
+    test('should show validation errors on blur', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -340,13 +392,16 @@ describe('MetadataForm', () => {
         simulateBlur(sessionNameInput);
       });
       
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       // Should show error message
       const errorMessage = container.querySelector('.error-message');
       expect(errorMessage).toBeTruthy();
       expect(errorMessage?.textContent).toBe('Session name is required');
     });
 
-    test('should apply error CSS class when validation fails', () => {
+    test('should apply error CSS class when validation fails', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -358,10 +413,13 @@ describe('MetadataForm', () => {
         simulateBlur(sessionNameInput);
       });
       
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       expect(sessionNameInput.classList.contains('error')).toBe(true);
     });
 
-    test('should validate and show errors for all field types', () => {
+    test('should validate and show errors for all field types', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -388,13 +446,16 @@ describe('MetadataForm', () => {
         simulateBlur(notesInput);
       });
 
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should show error messages
       expect(container.textContent).toContain('Session name must be at least 3 characters');
       expect(container.textContent).toContain('Subject ID must be at least 2 characters');
       expect(container.textContent).toContain('Notes must be less than 1000 characters');
     });
 
-    test('should handle form submission with validation errors', () => {
+    test('should handle form submission with validation errors', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -406,6 +467,9 @@ describe('MetadataForm', () => {
         simulateFormSubmit(form);
       });
 
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should show validation errors
       expect(container.textContent).toContain('Session name is required');
       expect(container.textContent).toContain('Subject ID is required');
@@ -414,7 +478,7 @@ describe('MetadataForm', () => {
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
 
-    test('should handle successful form submission with valid data', () => {
+    test('should handle successful form submission with valid data', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -436,6 +500,9 @@ describe('MetadataForm', () => {
         simulateFormSubmit(form);
       });
 
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should call onSubmit with trimmed values
       expect(mockOnSubmit).toHaveBeenCalledWith({
         sessionName: 'Valid Session Name',
@@ -444,7 +511,7 @@ describe('MetadataForm', () => {
       });
     });
 
-    test('should handle edge cases in validation', () => {
+    test('should handle edge cases in validation', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -457,6 +524,10 @@ describe('MetadataForm', () => {
         simulateUserInput(sessionNameInput, '   ');
         simulateBlur(sessionNameInput);
       });
+      
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       expect(container.textContent).toContain('Session name is required');
 
       // Test invalid characters in subject ID
@@ -464,10 +535,14 @@ describe('MetadataForm', () => {
         simulateUserInput(subjectIdInput, 'SUBJ@001');
         simulateBlur(subjectIdInput);
       });
+      
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       expect(container.textContent).toContain('Subject ID can only contain letters, numbers, hyphens, and underscores');
     });
 
-    test('should clear errors when field becomes valid', () => {
+    test('should clear errors when field becomes valid', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -478,6 +553,10 @@ describe('MetadataForm', () => {
       flushSync(() => {
         simulateBlur(sessionNameInput);
       });
+      
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
       expect(container.textContent).toContain('Session name is required');
       expect(sessionNameInput.classList.contains('error')).toBe(true);
 
@@ -486,6 +565,9 @@ describe('MetadataForm', () => {
         simulateUserInput(sessionNameInput, 'Valid Session Name');
         simulateBlur(sessionNameInput);
       });
+      
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
       
       // Error should be cleared
       expect(sessionNameInput.classList.contains('error')).toBe(false);
@@ -523,7 +605,7 @@ describe('MetadataForm', () => {
       expect(submitButton).toBeNull();
     });
 
-    test('should handle form submission with validation errors preventing submit', () => {
+    test('should handle form submission with validation errors preventing submit', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -543,6 +625,9 @@ describe('MetadataForm', () => {
         simulateFormSubmit(form);
       });
 
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       // Should not call onSubmit due to validation errors
       expect(mockOnSubmit).not.toHaveBeenCalled();
       
@@ -551,7 +636,7 @@ describe('MetadataForm', () => {
       expect(container.textContent).toContain('Subject ID must be at least 2 characters');
     });
 
-    test('should handle form submission with valid data and trim values', () => {
+    test('should handle form submission with valid data and trim values', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -572,6 +657,9 @@ describe('MetadataForm', () => {
       flushSync(() => {
         simulateFormSubmit(form);
       });
+
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Should call onSubmit with trimmed values
       expect(mockOnSubmit).toHaveBeenCalledWith({
@@ -604,7 +692,7 @@ describe('MetadataForm', () => {
       expect(defaultPrevented).toBe(true);
     });
 
-    test('should mark all fields as touched on submission', () => {
+    test('should mark all fields as touched on submission', async () => {
       flushSync(() => {
         root.render(React.createElement(MetadataForm, { onSubmit: mockOnSubmit }));
       });
@@ -616,6 +704,9 @@ describe('MetadataForm', () => {
         const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
         form.dispatchEvent(submitEvent);
       });
+
+      // Wait for async validation to complete
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // All required fields should show errors (indicating they're touched)
       expect(container.textContent).toContain('Session name is required');

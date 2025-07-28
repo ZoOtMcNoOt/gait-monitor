@@ -235,8 +235,11 @@ describe('ToastContext', () => {
     expect(container.querySelector('[data-testid="toast-count"]')?.textContent).toBe('1')
     expect(container.querySelector('.toast')).toBeTruthy()
 
-    // Wait for the actual timeout (1000ms) with a small buffer
-    await new Promise(resolve => setTimeout(resolve, 1100))
+    // Wait for the actual timeout (1000ms) with a longer buffer to account for test timing
+    await new Promise(resolve => setTimeout(resolve, 1200))
+
+    // Force a re-render to ensure DOM is updated
+    await new Promise(resolve => setTimeout(resolve, 50))
 
     // Check both count and DOM
     expect(container.querySelector('[data-testid="toast-count"]')?.textContent).toBe('0')

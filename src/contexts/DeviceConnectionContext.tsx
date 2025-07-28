@@ -126,7 +126,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     })
   }, [])
 
-  const removeDevice = (deviceId: string) => {
+  const removeDevice = useCallback((deviceId: string) => {
     if (isDebugEnabled()) {
       console.log('🗑️ Removing device from global state:', deviceId)
     }
@@ -153,7 +153,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       newMap.delete(deviceId)
       return newMap
     })
-  }
+  }, [])
 
   const removeScannedDevice = useCallback((deviceId: string) => {
     console.log('🗑️ Removing scanned device:', deviceId)

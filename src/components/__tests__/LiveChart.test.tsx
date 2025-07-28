@@ -2,23 +2,28 @@ import React from 'react'
 import LiveChart from '../LiveChart'
 
 // Mock Chart.js
-jest.mock('chart.js', () => ({
-  Chart: jest.fn(() => ({
+jest.mock('chart.js', () => {
+  const registerMock = jest.fn();
+  const MockChart = jest.fn().mockImplementation(() => ({
     data: { datasets: [] },
     update: jest.fn(),
     destroy: jest.fn(),
     resize: jest.fn()
-  })),
-  LineController: class {},
-  LineElement: class {},
-  PointElement: class {},
-  LinearScale: class {},
-  TimeScale: class {},
-  Title: class {},
-  Tooltip: class {},
-  Legend: class {},
-  register: jest.fn()
-}))
+  }));
+  
+  return {
+    Chart: Object.assign(MockChart, { register: registerMock }),
+    LineController: class {},
+    LineElement: class {},
+    PointElement: class {},
+    LinearScale: class {},
+    TimeScale: class {},
+    Title: class {},
+    Tooltip: class {},
+    Legend: class {},
+    register: registerMock
+  }
+})
 
 // Mock the new buffer manager hook
 jest.mock('../../hooks/useBufferManager', () => ({

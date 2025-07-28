@@ -150,13 +150,16 @@ describe('SettingsTab', () => {
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith('appSettings')
     })
 
-    it('should handle malformed localStorage data', () => {
+    it('should handle malformed localStorage data', async () => {
       mockLocalStorage.getItem.mockReturnValue('invalid json')
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
 
       flushSync(() => {
         root.render(<SettingsTab darkMode={false} onToggleDarkMode={mockOnToggleDarkMode} />)
       })
+
+      // Wait for useEffect to run
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       expect(consoleSpy).toHaveBeenCalledWith('Failed to parse saved settings:', expect.any(Error))
       consoleSpy.mockRestore()
