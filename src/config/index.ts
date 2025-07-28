@@ -3,6 +3,25 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+// Helper function to safely check if we're in development mode
+// This works in both Vite (import.meta) and Jest (process.env) environments
+const isDev = (): boolean => {
+  // Check process.env first (works in Jest/Node environments)
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV) {
+    return process.env.NODE_ENV === 'development';
+  }
+  
+  // Fallback to import.meta for Vite (wrapped in try-catch for Jest)
+  try {
+    // Use eval to avoid static analysis issues with Jest
+    const importMeta = eval('import.meta');
+    return importMeta?.env?.DEV === true;
+  } catch {
+    // Default to false in environments that don't support import.meta
+    return false;
+  }
+};
+
 // Basic frontend-specific configuration that doesn't need backend integration
 export interface FrontendConfig {
   // UI settings that are purely frontend concerns
@@ -51,7 +70,7 @@ export const FRONTEND_CONFIG: FrontendConfig = {
   },
   
   mockData: {
-    enabled: import.meta.env.DEV,
+    enabled: isDev(),
     deviceCount: 2,
     sampleRate: 100
   }
@@ -349,17 +368,17 @@ export const config = {
   mockDeviceCount: 2,
   reactDevTools: true,
   hotReload: true,
-  debugEnabled: import.meta.env.DEV,
-  debugDevices: import.meta.env.DEV,
+  debugEnabled: isDev(),
+  debugDevices: isDev(),
   debugCharts: false,
-  mode: import.meta.env.DEV ? 'development' : 'production'
+  mode: isDev() ? 'development' : 'production'
 };
 
 // Legacy helper functions for backward compatibility
-export const isDevelopment = () => import.meta.env.DEV;
-export const isProduction = () => !import.meta.env.DEV;
-export const isDebugEnabled = () => import.meta.env.DEV;
-export const shouldShowDeviceDebug = () => import.meta.env.DEV;
+export const isDevelopment = () => isDev();
+export const isProduction = () => !isDev();
+export const isDebugEnabled = () => isDev();
+export const shouldShowDeviceDebug = () => isDev();
 export const shouldShowChartDebug = () => false;
 
 // Export the configuration service as default

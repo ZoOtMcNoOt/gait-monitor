@@ -76,12 +76,6 @@ jest.mock('../../hooks/useTimestampManager', () => ({
   })
 }))
 
-jest.mock('../BufferStatsPanel', () => {
-  return function MockBufferStatsPanel() {
-    return React.createElement('div', { 'data-testid': 'buffer-stats-panel' })
-  }
-})
-
 describe('LiveChart Component', () => {
   it('should render without crashing', () => {
     const component = React.createElement(LiveChart)
