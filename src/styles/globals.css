@@ -529,53 +529,6 @@ tbody tr:hover {
   color: #4b5563;
 }
 
-/* Heartbeat Section */
-.device-heartbeat-section {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.heartbeat-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: #f9fafb;
-  border-radius: 6px;
-}
-
-.heartbeat-status.connected {
-  background-color: #ecfdf5;
-  border: 1px solid #d1fae5;
-}
-
-.heartbeat-status.timeout {
-  background-color: #fef3c7;
-  border: 1px solid #fde68a;
-}
-
-.heartbeat-status.unknown {
-  background-color: #fee2e2;
-  border: 1px solid #fecaca;
-}
-
-.heartbeat-icon {
-  font-size: 1rem;
-}
-
-.heartbeat-text {
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.heartbeat-sequence {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-left: auto;
-}
-
 /* Device Actions */
 .device-actions {
   display: flex;
@@ -876,6 +829,50 @@ tbody tr:hover {
 
 .dark .device-card.gaitble-device .device-name {
   color: var(--color-text);
+}
+
+/* Dark mode pagination styles */
+.dark .pagination-controls label {
+  color: var(--color-text);
+}
+
+.dark .pagination-controls select {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .pagination-controls select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.dark .pagination-info {
+  color: var(--color-text);
+}
+
+/* Dark mode pagination button styles */
+.dark .pagination-btn {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .pagination-btn:hover:not(:disabled) {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+}
+
+.dark .pagination-btn:disabled {
+  background: var(--color-bg);
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.dark .pagination-btn.active {
+  background: var(--color-primary);
+  color: var(--color-text-light);
+  border-color: var(--color-primary);
 }
 
 .dark .wizard-progress {
@@ -1534,12 +1531,6 @@ tbody tr:hover {
   line-height: 1;
 }
 
-.heartbeat-info {
-  font-size: 10px;
-  opacity: 0.7;
-  font-family: 'Courier New', monospace;
-}
-
 .gait-info {
   font-size: 10px;
   opacity: 0.7;
@@ -1572,7 +1563,8 @@ tbody tr:hover {
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: white;
+  background: var(--color-card-bg);
+  color: var(--color-text);
   font-size: 14px;
 }
 
@@ -1597,7 +1589,7 @@ tbody tr:hover {
 .pagination-btn {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border-color);
-  background: white;
+  background: var(--color-card-bg);
   color: var(--text-color);
   border-radius: 4px;
   cursor: pointer;
@@ -1613,7 +1605,7 @@ tbody tr:hover {
 .pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f9fafb;
+  background: var(--color-bg);
 }
 
 .pagination-btn.active {

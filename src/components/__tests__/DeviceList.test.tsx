@@ -430,42 +430,6 @@ describe('DeviceList', () => {
     })
   })
 
-  describe('Device Heartbeat', () => {
-    beforeEach(() => {
-      flushSync(() => {
-        root.render(<DeviceList />)
-      })
-    })
-
-    it('should display device heartbeat status', () => {
-      flushSync(() => {
-        root.render(<DeviceList />)
-      })
-
-      const hasHeartbeat = container.textContent?.includes('BLE Connected') ||
-                           container.textContent?.includes('Data Live') ||
-                           container.querySelector('[data-testid="heartbeat"]') !== null
-      expect(hasHeartbeat).toBe(true)
-    })
-
-    it('should handle stale heartbeats', () => {
-      // Set up stale heartbeat scenario
-      mockDeviceConnection.connectionStatus = new Map([
-        ['device1', 'disconnected'],
-        ['device2', 'timeout'], // Set to timeout status
-        ['device3', 'disconnected']
-      ])
-      
-      flushSync(() => {
-        root.render(<DeviceList />)
-      })
-
-      const hasStaleHeartbeat = container.textContent?.includes('Data Timeout') ||
-                                container.textContent?.includes('No Data')
-      expect(hasStaleHeartbeat).toBe(true)
-    })
-  })
-
   describe('Accessibility', () => {
     beforeEach(() => {
       flushSync(() => {
