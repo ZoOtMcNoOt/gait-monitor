@@ -33,36 +33,59 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
   const [isModified, setIsModified] = useState(false)
   const [highContrastMode, setHighContrastMode] = useState(false)
+  const [isLoadingStoragePath, setIsLoadingStoragePath] = useState(true)
   
   // Separate input values for validation
   const [retentionInputValue, setRetentionInputValue] = useState('90')
-  const [storagePathInputValue, setStoragePathInputValue] = useState('./gait_data')
+  const [storagePathInputValue, setStoragePathInputValue] = useState('')
   
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
 
-  // Load settings from localStorage
+  // Load settings from localStorage and backend
   useEffect(() => {
-    const savedSettings = localStorage.getItem('appSettings')
-    if (savedSettings) {
+    const loadSettings = async () => {
+      // Load saved settings from localStorage
+      const savedSettings = localStorage.getItem('appSettings')
+      let defaultStoragePath = '' // will be set from backend
+      
+      // Get current storage path from backend
       try {
-        const parsed = JSON.parse(savedSettings)
-        setSettings(parsed)
-        // Initialize input values
-        setRetentionInputValue(parsed.dataRetentionDays?.toString() || '90')
-        setStoragePathInputValue(parsed.defaultStoragePath || './gait_data')
-      } catch (e) {
-        console.error('Failed to parse saved settings:', e)
-        // Set default input values
-        setRetentionInputValue('90')
-        setStoragePathInputValue('./gait_data')
+        const currentStoragePath = await invoke<string>('get_storage_path')
+        console.log('Backend storage path:', currentStoragePath) // Debug log
+        defaultStoragePath = currentStoragePath
+      } catch (error) {
+        console.error('Failed to get current storage path from backend:', error)
+        // Fallback - this should not normally happen
+        defaultStoragePath = 'Loading...'
       }
-    } else {
-      // Set default input values
-      setRetentionInputValue('90')
-      setStoragePathInputValue('./gait_data')
+      
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings)
+          setSettings(parsed)
+          // Initialize input values - use backend path as source of truth
+          setRetentionInputValue(parsed.dataRetentionDays?.toString() || '90')
+          console.log('Setting storage path input to:', defaultStoragePath) // Debug log
+          setStoragePathInputValue(defaultStoragePath)
+        } catch (e) {
+          console.error('Failed to parse saved settings:', e)
+          // Set default input values
+          setRetentionInputValue('90')
+          setStoragePathInputValue(defaultStoragePath)
+        }
+      } else {
+        // Set default input values using backend path
+        setRetentionInputValue('90')
+        console.log('Setting default storage path input to:', defaultStoragePath) // Debug log
+        setStoragePathInputValue(defaultStoragePath)
+      }
+      
+      setIsLoadingStoragePath(false) // Done loading
     }
+    
+    loadSettings()
 
     // Load high contrast mode preference
     const savedHighContrast = localStorage.getItem('highContrastMode')
@@ -329,7 +352,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                     type="text"
                     value={storagePathInputValue}
                     onChange={handleStoragePathChange}
-                    placeholder="./gait_data"
+                    placeholder={isLoadingStoragePath ? "Loading storage path..." : "Path not set"}
                     aria-label="Default storage path"
                     aria-describedby="storage-path-description"
                   />

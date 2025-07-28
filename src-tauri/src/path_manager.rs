@@ -33,7 +33,16 @@ impl PathConfig {
     fn get_app_data_directory() -> Result<PathBuf, String> {
         // Try to get platform-appropriate app data directory
         if let Some(config_dir) = dirs::config_dir() {
-            let app_dir = config_dir.join("GaitMonitor");
+            let app_dir = config_dir.join("gait-monitor");
+            
+            // Check for old GaitMonitor directory and migrate if needed
+            let old_app_dir = config_dir.join("GaitMonitor");
+            if old_app_dir.exists() && !app_dir.exists() {
+                if let Err(e) = Self::migrate_old_directory(&old_app_dir, &app_dir) {
+                    eprintln!("Warning: Failed to migrate from old directory: {}", e);
+                }
+            }
+            
             if Self::ensure_directory_exists(&app_dir) {
                 return Ok(app_dir);
             }
@@ -51,6 +60,44 @@ impl PathConfig {
         std::env::current_dir()
             .map(|cwd| cwd.join("gait_data"))
             .map_err(|e| format!("Cannot determine app data directory: {}", e))
+    }
+
+    fn migrate_old_directory(old_dir: &std::path::Path, new_dir: &std::path::Path) -> Result<(), String> {
+        use std::fs;
+        
+        // Create new directory
+        if let Err(e) = fs::create_dir_all(new_dir) {
+            return Err(format!("Failed to create new directory: {}", e));
+        }
+        
+        // Copy contents recursively
+        if let Err(e) = Self::copy_dir_all(old_dir, new_dir) {
+            return Err(format!("Failed to copy directory contents: {}", e));
+        }
+        
+        println!("Successfully migrated data from {} to {}", 
+                old_dir.display(), new_dir.display());
+        
+        Ok(())
+    }
+
+    fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+        use std::fs;
+        
+        for entry in fs::read_dir(src)? {
+            let entry = entry?;
+            let ty = entry.file_type()?;
+            let src_path = entry.path();
+            let dst_path = dst.join(entry.file_name());
+            
+            if ty.is_dir() {
+                fs::create_dir_all(&dst_path)?;
+                Self::copy_dir_all(&src_path, &dst_path)?;
+            } else {
+                fs::copy(&src_path, &dst_path)?;
+            }
+        }
+        Ok(())
     }
 
     fn ensure_directory_exists(path: &Path) -> bool {
