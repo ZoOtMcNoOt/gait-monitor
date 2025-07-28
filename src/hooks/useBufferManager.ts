@@ -69,7 +69,6 @@ export interface StreamingConfig {
   heartbeat_interval_ms: number
 }
 
-// Legacy compatibility types for existing components
 export interface BufferStats {
   totalDevices: number
   totalDataPoints: number
@@ -124,17 +123,7 @@ export interface UseBufferManagerReturn {
   actions: BufferManagerActions
 }
 
-// Legacy compatibility interface for existing components
-export interface LegacyBufferManager {
-  addDataPoint: (deviceId: string, data: GaitDataPoint) => void
-  getDeviceTimeWindow: (deviceId: string, windowSeconds?: number) => GaitDataPoint[]
-  getDeviceRecent: (deviceId: string, count: number) => GaitDataPoint[]
-  removeDevice: (deviceId: string) => void
-  getBufferStats: () => BufferStats
-  getMemoryUsage: () => number
-  clearAll: () => void
-  destroy: () => void
-}
+
 
 // Custom hook for backend-integrated buffer management
 export function useBufferManager(options: UseBufferManagerOptions = {}): UseBufferManagerReturn {
@@ -474,76 +463,6 @@ export function useDeviceBuffer(deviceId: string, bufferCapacity: number = 10000
     actions: deviceActions,
     globalState: state,
     globalActions: actions
-  };
-}
-
-// Legacy compatibility function for existing components
-export function createLegacyBufferManager(): LegacyBufferManager {
-  const bufferManagerHook: UseBufferManagerReturn | null = null;
-  
-  // Initialize the hook (this is a workaround for legacy code)
-  const initializeHook = () => {
-    if (!bufferManagerHook) {
-      // This would need to be called from within a React component
-      // For now, provide a stub implementation
-      console.warn('Legacy buffer manager used - consider migrating to useBufferManager hook');
-    }
-  };
-
-  return {
-    addDataPoint: (_deviceId: string, _data: GaitDataPoint) => {
-      initializeHook();
-      // Legacy sync interface - we'll need to handle this differently
-      // In practice, components should migrate to the async useBufferManager hook
-      console.warn(`Legacy addDataPoint called for device ${_deviceId} with ${_data.timestamp} - migrate to useBufferManager`);
-    },
-    
-    getDeviceTimeWindow: (deviceId: string, _windowSeconds?: number): GaitDataPoint[] => {
-      initializeHook();
-      // Legacy sync interface - return empty array and log warning
-      console.warn(`Legacy getDeviceTimeWindow called for device ${deviceId} with window ${_windowSeconds}s - migrate to useBufferManager`);
-      return [];
-    },
-    
-    getDeviceRecent: (deviceId: string, _count: number): GaitDataPoint[] => {
-      initializeHook();
-      // Legacy sync interface - return empty array and log warning
-      console.warn(`Legacy getDeviceRecent called for device ${deviceId} with count ${_count} - migrate to useBufferManager`);
-      return [];
-    },
-    
-    removeDevice: (deviceId: string) => {
-      initializeHook();
-      console.warn(`Legacy removeDevice called for device ${deviceId} - migrate to useBufferManager`);
-    },
-    
-    getBufferStats: (): BufferStats => {
-      initializeHook();
-      // Return empty stats structure
-      return {
-        totalDevices: 0,
-        totalDataPoints: 0,
-        memoryUsageMB: 0,
-        oldestTimestamp: 0,
-        newestTimestamp: 0,
-        deviceStats: new Map()
-      };
-    },
-    
-    getMemoryUsage: (): number => {
-      initializeHook();
-      return 0;
-    },
-    
-    clearAll: () => {
-      initializeHook();
-      console.warn('Legacy clearAll called - migrate to useBufferManager');
-    },
-    
-    destroy: () => {
-      initializeHook();
-      console.warn('Legacy destroy called - migrate to useBufferManager');
-    }
   };
 }
 

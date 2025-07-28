@@ -973,41 +973,6 @@ describe('DeviceConnectionContext', () => {
       jest.runOnlyPendingTimers()
       jest.useRealTimers()
     })
-
-    // Skip this test - memory warning thresholds changed after heartbeat removal
-    it.skip('should monitor and warn about large Maps', async () => {
-      let contextRef: ReturnType<typeof useDeviceConnection> | undefined
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
-      
-      const TestComponent = () => {
-        const context = useDeviceConnection()
-        contextRef = context
-        return React.createElement('div', { 'data-testid': 'test' }, 'ready')
-      }
-
-      await renderWithProvider(React.createElement(TestComponent))
-      
-      if (contextRef) {
-        // Add many devices to trigger memory warning (threshold is much higher without heartbeat Map)
-        for (let i = 0; i < 150; i++) {
-          contextRef.addDevice(`device-${i}`)
-          contextRef.updateGaitDataTime(`device-${i}`)
-        }
-        
-        // Advance timer to trigger memory monitoring
-        jest.advanceTimersByTime(60000)
-        
-        expect(consoleWarnSpy).toHaveBeenCalledWith(
-          '🚨 Memory warning - Large Maps detected:',
-          expect.objectContaining({
-            statuses: expect.any(Number),
-            dataTimes: expect.any(Number)
-          })
-        )
-      }
-      
-      consoleWarnSpy.mockRestore()
-    })
   })
 
   describe('connection status complex scenarios', () => {
