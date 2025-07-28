@@ -781,14 +781,12 @@ async fn delete_session(
 
 #[tauri::command]
 async fn choose_storage_directory(
-  _app_handle: tauri::AppHandle,
+  app_handle: tauri::AppHandle,
   _csrf_token: String,
   _csrf_state: tauri::State<'_, CSRFTokenState>,
   _path_config: tauri::State<'_, PathConfigState>
 ) -> Result<Option<String>, String> {
-  // For now, this calls the simplified version from the module
-  // In the future, you might want to pass the app_handle to the module for dialog support
-  file_operations::choose_storage_directory().await
+  file_operations::choose_storage_directory(&app_handle).await
 }
 
 #[tauri::command]

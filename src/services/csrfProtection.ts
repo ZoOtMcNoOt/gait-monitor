@@ -277,9 +277,9 @@ export const protectedOperations = {
     });
   },
 
-  chooseStorageDirectory: async () => {
+  chooseStorageDirectory: async (): Promise<string | null> => {
     return withCSRFProtection(async (token) => {
-      return invoke('choose_storage_directory', {
+      return invoke<string | null>('choose_storage_directory', {
         csrfToken: token
       });
     });

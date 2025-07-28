@@ -267,7 +267,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
       gyroscope_x: normalizedGaitData.R1,
       gyroscope_y: normalizedGaitData.R2,
       gyroscope_z: normalizedGaitData.R3,
-      timestamp: relativeTime.toString(),
+      timestamp: new Date(relativeTime).toISOString(),
       sequence_number: Date.now() // Use timestamp as sequence
     })
     

@@ -243,10 +243,18 @@ pub async fn delete_session(
 }
 
 // Choose storage directory using system dialog
-pub async fn choose_storage_directory() -> Result<Option<String>, String> {
-    // This is a simplified version - in a real implementation,
-    // you would use the dialog API properly
-    Ok(None) // Placeholder for dialog selection
+pub async fn choose_storage_directory(app_handle: &tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let selected_path = app_handle.dialog()
+        .file()
+        .set_title("Choose Storage Directory")
+        .blocking_pick_folder();
+    
+    match selected_path {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None), // User cancelled the dialog
+    }
 }
 
 // Copy file to downloads directory
