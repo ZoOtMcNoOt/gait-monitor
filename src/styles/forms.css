@@ -66,37 +66,6 @@
   opacity: 0.5;
 }
 
-/* Legacy fields collapsible section */
-.legacy-fields {
-  margin-top: 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 1rem;
-  background: var(--color-card-bg);
-}
-
-.legacy-fields summary {
-  cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  padding: 0.5rem;
-  border-radius: var(--radius);
-  transition: background-color 0.2s ease;
-  color: var(--text-color);
-}
-
-.legacy-fields summary:hover {
-  background: var(--color-bg);
-}
-
-.legacy-fields[open] summary {
-  margin-bottom: 1rem;
-}
-
-.legacy-fields .form-row {
-  margin-top: 1rem;
-}
-
 /* Form validation styles */
 .form-group .error {
   color: var(--error-color);
@@ -157,19 +126,6 @@
   opacity: 0.6;
 }
 
-.dark .legacy-fields {
-  background: var(--color-card-bg);
-  border-color: var(--color-border);
-}
-
-.dark .legacy-fields summary {
-  color: var(--color-text);
-}
-
-.dark .legacy-fields summary:hover {
-  background: var(--color-bg);
-}
-
 /*────────────────────────────────────────────────────────
   High Contrast Mode Support
 ────────────────────────────────────────────────────────*/
@@ -202,24 +158,6 @@
   color: var(--color-text-secondary) !important;
   opacity: 1 !important;
   font-weight: 600 !important;
-}
-
-.high-contrast .legacy-fields {
-  background: var(--color-bg) !important;
-  border: 3px solid var(--color-border) !important;
-  box-sizing: border-box !important;
-}
-
-.high-contrast .legacy-fields summary {
-  color: var(--color-text) !important;
-  font-weight: 700 !important;
-  border: 2px solid transparent !important;
-  box-sizing: border-box !important;
-}
-
-.high-contrast .legacy-fields summary:hover {
-  background: var(--color-bg-secondary) !important;
-  border-color: var(--color-border) !important;
 }
 
 .high-contrast .form-group .error {

@@ -93,12 +93,4 @@ export const mockAppConfig: AppConfig = {
   }
 }
 
-// Legacy validation function for existing tests
-export const validateConfig = (): string[] => {
-  const errors: string[] = []
-  
-  // Basic validation - just return empty array for mock
-  return errors
-}
-
 export default mockConfig
