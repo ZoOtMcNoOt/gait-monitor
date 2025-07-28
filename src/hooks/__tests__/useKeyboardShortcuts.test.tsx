@@ -425,6 +425,58 @@ describe('useKeyboardShortcuts Hook', () => {
       }));
     });
   });
+
+  test('handles undefined key gracefully', (done) => {
+    const mockAction = jest.fn();
+    const shortcuts = [
+      { key: 'Enter', description: 'Test shortcut', action: mockAction }
+    ];
+
+    flushSync(() => {
+      root.render(React.createElement(TestKeyboardShortcutsComponent, {
+        options: { shortcuts },
+        onHookReady: () => {
+          // Create an event with undefined key
+          const keyEvent = new KeyboardEvent('keydown');
+          // Force the key property to be undefined by defining it as undefined
+          Object.defineProperty(keyEvent, 'key', { value: undefined, writable: false });
+          document.dispatchEvent(keyEvent);
+          
+          setTimeout(() => {
+            // Should not crash and should not call the action
+            expect(mockAction).not.toHaveBeenCalled();
+            done();
+          }, 10);
+        }
+      }));
+    });
+  });
+
+  test('handles non-string key gracefully', (done) => {
+    const mockAction = jest.fn();
+    const shortcuts = [
+      { key: 'Enter', description: 'Test shortcut', action: mockAction }
+    ];
+
+    flushSync(() => {
+      root.render(React.createElement(TestKeyboardShortcutsComponent, {
+        options: { shortcuts },
+        onHookReady: () => {
+          // Create an event with non-string key
+          const keyEvent = new KeyboardEvent('keydown');
+          // Force the key property to be a number instead of string
+          Object.defineProperty(keyEvent, 'key', { value: 123, writable: false });
+          document.dispatchEvent(keyEvent);
+          
+          setTimeout(() => {
+            // Should not crash and should not call the action
+            expect(mockAction).not.toHaveBeenCalled();
+            done();
+          }, 10);
+        }
+      }));
+    });
+  });
 });
 
 describe('useFocusTrap Hook', () => {

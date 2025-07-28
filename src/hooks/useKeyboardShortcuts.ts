@@ -41,6 +41,11 @@ export function useKeyboardShortcuts({
 
     const { key, ctrlKey, altKey, shiftKey } = event;
     
+    // Early return if key is undefined or not a string
+    if (!key || typeof key !== 'string') {
+      return;
+    }
+    
     // Debug logging for troubleshooting
     if (process.env.NODE_ENV === 'development') {
       const invalidShortcuts = shortcutsRef.current.filter(s => !s.key || typeof s.key !== 'string');
