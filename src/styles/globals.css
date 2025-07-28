@@ -360,6 +360,7 @@ tbody tr:hover {
   background-color: var(--color-card-bg);
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .device-card:hover {
@@ -408,6 +409,69 @@ tbody tr:hover {
 .device-card.gaitble-device .device-name {
   color: #1d4ed8;
   font-weight: 700;
+}
+
+/* Non-GaitBLE Device Styles - indicate not connectable */
+.device-card:not(.gaitble-device):not(.connected) {
+  opacity: 0.7;
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+}
+
+.device-card:not(.gaitble-device):not(.connected)::after {
+  content: "Not Compatible";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  background: #6b7280;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 0 6px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.device-card:not(.gaitble-device) .device-name {
+  color: #6b7280;
+}
+
+/* Dark mode styles for non-GaitBLE devices */
+.dark .device-card:not(.gaitble-device):not(.connected) {
+  opacity: 0.6;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+}
+
+.dark .device-card:not(.gaitble-device):not(.connected)::after {
+  background: #4b5563;
+}
+
+.dark .device-card:not(.gaitble-device) .device-name {
+  color: #9ca3af;
+}
+
+/* Device compatibility notice */
+.device-compatibility-notice {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+.device-compatibility-notice p {
+  margin: 0;
+  color: #1e40af;
+}
+
+.dark .device-compatibility-notice {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.dark .device-compatibility-notice p {
+  color: #bfdbfe;
 }
 
 /* Device Header */

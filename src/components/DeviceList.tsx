@@ -31,13 +31,19 @@ export default function DeviceList() {
     removeScannedDevice // Add manual device removal
   } = useDeviceConnection()
 
-  // Sort devices function
+  // Helper function to check if a device is a GaitBLE device
+  const isGaitBLEDevice = useCallback((device: { name?: string }) => {
+    return (device.name || '').toLowerCase().startsWith('gaitble')
+  }, [])
+
+  // Sort devices function - exclude connected devices from available list
   const getSortedDevices = useCallback(() => {
     return scannedDevices
+      .filter(device => !connectedDevices.includes(device.id)) // Filter out connected devices
       .sort((a, b) => {
         // Sort GaitBLE devices to the top
-        const aIsGaitBLE = (a.name || '').toLowerCase().startsWith('gaitble');
-        const bIsGaitBLE = (b.name || '').toLowerCase().startsWith('gaitble');
+        const aIsGaitBLE = isGaitBLEDevice(a);
+        const bIsGaitBLE = isGaitBLEDevice(b);
         
         if (aIsGaitBLE && !bIsGaitBLE) return -1;
         if (!aIsGaitBLE && bIsGaitBLE) return 1;
@@ -47,7 +53,7 @@ export default function DeviceList() {
         const bName = b.name || 'Unknown Device';
         return aName.localeCompare(bName);
       })
-  }, [scannedDevices])
+  }, [scannedDevices, connectedDevices, isGaitBLEDevice])
 
   // Keyboard navigation functions
   const focusDevice = useCallback((index: number) => {
@@ -224,6 +230,10 @@ export default function DeviceList() {
         {isScanning ? 'Scanning...' : 'Scan for Devices'}
       </button>
       
+      <div className="device-compatibility-notice">
+        <p>📱 <strong>Note:</strong> Only GaitBLE devices can be connected to this application.</p>
+      </div>
+      
       {/* Device list area - always present to prevent layout shift */}
       <div className="device-list-container">        
         {/* Connected Devices Section - Show first */}
@@ -236,7 +246,7 @@ export default function DeviceList() {
                 const deviceInfo = scannedDevices.find(d => d.id === deviceId)
                 
                 return (
-                  <li key={deviceId} className={`device-card connected gaitble-device`}>
+                  <li key={deviceId} className={`device-card connected ${isGaitBLEDevice(deviceInfo || {}) ? 'gaitble-device' : ''}`}>
                     <div className="device-header">
                       <div className="device-name-section">
                         <h4 className="device-name">{deviceInfo?.name || 'Unknown Device'}</h4>
@@ -308,10 +318,10 @@ export default function DeviceList() {
           </div>
         )}
         
-        {scannedDevices.length > 0 && (
+        {sortedDevices.length > 0 && (
           <div>
             <div className="device-list-header">
-              <h3>Available Devices ({scannedDevices.length})</h3>
+              <h3>Available Devices ({sortedDevices.length})</h3>
               <div className="pagination-controls">
                 <label>
                   Devices per page:
@@ -331,7 +341,7 @@ export default function DeviceList() {
             {totalPages > 1 && (
               <div className="pagination-info">
                 <span>
-                  Showing {startIndex + 1}-{Math.min(endIndex, scannedDevices.length)} of {scannedDevices.length} devices
+                  Showing {startIndex + 1}-{Math.min(endIndex, sortedDevices.length)} of {sortedDevices.length} devices
                   (Page {currentPage} of {totalPages})
                 </span>
               </div>
@@ -339,7 +349,7 @@ export default function DeviceList() {
             
             <ul>
               {currentDevices.map((d, index) => (
-                <li key={d.id} className={`device-card ${isConnected(d.id) ? 'connected' : ''} ${(d.name || '').toLowerCase().startsWith('gaitble') ? 'gaitble-device' : ''}`}>
+                <li key={d.id} className={`device-card ${isGaitBLEDevice(d) ? 'gaitble-device' : ''}`}>
                   <div className="device-header">
                     <div className="device-name-section">
                       <h4 className="device-name">{d.name || 'Unknown Device'}</h4>
@@ -392,35 +402,29 @@ export default function DeviceList() {
                   </div>
 
                   <div className="device-footer">
-                    <div className="device-connection-status">
-                      {isConnected(d.id) && (
-                        <span className="connected-badge">
-                          ● Connected
-                        </span>
-                      )}
-                    </div>
-                    
                     <div className="device-actions">
-                    {isConnected(d.id) ? (
                       <div className="action-buttons">
                         <button 
                           ref={el => { deviceButtonRefs.current[startIndex + index] = el }}
-                          onClick={() => handleDisconnect(d.id)}
+                          onClick={() => handleConnect(d.id)}
                           onKeyDown={(e) => handleDeviceKeyDown(e, startIndex + index)}
-                          disabled={isConnecting === d.id}
-                          className="btn btn-disconnect"
-                          aria-label={`Disconnect ${d.name || 'Unknown Device'} (Arrow keys to navigate, Enter to activate)`}
+                          disabled={
+                            isConnecting === d.id || 
+                            !d.connectable || 
+                            !isGaitBLEDevice(d)
+                          }
+                          className="btn btn-connect"
+                          title={
+                            !isGaitBLEDevice(d) 
+                              ? 'Only GaitBLE devices can be connected' 
+                              : !d.connectable 
+                                ? 'Device is not connectable' 
+                                : ''
+                          }
+                          aria-label={`Connect to ${d.name || 'Unknown Device'} (Arrow keys to navigate, Enter to activate)`}
                           tabIndex={0}
                         >
-                          {isConnecting === d.id ? 'Disconnecting...' : 'Disconnect'}
-                        </button>
-                        <button 
-                          onClick={() => debugServices(d.id)}
-                          className="btn btn-debug"
-                          title="Debug: List all services on this device"
-                          aria-label={`Debug services for ${d.name || 'Unknown Device'}`}
-                        >
-                          Debug Services
+                          {isConnecting === d.id ? 'Connecting...' : 'Connect'}
                         </button>
                         <button 
                           onClick={() => handleRemoveDevice(d.id)}
@@ -431,31 +435,8 @@ export default function DeviceList() {
                           Remove
                         </button>
                       </div>
-                    ) : (
-                      <div className="action-buttons">
-                        <button 
-                          ref={el => { deviceButtonRefs.current[startIndex + index] = el }}
-                          onClick={() => handleConnect(d.id)}
-                          onKeyDown={(e) => handleDeviceKeyDown(e, startIndex + index)}
-                          disabled={isConnecting === d.id || !d.connectable}
-                          className="btn btn-connect"
-                          title={!d.connectable ? 'Device is not connectable' : ''}
-                          aria-label={`Connect to ${d.name || 'Unknown Device'} (Arrow keys to navigate, Enter to activate)`}
-                          tabIndex={0}
-                        >
-                          {isConnecting === d.id ? 'Connecting...' : 'Connect'}
-                        </button>
-                        <button 
-                          onClick={() => handleRemoveDevice(d.id)}
-                          className="btn btn-remove"
-                          title="Remove this device from the list"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
                 </li>
             ))}
           </ul>
