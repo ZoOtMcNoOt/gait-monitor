@@ -442,6 +442,11 @@ tbody tr:hover {
   display: inline-block;
 }
 
+.dark .device-id {
+  color: var(--color-text);
+  background-color: var(--color-border);
+}
+
 .connected-badge {
   background-color: #10b981;
   color: white;
@@ -701,11 +706,19 @@ tbody tr:hover {
   box-sizing: border-box;
 }
 
+.dark .scanning-message {
+  color: var(--color-text);
+}
+
 .device-details {
   display: flex;
   gap: 15px;
   margin: 5px 0;
   font-size: 0.85em;
+}
+
+.dark .device-details {
+  color: var(--color-text);
 }
 
 .device-rssi {
