@@ -33,7 +33,16 @@ export function useKeyboardShortcuts({
   
   // Update shortcuts ref when shortcuts change
   useEffect(() => {
-    shortcutsRef.current = shortcuts;
+    // Filter out any invalid shortcuts
+    const validShortcuts = shortcuts.filter(shortcut => {
+      if (!shortcut || !shortcut.key) {
+        console.warn('Filtering out invalid shortcut:', shortcut);
+        return false;
+      }
+      return true;
+    });
+    
+    shortcutsRef.current = validShortcuts;
   }, [shortcuts]);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -41,8 +50,20 @@ export function useKeyboardShortcuts({
 
     const { key, ctrlKey, altKey, shiftKey } = event;
     
+    // Safety check: ensure key is defined
+    if (!key) {
+      console.warn('Keyboard event received with undefined key');
+      return;
+    }
+    
     // Find matching shortcut
     const matchingShortcut = shortcutsRef.current.find(shortcut => {
+      // Safety check: ensure shortcut and key are defined
+      if (!shortcut || !shortcut.key) {
+        console.warn('Invalid shortcut found:', shortcut);
+        return false;
+      }
+      
       const keyMatches = shortcut.key.toLowerCase() === key.toLowerCase();
       const ctrlMatches = !!shortcut.ctrl === ctrlKey;
       const altMatches = !!shortcut.alt === altKey;

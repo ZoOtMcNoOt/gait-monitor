@@ -210,7 +210,7 @@ export default function DeviceList() {
       category: 'Device Management', 
       action: () => refreshConnectedDevices()
     }
-  ]
+  ].filter(shortcut => shortcut && shortcut.key) // Ensure all shortcuts are valid
 
   // Enable keyboard shortcuts for device list
   useKeyboardShortcuts({
