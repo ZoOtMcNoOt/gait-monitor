@@ -10,15 +10,9 @@ use uuid::Uuid;
 pub struct GaitDataPoint {
     pub timestamp: DateTime<Utc>,
     pub device_id: String,
-    pub acceleration_x: f64,
-    pub acceleration_y: f64,
-    pub acceleration_z: f64,
-    pub gyroscope_x: Option<f64>,
-    pub gyroscope_y: Option<f64>,
-    pub gyroscope_z: Option<f64>,
-    pub magnetometer_x: Option<f64>,
-    pub magnetometer_y: Option<f64>,
-    pub magnetometer_z: Option<f64>,
+    pub r1: f64,  // Resistance sensor 1
+    pub r2: f64,  // Resistance sensor 2  
+    pub r3: f64,  // Resistance sensor 3
     pub sequence_number: u64,
     pub signal_strength: Option<i16>,
     pub battery_level: Option<u8>,
@@ -673,15 +667,9 @@ mod tests {
         let data_point = GaitDataPoint {
             timestamp: Utc::now(),
             device_id: "test-device".to_string(),
-            acceleration_x: 1.0,
-            acceleration_y: 2.0,
-            acceleration_z: 3.0,
-            gyroscope_x: None,
-            gyroscope_y: None,
-            gyroscope_z: None,
-            magnetometer_x: None,
-            magnetometer_y: None,
-            magnetometer_z: None,
+            r1: 10.5,
+            r2: 12.3,
+            r3: 8.7,
             sequence_number: 1,
             signal_strength: Some(-50),
             battery_level: Some(80),

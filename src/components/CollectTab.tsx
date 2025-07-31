@@ -66,22 +66,11 @@ export default function CollectTab() {
   useEffect(() => {
     if (isCollecting) {
       console.log('🔔 Setting up gait data subscription')
-      const lastTimestamps = new Map<string, number>() // Track last timestamp per device
-      const lastReceiveTimes = new Map<string, number>() // Track frontend receive times
       const packetCounts = new Map<string, number>() // Track packet counts per device
+      const lastReceiveTimes = new Map<string, number>() // Track frontend receive times
       
       const unsubscribe = subscribeToGaitData((data) => {
         const receiveTime = performance.now()
-        
-        // Deduplication: skip if we already received this exact timestamp from this device
-        const deviceLastTimestamp = lastTimestamps.get(data.device_id)
-        if (deviceLastTimestamp === data.timestamp) {
-          console.log('🔄 Skipping duplicate data point:', data.device_id, data.timestamp)
-          return
-        }
-        
-        // Update last timestamp for this device
-        lastTimestamps.set(data.device_id, data.timestamp)
         
         // Calculate intervals for performance monitoring
         const lastReceiveTime = lastReceiveTimes.get(data.device_id) || receiveTime
@@ -98,7 +87,7 @@ export default function CollectTab() {
           console.log(`📊 Frontend timing [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`)
         }
         
-        // Add data to buffer
+        // Add data to frontend buffer (for counting and final save)
         console.log('📦 Received gait data:', data.device_id, data.timestamp)
         dataBuffer.current.push({
           device_id: data.device_id,

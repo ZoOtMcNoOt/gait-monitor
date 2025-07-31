@@ -295,14 +295,23 @@ export default function LiveChart({ isCollecting = false }: Props) {
           for (const deviceId of activeCollectingDevices) {
             try {
               const deviceData = await invoke('get_device_buffer_data_cmd', {
-                device_id: deviceId,
+                deviceId: deviceId,
                 count: config.bufferConfig.maxChartPoints || 1000
-              }) as Array<{ device_id: string, R1: number, R2: number, R3: number, timestamp: number }>
+              }) as Array<{ device_id: string, r1: number, r2: number, r3: number, timestamp: string }>
               
               // Convert buffer data to chart format (resistance only)
-              const r1Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R1 }))
-              const r2Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R2 }))
-              const r3Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R3 }))
+              const r1Data = deviceData.map(point => ({ 
+                timestamp: new Date(point.timestamp).getTime(), 
+                value: point.r1 
+              }))
+              const r2Data = deviceData.map(point => ({ 
+                timestamp: new Date(point.timestamp).getTime(), 
+                value: point.r2 
+              }))
+              const r3Data = deviceData.map(point => ({ 
+                timestamp: new Date(point.timestamp).getTime(), 
+                value: point.r3 
+              }))
               
               combinedData[`${deviceId}:r1`] = { device_id: deviceId, data_type: 'r1', queue: r1Data }
               combinedData[`${deviceId}:r2`] = { device_id: deviceId, data_type: 'r2', queue: r2Data }

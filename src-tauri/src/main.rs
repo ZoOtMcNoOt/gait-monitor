@@ -102,9 +102,10 @@ async fn start_gait_notifications_cmd(
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
   active_notifications: tauri::State<'_, ActiveNotificationsState>,
   sample_rate_state: tauri::State<'_, SampleRateState>,
+  buffer_manager: tauri::State<'_, BufferManagerState>,
   app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
-  start_gait_notifications(&device_id, &connected_devices, &active_notifications, &sample_rate_state, app_handle).await
+  start_gait_notifications(&device_id, &connected_devices, &active_notifications, &sample_rate_state, &buffer_manager, app_handle).await
 }
 
 #[tauri::command]

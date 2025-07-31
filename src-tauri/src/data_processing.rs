@@ -9,6 +9,7 @@ pub struct SampleRateCalculator {
     device_rates: HashMap<String, DeviceRateCalculator>,
 }
 
+
 struct DeviceRateCalculator {
     timestamps: VecDeque<Instant>,
     window_duration: Duration,
@@ -289,6 +290,29 @@ impl GaitDataWithRate {
     pub fn with_sample_rate(mut self, sample_rate: Option<f64>) -> Self {
         self.sample_rate = sample_rate;
         self
+    }
+}
+
+// Add conversion from GaitData to GaitDataPoint for buffer storage
+impl From<GaitData> for crate::buffer_manager::GaitDataPoint {
+    fn from(gait_data: GaitData) -> Self {
+        use chrono::{DateTime, Utc, TimeZone};
+        
+        // Convert timestamp from millis to DateTime
+        let timestamp = Utc.timestamp_millis_opt(gait_data.timestamp as i64)
+            .single()
+            .unwrap_or_else(|| Utc::now());
+            
+        crate::buffer_manager::GaitDataPoint {
+            timestamp,
+            device_id: gait_data.device_id,
+            r1: gait_data.r1 as f64,
+            r2: gait_data.r2 as f64,
+            r3: gait_data.r3 as f64,
+            sequence_number: 0, // Will be set by buffer manager
+            signal_strength: None,
+            battery_level: None,
+        }
     }
 }
 

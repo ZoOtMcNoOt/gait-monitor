@@ -10,9 +10,6 @@ interface GaitDataPayload {
   r1: number,
   r2: number, 
   r3: number,
-  x: number,
-  y: number,
-  z: number,
   timestamp: number,
   sample_rate?: number  // Add optional sample rate field
 }
@@ -285,6 +282,12 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   // Actions - Data Collection
   const startDeviceCollection = useCallback(async (deviceId: string) => {
     try {
+      // Register device with buffer manager first
+      await invoke('register_device_buffer_cmd', { 
+        deviceId: deviceId, 
+        bufferCapacity: 10000 
+      })
+      
       await invoke('start_gait_notifications_cmd', { deviceId })
       setActiveCollectingDevices(prev => 
         prev.includes(deviceId) ? prev : [...prev, deviceId]
@@ -299,6 +302,10 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   const stopDeviceCollection = useCallback(async (deviceId: string) => {
     try {
       await invoke('stop_gait_notifications_cmd', { deviceId })
+      
+      // Unregister device from buffer manager
+      await invoke('unregister_device_buffer_cmd', { deviceId })
+      
       setActiveCollectingDevices(prev => prev.filter(id => id !== deviceId))
       console.log(`⏹️ Stopped collection for device: ${deviceId}`)
     } catch (error) {

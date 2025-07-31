@@ -320,6 +320,7 @@ pub async fn start_gait_notifications(
     connected_devices: &ConnectedDevicesState,
     active_notifications: &ActiveNotificationsState,
     sample_rate_state: &SampleRateState,
+    buffer_manager: &crate::buffer_manager::BufferManagerState,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     println!("Starting gait notifications for device: {}", device_id);
@@ -422,6 +423,7 @@ pub async fn start_gait_notifications(
     let device_id_clone = device_id.to_string();
     let active_notifications_clone = active_notifications.clone();
     let sample_rate_state_clone = sample_rate_state.clone();
+    let buffer_manager_clone = buffer_manager.clone();
     
     // Start listening for notifications in a background task
     tauri::async_runtime::spawn(async move {
@@ -449,6 +451,14 @@ pub async fn start_gait_notifications(
                 if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
                     let parse_duration = parse_start.elapsed();
                     
+                    // Store data in buffer for chart visualization
+                    let buffer_start = std::time::Instant::now();
+                    let gait_data_point: crate::buffer_manager::GaitDataPoint = gait_data.clone().into();
+                    if let Err(e) = buffer_manager_clone.0.add_data_point(&device_id_clone, gait_data_point).await {
+                        println!("Failed to add data to buffer: {}", e);
+                    }
+                    let buffer_duration = buffer_start.elapsed();
+                    
                     // Calculate sample rate
                     let sample_rate = sample_rate_state_clone.record_sample(&device_id_clone).await;
                     
@@ -467,8 +477,8 @@ pub async fn start_gait_notifications(
                     let count = PACKET_COUNT.fetch_add(1, Ordering::Relaxed);
                     if count % 5 == 0 {  // More frequent logging to catch duplicates
                         let rate_info = sample_rate.map(|r| format!("{:.1} Hz", r)).unwrap_or_else(|| "calculating...".to_string());
-                        println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
-                            count, data_hash, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
+                        println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Rate: {}, Parse: {:?}, Buffer: {:?}, Emit: {:?}", 
+                            count, data_hash, gait_data_with_rate.timestamp, rate_info, parse_duration, buffer_duration, emit_duration);
                     }
                 } else {
                     // Unknown characteristic or invalid data length - log and ignore
