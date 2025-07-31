@@ -147,9 +147,9 @@ impl AnalyticsEngine {
             device_summaries.insert(device_id.clone(), device_stat);
         }
 
-        // Calculate overall statistics (using X-axis as representative)
-        let x_values: Vec<f32> = filtered_data.iter().map(|s| s.x).collect();
-        let overall_stats = self.calculate_statistics(&x_values);
+        // Calculate overall statistics (using R1 as representative)
+        let r1_values: Vec<f32> = filtered_data.iter().map(|s| s.r1).collect();
+        let overall_stats = self.calculate_statistics(&r1_values);
 
         // Calculate data completeness (simplified estimation)
         let expected_duration_ms = time_range.1 - time_range.0;
@@ -250,17 +250,11 @@ impl AnalyticsEngine {
         let r1_values: Vec<f32> = data.iter().map(|s| s.r1).collect();
         let r2_values: Vec<f32> = data.iter().map(|s| s.r2).collect();
         let r3_values: Vec<f32> = data.iter().map(|s| s.r3).collect();
-        let x_values: Vec<f32> = data.iter().map(|s| s.x).collect();
-        let y_values: Vec<f32> = data.iter().map(|s| s.y).collect();
-        let z_values: Vec<f32> = data.iter().map(|s| s.z).collect();
 
-        // Calculate statistics for each field
+        // Calculate statistics for each resistance field
         field_stats.insert("r1".to_string(), self.calculate_statistics(&r1_values));
         field_stats.insert("r2".to_string(), self.calculate_statistics(&r2_values));
         field_stats.insert("r3".to_string(), self.calculate_statistics(&r3_values));
-        field_stats.insert("x".to_string(), self.calculate_statistics(&x_values));
-        field_stats.insert("y".to_string(), self.calculate_statistics(&y_values));
-        field_stats.insert("z".to_string(), self.calculate_statistics(&z_values));
 
         Ok(field_stats)
     }
@@ -338,20 +332,20 @@ impl AnalyticsEngine {
         }
 
         // Calculate consistency across different data fields
-        let x_values: Vec<f32> = samples.iter().map(|s| s.x).collect();
-        let y_values: Vec<f32> = samples.iter().map(|s| s.y).collect();
-        let z_values: Vec<f32> = samples.iter().map(|s| s.z).collect();
+        let r1_values: Vec<f32> = samples.iter().map(|s| s.r1).collect();
+        let r2_values: Vec<f32> = samples.iter().map(|s| s.r2).collect();
+        let r3_values: Vec<f32> = samples.iter().map(|s| s.r3).collect();
 
-        let x_stats = self.calculate_statistics(&x_values);
-        let y_stats = self.calculate_statistics(&y_values);
-        let z_stats = self.calculate_statistics(&z_values);
+        let r1_stats = self.calculate_statistics(&r1_values);
+        let r2_stats = self.calculate_statistics(&r2_values);
+        let r3_stats = self.calculate_statistics(&r3_values);
 
         // Use coefficient of variation as consistency metric
-        let x_cv = if x_stats.mean != 0.0 { x_stats.std_dev / x_stats.mean.abs() } else { 0.0 };
-        let y_cv = if y_stats.mean != 0.0 { y_stats.std_dev / y_stats.mean.abs() } else { 0.0 };
-        let z_cv = if z_stats.mean != 0.0 { z_stats.std_dev / z_stats.mean.abs() } else { 0.0 };
+        let r1_cv = if r1_stats.mean != 0.0 { r1_stats.std_dev / r1_stats.mean.abs() } else { 0.0 };
+        let r2_cv = if r2_stats.mean != 0.0 { r2_stats.std_dev / r2_stats.mean.abs() } else { 0.0 };
+        let r3_cv = if r3_stats.mean != 0.0 { r3_stats.std_dev / r3_stats.mean.abs() } else { 0.0 };
 
-        let avg_cv = (x_cv + y_cv + z_cv) / 3.0;
+        let avg_cv = (r1_cv + r2_cv + r3_cv) / 3.0;
         
         // Convert to consistency score (reasonable variation expected in gait data)
         (1.0 - (avg_cv / 2.0).min(1.0)).max(0.0)
@@ -385,14 +379,14 @@ impl AnalyticsEngine {
             return 1.0;
         }
 
-        // Simple error detection based on outliers
-        let x_values: Vec<f32> = samples.iter().map(|s| s.x).collect();
-        let x_stats = self.calculate_statistics(&x_values);
+        // Simple error detection based on outliers using R1 as representative
+        let r1_values: Vec<f32> = samples.iter().map(|s| s.r1).collect();
+        let r1_stats = self.calculate_statistics(&r1_values);
 
         // Count outliers (values beyond 3 standard deviations)
-        let threshold = 3.0 * x_stats.std_dev;
-        let outliers = x_values.iter()
-            .filter(|&&x| (x - x_stats.mean).abs() > threshold)
+        let threshold = 3.0 * r1_stats.std_dev;
+        let outliers = r1_values.iter()
+            .filter(|&&x| (x - r1_stats.mean).abs() > threshold)
             .count();
 
         outliers as f32 / samples.len() as f32

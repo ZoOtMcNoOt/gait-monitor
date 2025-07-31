@@ -438,14 +438,14 @@ pub async fn start_gait_notifications(
                 break; // Stop listening if device was deactivated
             }
             
-            if data.uuid == characteristic_uuid && data.value.len() == 24 {
+            if data.uuid == characteristic_uuid && data.value.len() == 12 {
                 let parse_start = std::time::Instant::now();
                 
                 // Debug: Log raw packet data to detect duplicates at BLE level
                 let data_hash = format!("{:02x}{:02x}{:02x}{:02x}", 
                     data.value[0], data.value[1], data.value[2], data.value[3]);
                 
-                // Parse the 24-byte packet (6 floats)
+                // Parse the 12-byte packet (3 floats: R1, R2, R3)
                 if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
                     let parse_duration = parse_start.elapsed();
                     

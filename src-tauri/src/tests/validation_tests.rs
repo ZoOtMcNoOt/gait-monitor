@@ -123,13 +123,13 @@ mod validation_tests {
     }
 
     #[test]
-    fn test_validate_gait_data_extreme_acceleration() {
+    fn test_validate_gait_data_extreme_resistance() {
         let mut data = TestDataGenerator::sample_gait_data("test_device", 1);
-        data[0].x = 1000.0; // Unrealistic acceleration
+        data[0].r1 = 2000.0; // Unrealistic resistance value
 
         let result = validate_gait_data(&data[0]);
-        assert!(result.is_err(), "Extreme acceleration should fail validation");
-        assert!(result.unwrap_err().contains("Acceleration values are outside expected range"));
+        assert!(result.is_err(), "Extreme resistance should fail validation");
+        assert!(result.unwrap_err().contains("Force values are outside expected range"));
     }
 
     #[test]
@@ -215,21 +215,21 @@ mod validation_tests {
     fn test_validation_boundary_conditions() {
         let mut data = TestDataGenerator::sample_gait_data("test_device", 1);
         
-        // Test boundary values for accelerometer data
-        data[0].x = 50.0; // At the upper limit
+        // Test boundary values for resistance data
+        data[0].r1 = 1000.0; // At the upper limit
         let result = validate_gait_data(&data[0]);
-        assert!(result.is_ok(), "Boundary acceleration value should be valid");
+        assert!(result.is_ok(), "Boundary resistance value should be valid");
 
-        data[0].x = 50.1; // Just over the limit
+        data[0].r1 = 1000.1; // Just over the limit
         let result = validate_gait_data(&data[0]);
-        assert!(result.is_err(), "Over-limit acceleration should fail validation");
+        assert!(result.is_err(), "Over-limit resistance should fail validation");
 
-        data[0].x = -50.0; // At the lower limit
+        data[0].r1 = -1000.0; // At the lower limit
         let result = validate_gait_data(&data[0]);
-        assert!(result.is_ok(), "Boundary negative acceleration should be valid");
+        assert!(result.is_ok(), "Boundary negative resistance should be valid");
 
-        data[0].x = -50.1; // Just under the limit
+        data[0].r1 = -1000.1; // Just under the limit
         let result = validate_gait_data(&data[0]);
-        assert!(result.is_err(), "Under-limit acceleration should fail validation");
+        assert!(result.is_err(), "Under-limit resistance should fail validation");
     }
 }

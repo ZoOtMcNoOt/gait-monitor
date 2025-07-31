@@ -112,16 +112,13 @@ impl DeviceRateCalculator {
     }
 }
 
-// Data structures for gait data
+// Data structures for gait data (resistance only)
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GaitData {
     pub device_id: String,
     pub r1: f32,
     pub r2: f32,
     pub r3: f32,
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
     pub timestamp: u64,
 }
 
@@ -132,9 +129,6 @@ pub struct GaitDataWithRate {
     pub r1: f32,
     pub r2: f32,
     pub r3: f32,
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
     pub timestamp: u64,
     pub sample_rate: Option<f64>,
 }
@@ -174,19 +168,16 @@ impl SampleRateState {
     }
 }
 
-// Data parsing functions
+// Data parsing functions (resistance only)
 pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
-    if data.len() != 24 {
-        return Err(format!("Invalid data length: {} (expected 24)", data.len()));
+    if data.len() != 12 {
+        return Err(format!("Invalid data length: {} (expected 12)", data.len()));
     }
     
-    // Parse 6 floats in little-endian format
+    // Parse 3 floats in little-endian format (R1, R2, R3 only)
     let r1 = f32::from_le_bytes([data[0], data[1], data[2], data[3]]);
     let r2 = f32::from_le_bytes([data[4], data[5], data[6], data[7]]);
     let r3 = f32::from_le_bytes([data[8], data[9], data[10], data[11]]);
-    let x = f32::from_le_bytes([data[12], data[13], data[14], data[15]]);
-    let y = f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
-    let z = f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
     
     // Use millisecond precision - sufficient for BLE data rates and reduces conversion overhead
     // At 100Hz sample rate, we have 10ms between samples, so millisecond precision is adequate
@@ -200,9 +191,6 @@ pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String>
         r1,
         r2,
         r3,
-        x,
-        y,
-        z,
         timestamp,
     })
 }
@@ -218,8 +206,7 @@ pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String>
 /// 
 /// * Device ID must not be empty
 /// * Timestamp must be positive (non-zero)
-/// * Force values (r1, r2, r3) must be within ±1000.0 range
-/// * Acceleration values (x, y, z) must be within ±50.0 g-force range
+/// * Resistance values (r1, r2, r3) must be within ±1000.0 range
 /// * All numeric values must be finite (no NaN or infinite values)
 /// 
 /// # Arguments
@@ -239,7 +226,6 @@ pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String>
 /// let valid_data = GaitData {
 ///     device_id: "sensor_001".to_string(),
 ///     r1: 250.0, r2: 300.0, r3: 275.0,
-///     x: 0.5, y: 1.2, z: 9.8,
 ///     timestamp: 1642784400000,
 /// };
 /// 
@@ -248,7 +234,6 @@ pub fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String>
 /// let invalid_data = GaitData {
 ///     device_id: "".to_string(), // Empty device ID
 ///     r1: 250.0, r2: 300.0, r3: 275.0,
-///     x: 0.5, y: 1.2, z: 9.8,
 ///     timestamp: 1642784400000,
 /// };
 /// 
@@ -271,20 +256,14 @@ pub fn validate_gait_data(data: &GaitData) -> Result<(), String> {
     }
 
     // Check for reasonable ranges
-    const MAX_FORCE: f32 = 1000.0; // Maximum force reading from resistor
-    const MAX_ACCELERATION: f32 = 50.0; // g-force
+    const MAX_RESISTANCE: f32 = 1000.0; // Maximum resistance reading from sensors
 
-    if data.r1.abs() > MAX_FORCE || data.r2.abs() > MAX_FORCE || data.r3.abs() > MAX_FORCE {
-        return Err("Force values are outside expected range".to_string());
-    }
-
-    if data.x.abs() > MAX_ACCELERATION || data.y.abs() > MAX_ACCELERATION || data.z.abs() > MAX_ACCELERATION {
-        return Err("Acceleration values are outside expected range".to_string());
+    if data.r1.abs() > MAX_RESISTANCE || data.r2.abs() > MAX_RESISTANCE || data.r3.abs() > MAX_RESISTANCE {
+        return Err("Resistance values are outside expected range".to_string());
     }
 
     // Check for NaN or infinite values
-    if !data.r1.is_finite() || !data.r2.is_finite() || !data.r3.is_finite() ||
-       !data.x.is_finite() || !data.y.is_finite() || !data.z.is_finite() {
+    if !data.r1.is_finite() || !data.r2.is_finite() || !data.r3.is_finite() {
         return Err("Data contains NaN or infinite values".to_string());
     }
 
@@ -300,9 +279,6 @@ impl From<GaitData> for GaitDataWithRate {
             r1: gait_data.r1,
             r2: gait_data.r2,
             r3: gait_data.r3,
-            x: gait_data.x,
-            y: gait_data.y,
-            z: gait_data.z,
             timestamp: gait_data.timestamp,
             sample_rate: None,
         }
@@ -498,7 +474,7 @@ pub fn filter_by_devices(data: &[GaitData], device_ids: &[String]) -> Vec<GaitDa
 /// Filter data by data type/field
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum DataField {
-    R1, R2, R3, X, Y, Z, All
+    R1, R2, R3, All
 }
 
 pub fn extract_field_values(data: &[GaitData], field: DataField) -> Vec<f32> {
@@ -506,14 +482,11 @@ pub fn extract_field_values(data: &[GaitData], field: DataField) -> Vec<f32> {
         DataField::R1 => data.iter().map(|d| d.r1).collect(),
         DataField::R2 => data.iter().map(|d| d.r2).collect(),
         DataField::R3 => data.iter().map(|d| d.r3).collect(),
-        DataField::X => data.iter().map(|d| d.x).collect(),
-        DataField::Y => data.iter().map(|d| d.y).collect(),
-        DataField::Z => data.iter().map(|d| d.z).collect(),
         DataField::All => {
-            // Return all values concatenated
+            // Return all resistance values concatenated
             let mut all_values = Vec::new();
             for sample in data {
-                all_values.extend_from_slice(&[sample.r1, sample.r2, sample.r3, sample.x, sample.y, sample.z]);
+                all_values.extend_from_slice(&[sample.r1, sample.r2, sample.r3]);
             }
             all_values
         }
@@ -666,7 +639,7 @@ impl CSVStreamer {
         
         for sample in data {
             csv_content.push_str(&format!(
-                "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}{}{}",
                 sample.device_id,
                 self.format.delimiter,
                 sample.timestamp,
@@ -675,13 +648,7 @@ impl CSVStreamer {
                 self.format.delimiter,
                 format!("{:.precision$}", sample.r2, precision = self.format.precision as usize),
                 self.format.delimiter,
-                format!("{:.precision$}", sample.r3, precision = self.format.precision as usize),
-                self.format.delimiter,
-                format!("{:.precision$}", sample.x, precision = self.format.precision as usize),
-                self.format.delimiter,
-                format!("{:.precision$}", sample.y, precision = self.format.precision as usize),
-                self.format.delimiter,
-                format!("{:.precision$}", sample.z, precision = self.format.precision as usize)
+                format!("{:.precision$}", sample.r3, precision = self.format.precision as usize)
             ));
             csv_content.push('\n');
         }

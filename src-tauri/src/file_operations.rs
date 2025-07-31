@@ -151,16 +151,15 @@ pub async fn save_session_data(
 
     csv_content.push_str("#\n"); // Empty comment line for separation
 
-    // CSV header
-    csv_content.push_str("timestamp,device_id,r1,r2,r3,x,y,z\n");
+    // CSV header (resistance only)
+    csv_content.push_str("timestamp,device_id,r1,r2,r3\n");
 
     // CSV data
     for point in data {
-        csv_content.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+        csv_content.push_str(&format!("{},{},{},{},{}\n",
             point.timestamp,
             point.device_id,
-            point.r1, point.r2, point.r3,
-            point.x, point.y, point.z
+            point.r1, point.r2, point.r3
         ));
     }
 
@@ -339,14 +338,13 @@ pub async fn save_filtered_data(
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
     csv_content.push_str(&format!("# Data Points: {}\n", data.len()));
     csv_content.push_str("#\n");
-    csv_content.push_str("timestamp,device_id,r1,r2,r3,x,y,z\n");
+    csv_content.push_str("timestamp,device_id,r1,r2,r3\n");
     
     for point in data {
-        csv_content.push_str(&format!("{},{},{},{},{},{},{},{}\n",
+        csv_content.push_str(&format!("{},{},{},{},{}\n",
             point.timestamp,
             point.device_id,
-            point.r1, point.r2, point.r3,
-            point.x, point.y, point.z
+            point.r1, point.r2, point.r3
         ));
     }
     
@@ -431,7 +429,7 @@ fn parse_csv_content(content: &str) -> Result<Vec<GaitData>, String> {
 }
 
 fn parse_csv_line(parts: &[&str]) -> Result<GaitData, String> {
-    if parts.len() != 8 {
+    if parts.len() != 5 {
         return Err("Invalid number of fields".to_string());
     }
     
@@ -441,15 +439,11 @@ fn parse_csv_line(parts: &[&str]) -> Result<GaitData, String> {
     let r1 = parts[2].parse::<f32>().map_err(|_| "Invalid r1")?;
     let r2 = parts[3].parse::<f32>().map_err(|_| "Invalid r2")?;
     let r3 = parts[4].parse::<f32>().map_err(|_| "Invalid r3")?;
-    let x = parts[5].parse::<f32>().map_err(|_| "Invalid x")?;
-    let y = parts[6].parse::<f32>().map_err(|_| "Invalid y")?;
-    let z = parts[7].parse::<f32>().map_err(|_| "Invalid z")?;
     
     Ok(GaitData {
         timestamp,
         device_id,
         r1, r2, r3,
-        x, y, z,
     })
 }
 
@@ -499,7 +493,7 @@ timestamp,device_id,r1,r2,r3,x,y,z
 
     #[async_std::test]
     async fn test_csv_line_parsing() {
-        let parts = vec!["1234567890", "device1", "1.0", "2.0", "3.0", "4.0", "5.0", "6.0"];
+        let parts = vec!["1234567890", "device1", "1.0", "2.0", "3.0"];
         let data = parse_csv_line(&parts).unwrap();
         
         assert_eq!(data.timestamp, 1234567890);
@@ -507,9 +501,6 @@ timestamp,device_id,r1,r2,r3,x,y,z
         assert_eq!(data.r1, 1.0);
         assert_eq!(data.r2, 2.0);
         assert_eq!(data.r3, 3.0);
-        assert_eq!(data.x, 4.0);
-        assert_eq!(data.y, 5.0);
-        assert_eq!(data.z, 6.0);
     }
 
     #[async_std::test]

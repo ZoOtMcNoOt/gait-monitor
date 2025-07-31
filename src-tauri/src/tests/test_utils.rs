@@ -19,9 +19,8 @@ impl TestDataGenerator {
         };
         
         (0..count).map(|i| {
-            // Keep values within validation limits
+            // Keep values within validation limits (resistance only)
             // Force values: MAX_FORCE = 1000.0
-            // Acceleration values: MAX_ACCELERATION = 50.0
             let cycle = (i % 1000) as f32; // Cycle through values to avoid exceeding limits
             GaitData {
                 device_id: valid_device_id.clone(),
@@ -29,9 +28,6 @@ impl TestDataGenerator {
                 r1: (cycle * 0.1) % 999.0, // Keep under 1000
                 r2: (cycle * 0.2) % 999.0,
                 r3: (cycle * 0.3) % 999.0,
-                x: (cycle * 0.01) % 49.0, // Keep under 50
-                y: (cycle * 0.02) % 49.0,
-                z: 9.8 + (cycle * 0.01) % 39.0, // Base gravity + variation, keep under 50
             }
         }).collect()
     }
@@ -74,7 +70,7 @@ impl TestAssertions {
     pub fn assert_gait_data_valid(data: &GaitData) {
         assert!(!data.device_id.is_empty(), "Device ID should not be empty");
         assert!(data.timestamp > 0, "Timestamp should be positive");
-        assert!(data.z.abs() > 5.0, "Z-axis acceleration should indicate gravity presence");
+        assert!(data.r1.is_finite() && data.r2.is_finite() && data.r3.is_finite(), "Resistance values should be finite");
     }
 
     pub fn assert_config_valid(config: &serde_json::Value) {

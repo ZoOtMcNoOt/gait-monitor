@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import { invoke } from '@tauri-apps/api/core'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
@@ -31,40 +32,17 @@ interface Props {
   isCollecting?: boolean
 }
 
-// Legacy GaitData format for the chart component
-interface GaitData {
-  device_id: string
-  R1: number
-  R2: number
-  R3: number
-  X: number
-  Y: number
-  Z: number
-  timestamp: number
-}
-
-interface GaitDataPayload {
-  device_id: string,
-  r1: number, r2: number, r3: number,
-  x: number, y: number, z: number,
-  timestamp: number,
-  sample_rate?: number  // Add optional sample rate field
-}
-
 const CHART_COLORS = {
   R1: 'var(--chart-color-r1, #ef4444)', // red
   R2: 'var(--chart-color-r2, #f97316)', // orange
   R3: 'var(--chart-color-r3, #eab308)', // yellow
-  X: 'var(--chart-color-x, #22c55e)',  // green
-  Y: 'var(--chart-color-y, #3b82f6)',  // blue
-  Z: 'var(--chart-color-z, #8b5cf6)'   // purple
 } as const
 
 export default function LiveChart({ isCollecting = false }: Props) {
   // Chart state
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
-  const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
+  const [chartMode, setChartMode] = useState<'all' | 'resistance'>('resistance')
   const [showDataTable, setShowDataTable] = useState(false)
   const [announcementText, setAnnouncementText] = useState('')
   
@@ -73,13 +51,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
     connectedDevices, 
     activeCollectingDevices,
     connectionStatus, 
-    subscribeToGaitData,
     lastGaitDataTime,
     getCurrentSampleRate
   } = useDeviceConnection()
   
-  // Initialize unified buffer manager
-  const { state: bufferState, actions: { addDataPoint, forceMemoryCleanup } } = useBufferManager()
+  // Initialize unified buffer manager  
+  const { state: bufferState } = useBufferManager()
   
   // Optimized timestamp management with caching
   const { getChartTimestamp } = useTimestampManager({
@@ -120,165 +97,74 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [activeCollectingDevices, getCurrentSampleRate])
 
-  // Convert Tauri payload to internal format
-  const convertPayloadToGaitData = useCallback((payload: GaitDataPayload): GaitData => {
-    return {
-      device_id: payload.device_id,
-      R1: payload.r1,
-      R2: payload.r2,
-      R3: payload.r3,
-      X: payload.x,
-      Y: payload.y,
-      Z: payload.z,
-      timestamp: payload.timestamp
-    }
-  }, [])
-
-  // Function to update chart datasets for a specific device
-  const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
+  // Function to update chart from backend data
+  const updateChartFromBackendData = useCallback((backendData: Record<string, unknown>) => {
     if (!chartRef.current) return
 
     const chart = chartRef.current
-    const deviceLabel = deviceId === 'simulation' ? 'Sim' : `Device ${deviceId.slice(-4)}`
     
-    // Device color mapping for multi-device support
-    const deviceColors = [
-      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
-      '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#eab308'
-    ]
+    // Clear existing datasets to avoid duplicates
+    chart.data.datasets = []
     
-    const getDeviceColor = (baseColor: string) => {
-      // Get all active device IDs from buffer state for consistent indexing
-      const deviceIds = Object.keys(bufferState.metrics)
-      const deviceIndex = deviceIds.indexOf(deviceId)
+    // Process backend data and create datasets
+    Object.entries(backendData).forEach(([, series]) => {
+      const seriesData = series as { device_id: string; data_type: string; queue: Array<{ timestamp: number; value: number }> }
+      const { device_id, data_type, queue } = seriesData
+      const deviceLabel = device_id === 'simulation' ? 'Sim' : `Device ${device_id.slice(-4)}`
       
-      // If it's the first device or simulation, use base colors
-      if (deviceIndex === 0 || deviceId === 'simulation') {
-        return baseColor
+      // Map data type to color and label (resistance only)
+      const colorMap: Record<string, string> = {
+        'r1': CHART_COLORS.R1,
+        'r2': CHART_COLORS.R2, 
+        'r3': CHART_COLORS.R3
       }
       
-      // For other devices, use device-specific colors while maintaining channel relationships
-      const modifier = deviceIndex % deviceColors.length
-      return deviceColors[modifier]
-    }
-    
-    // Helper function to find or create dataset
-    const findOrCreateDataset = (color: string, fullLabel: string) => {
-      const label = `${deviceLabel} - ${fullLabel}`
-      let dataset = chart.data.datasets.find(ds => ds.label === label)
-      
-      if (!dataset) {
-        const finalColor = getDeviceColor(color)
-        dataset = {
-          label,
-          data: [],
-          borderColor: finalColor,
-          backgroundColor: finalColor + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-        chart.data.datasets.push(dataset)
-        console.log(`📊 Created new dataset: ${label} (total datasets: ${chart.data.datasets.length})`)
+      const labelMap: Record<string, string> = {
+        'r1': 'R1 (Resistance)',
+        'r2': 'R2 (Resistance)',
+        'r3': 'R3 (Resistance)'
       }
       
-      return dataset
-    }
-
-    // Update datasets based on current mode
-    if (chartMode === 'all' || chartMode === 'resistance') {
-      const r1Dataset = findOrCreateDataset(CHART_COLORS.R1, 'R1 (Resistance)')
-      const r2Dataset = findOrCreateDataset(CHART_COLORS.R2, 'R2 (Resistance)')
-      const r3Dataset = findOrCreateDataset(CHART_COLORS.R3, 'R3 (Resistance)')
-      
-      r1Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R1 })
-      r2Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R2 })
-      r3Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R3 })
-      
-      // Time-based data retention using configuration
-      const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
-      r1Dataset.data = (r1Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
-      r2Dataset.data = (r2Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
-      r3Dataset.data = (r3Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
-      
-      // Enforce maximum chart points limit
-      const maxPoints = config.bufferConfig.maxChartPoints
-      if (r1Dataset.data.length > maxPoints) {
-        r1Dataset.data = r1Dataset.data.slice(-maxPoints)
+      // Only show resistance datasets (R1, R2, R3)
+      const shouldShow = (dataType: string) => {
+        return ['r1', 'r2', 'r3'].includes(dataType)
       }
-      if (r2Dataset.data.length > maxPoints) {
-        r2Dataset.data = r2Dataset.data.slice(-maxPoints)
-      }
-      if (r3Dataset.data.length > maxPoints) {
-        r3Dataset.data = r3Dataset.data.slice(-maxPoints)
-      }
-    }
-    
-    if (chartMode === 'all' || chartMode === 'acceleration') {
-      const xDataset = findOrCreateDataset(CHART_COLORS.X, 'X (Accel)')
-      const yDataset = findOrCreateDataset(CHART_COLORS.Y, 'Y (Accel)')
-      const zDataset = findOrCreateDataset(CHART_COLORS.Z, 'Z (Accel)')
       
-      xDataset.data.push({ x: gaitData.timestamp, y: gaitData.X })
-      yDataset.data.push({ x: gaitData.timestamp, y: gaitData.Y })
-      zDataset.data.push({ x: gaitData.timestamp, y: gaitData.Z })
+      if (!shouldShow(data_type)) return
       
-      // Time-based data retention using configuration
-      const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
-      xDataset.data = (xDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
-      yDataset.data = (yDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
-      zDataset.data = (zDataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
+      const color = colorMap[data_type] || '#666666'
+      const label = `${deviceLabel} - ${labelMap[data_type] || data_type.toUpperCase()}`
       
-      // Enforce maximum chart points limit
-      const maxPoints = config.bufferConfig.maxChartPoints
-      if (xDataset.data.length > maxPoints) {
-        xDataset.data = xDataset.data.slice(-maxPoints)
+      // Convert backend queue data to chart format
+      const chartPoints = queue.map((point) => ({
+        x: getChartTimestamp(point.timestamp),
+        y: point.value
+      }))
+      
+      const dataset = {
+        label,
+        data: chartPoints,
+        borderColor: color,
+        backgroundColor: color + '20',
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 2
       }
-      if (yDataset.data.length > maxPoints) {
-        yDataset.data = yDataset.data.slice(-maxPoints)
-      }
-      if (zDataset.data.length > maxPoints) {
-        zDataset.data = zDataset.data.slice(-maxPoints)
-      }
-    }
-
-    chart.update('none')
-  }, [chartMode, bufferState.metrics])
-
-  // Function to add real BLE data to chart
-  const addBLEDataToChart = useCallback((gaitData: GaitData) => {
-    const deviceId = gaitData.device_id
-    
-    // Use timestamp manager for optimized timestamp handling
-    const relativeTime = getChartTimestamp(gaitData.timestamp)
-    const normalizedGaitData = { 
-      ...gaitData, 
-      timestamp: relativeTime 
-    }
-    
-    // Add to unified buffer manager - convert to backend format
-    addDataPoint(deviceId, {
-      device_id: deviceId,
-      acceleration_x: normalizedGaitData.X,
-      acceleration_y: normalizedGaitData.Y,
-      acceleration_z: normalizedGaitData.Z,
-      gyroscope_x: normalizedGaitData.R1,
-      gyroscope_y: normalizedGaitData.R2,
-      gyroscope_z: normalizedGaitData.R3,
-      timestamp: new Date(relativeTime).toISOString(),
-      sequence_number: Date.now() // Use timestamp as sequence
+      
+      chart.data.datasets.push(dataset)
     })
     
-    // Update chart with new data
-    if (chartRef.current) {
-      updateChartForDevice(deviceId, normalizedGaitData)
-      
-      // Get buffer stats for debugging
-      if (bufferState.globalMetrics && bufferState.globalMetrics.total_data_points % 100 === 0) { // Log every 100 points
-        console.log(`📈 BufferManager: ${bufferState.globalMetrics.total_data_points} total points across ${bufferState.globalMetrics.total_devices} devices, memory: ${(bufferState.globalMetrics.total_memory_usage / (1024 * 1024)).toFixed(2)}MB`)
-      }
+    chart.update('none')
+    
+    // Log backend data stats
+    const totalPoints = Object.values(backendData).reduce((sum: number, series) => {
+      const seriesData = series as { queue: Array<unknown> }
+      return sum + seriesData.queue.length
+    }, 0)
+    if (totalPoints > 0) {
+      console.log(`📊 Updated chart from backend: ${Object.keys(backendData).length} series, ${totalPoints} total points`)
     }
-  }, [updateChartForDevice, addDataPoint, getChartTimestamp, bufferState.globalMetrics])
+  }, [getChartTimestamp])
 
   // Initialize chart with original UI style
   useEffect(() => {
@@ -286,69 +172,36 @@ export default function LiveChart({ isCollecting = false }: Props) {
     
     const datasets = []
     
-    if (chartMode === 'all' || chartMode === 'resistance') {
-      datasets.push(
-        { 
-          label: 'R1 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R1,
-          backgroundColor: CHART_COLORS.R1 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R2 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R2,
-          backgroundColor: CHART_COLORS.R2 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'R3 (Resistance)', 
-          data: [],
-          borderColor: CHART_COLORS.R3,
-          backgroundColor: CHART_COLORS.R3 + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
-    
-    if (chartMode === 'all' || chartMode === 'acceleration') {
-      datasets.push(
-        { 
-          label: 'X (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.X,
-          backgroundColor: CHART_COLORS.X + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Y (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Y,
-          backgroundColor: CHART_COLORS.Y + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        },
-        { 
-          label: 'Z (Accel)', 
-          data: [],
-          borderColor: CHART_COLORS.Z,
-          backgroundColor: CHART_COLORS.Z + '20',
-          tension: 0.1,
-          pointRadius: 0,
-          borderWidth: 2
-        }
-      )
-    }
+    // Only initialize resistance datasets (R1, R2, R3)
+    datasets.push(
+      { 
+        label: 'R1 (Resistance)', 
+        data: [],
+        borderColor: CHART_COLORS.R1,
+        backgroundColor: CHART_COLORS.R1 + '20',
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 2
+      },
+      { 
+        label: 'R2 (Resistance)', 
+        data: [],
+        borderColor: CHART_COLORS.R2,
+        backgroundColor: CHART_COLORS.R2 + '20',
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 2
+      },
+      { 
+        label: 'R3 (Resistance)', 
+        data: [],
+        borderColor: CHART_COLORS.R3,
+        backgroundColor: CHART_COLORS.R3 + '20',
+        tension: 0.1,
+        pointRadius: 0,
+        borderWidth: 2
+      }
+    )
     
     chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
@@ -375,9 +228,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           y: {
             title: {
               display: true,
-              text: chartMode === 'resistance' ? 'Resistance Values' : 
-                    chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
-                    'Sensor Values'
+              text: 'Resistance Values'
             },
             grid: {
               color: 'rgba(0,0,0,0.1)'
@@ -416,79 +267,88 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [chartMode])
 
-  // Subscribe to gait data from context and handle simulation
+  // Subscribe to processed data from backend instead of raw BLE data
   useEffect(() => {
     if (!isCollecting) return
 
+    let updateInterval: ReturnType<typeof setInterval> | null = null
     let simulationInterval: ReturnType<typeof setInterval> | null = null
     
-    // Clear buffers when starting collection (TimestampManager handles base timestamp)
-    forceMemoryCleanup()
-    
-    // Clear existing chart data
+    // Clear chart data only when starting a new collection session
     if (chartRef.current) {
       chartRef.current.data.datasets.forEach(dataset => {
         dataset.data = []
       })
       chartRef.current.update('none')
+      console.log('🔄 Cleared chart for new collection session')
     }
     
-    console.log('🔄 Starting new data collection session')
+    console.log('🔄 Starting data collection from backend chart queue')
     
-    // Subscribe to real BLE data
-    const unsubscribeGait = subscribeToGaitData((payload: GaitDataPayload) => {
-      const gaitData = convertPayloadToGaitData(payload)
-      console.log('📡 Received real BLE data from device:', payload.device_id, 'at timestamp:', payload.timestamp)
-      addBLEDataToChart(gaitData)
-    })
+    // Get data from backend buffer instead of raw BLE subscription
+    updateInterval = setInterval(async () => {
+      if (activeCollectingDevices.length > 0) {
+        try {
+          // Get processed data from backend for all active devices
+          const combinedData: Record<string, unknown> = {}
+          
+          for (const deviceId of activeCollectingDevices) {
+            try {
+              const deviceData = await invoke('get_device_buffer_data_cmd', {
+                device_id: deviceId,
+                count: config.bufferConfig.maxChartPoints || 1000
+              }) as Array<{ device_id: string, R1: number, R2: number, R3: number, timestamp: number }>
+              
+              // Convert buffer data to chart format (resistance only)
+              const r1Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R1 }))
+              const r2Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R2 }))
+              const r3Data = deviceData.map(point => ({ timestamp: point.timestamp, value: point.R3 }))
+              
+              combinedData[`${deviceId}:r1`] = { device_id: deviceId, data_type: 'r1', queue: r1Data }
+              combinedData[`${deviceId}:r2`] = { device_id: deviceId, data_type: 'r2', queue: r2Data }
+              combinedData[`${deviceId}:r3`] = { device_id: deviceId, data_type: 'r3', queue: r3Data }
+            } catch (deviceError) {
+              console.warn(`Failed to get data for device ${deviceId}:`, deviceError)
+            }
+          }
+          
+          // Update chart with backend data
+          updateChartFromBackendData(combinedData)
+        } catch (error) {
+          console.error('Failed to get chart data from backend:', error)
+        }
+      }
+    }, 100) // Update every 100ms for smooth visualization
     
     // Start simulation if no active collecting devices after 2 seconds
     const fallbackTimeout = setTimeout(() => {
       if (activeCollectingDevices.length === 0) {
         console.log('🔄 Starting simulation mode')
-        const simStartTime = Date.now()
         
         simulationInterval = setInterval(() => {
-          const now = Date.now()
-          const timeSeconds = (now - simStartTime) / 1000
-          
-          // Simulate realistic gait data
-          const walkCycle = Math.sin(timeSeconds * 2 * Math.PI) // 1 Hz walking cycle
-          const noise = () => (Math.random() - 0.5) * 2
-          
-          const gaitData: GaitData = {
-            device_id: 'simulation',
-            R1: 10.0 + walkCycle * 5 + noise(), // Resistance values with walking pattern
-            R2: 11.0 + walkCycle * 4 + noise(),
-            R3: 12.0 + walkCycle * 3 + noise(),
-            X: walkCycle * 2 + noise(), // Acceleration data
-            Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
-            Z: 9.8 + walkCycle * 0.5 + noise(), // Gravity + movement
-            timestamp: now // Use absolute timestamp like real BLE data
-          }
-          
-          addBLEDataToChart(gaitData)
-        }, 10) // 100Hz to match Arduino
+          // Simulation placeholder - backend should handle simulation data
+          console.log('🎯 Simulation running - backend should provide data via chart queue')
+        }, 100) // Check every 100ms
       }
     }, 2000)
     
     // Cleanup function
     return () => {
       clearTimeout(fallbackTimeout)
-      unsubscribeGait()
+      if (updateInterval) {
+        clearInterval(updateInterval)
+      }
       if (simulationInterval) {
         clearInterval(simulationInterval)
       }
     }
-  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, forceMemoryCleanup])
+  }, [isCollecting, activeCollectingDevices, chartMode, updateChartFromBackendData])
 
   // Accessibility helpers
   const getChartSummary = useCallback((): string => {
     const totalSamples = bufferState.globalMetrics ? bufferState.globalMetrics.total_data_points : 0
     const deviceCount = connectedDevices.length
-    const currentMode = chartMode === 'all' ? 'all channels' : 
-                       chartMode === 'resistance' ? 'resistance channels (R1, R2, R3)' : 
-                       'acceleration channels (X, Y, Z)'
+    const currentMode = chartMode === 'all' ? 'all resistance channels' : 'resistance channels (R1, R2, R3)'
     
     if (totalSamples === 0) {
       return `Gait monitoring chart showing ${currentMode}. No data collected yet. ${deviceCount} device${deviceCount !== 1 ? 's' : ''} connected.`
@@ -525,10 +385,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
       case '2':
         setChartMode('resistance')
         setAnnouncementText('Switched to resistance channels view')
-        break
-      case '3':
-        setChartMode('acceleration')
-        setAnnouncementText('Switched to acceleration channels view')
         break
       case 't':
       case 'T':
@@ -691,13 +547,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             >
               Resistance (2)
             </button>
-            <button 
-              className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
-              onClick={() => setChartMode('acceleration')}
-              aria-describedby="chart-mode-help"
-            >
-              Acceleration (3)
-            </button>
           </div>
           <div className="accessibility-controls">
             <button
@@ -737,7 +586,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           <span>•</span>
           <span>Total Samples: {bufferState.globalMetrics ? bufferState.globalMetrics.total_data_points : 0}</span>
           <span>•</span>
-          <span>Channels: R1, R2, R3, X, Y, Z</span>
+          <span>Channels: R1, R2, R3</span>
         </div>
       </div>
       

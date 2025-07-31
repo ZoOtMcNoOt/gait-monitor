@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use tokio::time::timeout;
 use std::time::Duration;
 
-// Test utilities for creating test data compatible with actual API
+// Test utilities for creating test data compatible with actual API (resistance only)
 fn create_test_gait_data(device_id: &str, count: usize) -> Vec<GaitData> {
     (0..count)
         .map(|i| GaitData {
@@ -17,9 +17,6 @@ fn create_test_gait_data(device_id: &str, count: usize) -> Vec<GaitData> {
             r1: 0.1 * i as f32,
             r2: 0.2 * i as f32,
             r3: 0.3 * i as f32,
-            x: 0.1 * i as f32,
-            y: 0.2 * i as f32,
-            z: 9.8 + 0.1 * i as f32,
             timestamp: i as u64 * 1000, // milliseconds
         })
         .collect()
@@ -69,7 +66,7 @@ async fn test_gait_data_creation() {
     // Test data properties
     for (i, sample) in data.iter().enumerate() {
         assert_eq!(sample.timestamp, i as u64 * 1000);
-        assert!(sample.z > 9.0); // Should have gravity component
+        assert!(sample.r1.is_finite() && sample.r2.is_finite() && sample.r3.is_finite());
     }
 }
 
@@ -173,16 +170,14 @@ async fn test_data_types_compatibility() {
         r1: 1.0,
         r2: 2.0,
         r3: 3.0,
-        x: 0.1,
-        y: 0.2,
-        z: 9.8,
         timestamp: 1234567890,
     };
     
-    // Verify field access works
+    // Verify field access works (resistance only)
     assert_eq!(gait_data.device_id, "test");
     assert_eq!(gait_data.r1, 1.0);
-    assert_eq!(gait_data.x, 0.1);
+    assert_eq!(gait_data.r2, 2.0); 
+    assert_eq!(gait_data.r3, 3.0);
     assert_eq!(gait_data.timestamp, 1234567890);
     
     println!("GaitData structure test passed");
@@ -225,8 +220,8 @@ async fn test_performance_basic() {
     // Test data processing performance
     let mut processed_count = 0;
     for sample in &large_dataset {
-        // Simulate basic processing
-        if sample.z > 9.0 {
+        // Simulate basic processing (check resistance validity)
+        if sample.r1 > 0.0 && sample.r2 > 0.0 && sample.r3 > 0.0 {
             processed_count += 1;
         }
     }
