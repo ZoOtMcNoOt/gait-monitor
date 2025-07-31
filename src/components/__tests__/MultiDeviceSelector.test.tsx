@@ -26,10 +26,6 @@ const mockGetActiveCollectingDevices = jest.fn();
 jest.mock('../../contexts/DeviceConnectionContext', () => ({
   useDeviceConnection: () => ({
     connectedDevices: ['device1', 'device2'],
-    deviceHeartbeats: new Map([
-      ['device1', { sequence: 123 }],
-      ['device2', { sequence: 456 }]
-    ]),
     startDeviceCollection: mockStartDeviceCollection,
     stopDeviceCollection: mockStopDeviceCollection,
     getActiveCollectingDevices: mockGetActiveCollectingDevices

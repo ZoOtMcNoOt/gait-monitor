@@ -74,7 +74,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
     connectedDevices, 
     activeCollectingDevices,
     connectionStatus, 
-    deviceHeartbeats,
     subscribeToGaitData,
     lastGaitDataTime,
     getCurrentSampleRate
@@ -660,7 +659,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
               <div className="device-status">
                 {connectedDevices.map(deviceId => {
                   const status = connectionStatus.get(deviceId) || 'disconnected'
-                  const lastHeartbeat = deviceHeartbeats.get(deviceId)
                   const lastGait = lastGaitDataTime.get(deviceId)
                   const now = Date.now()
                   
@@ -670,11 +668,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
                       <span className={`connection-indicator ${status}`}>
                         {status === 'connected' ? '🟢' : status === 'timeout' ? '🟡' : '🔴'}
                       </span>
-                      {lastHeartbeat && (
-                        <span className="heartbeat-info" title={`Seq: ${lastHeartbeat.sequence}, Device time: ${lastHeartbeat.device_timestamp}ms ago: ${now - lastHeartbeat.received_timestamp}ms`}>
-                          ♥#{lastHeartbeat.sequence}
-                        </span>
-                      )}
                       {lastGait && (
                         <span className="gait-info" title={`Last gait data: ${now - lastGait}ms ago`}>
                           📊{Math.round((now - lastGait) / 1000)}s

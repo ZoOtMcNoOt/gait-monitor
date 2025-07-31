@@ -584,15 +584,6 @@ async fn validate_csrf_token(
     Ok(csrf_state.validate_token(&token).await)
 }
 
-// Add heartbeat data structure
-#[derive(Debug, serde::Serialize)]
-struct HeartbeatData {
-  device_id: String,
-  device_timestamp: u32,
-  sequence: u32,
-  received_timestamp: u64,
-}
-
 // Global state for devices and connections - using different wrapper structs to avoid type conflicts
 #[derive(Clone)]
 pub struct ConnectedDevicesState(Arc<Mutex<HashMap<String, Peripheral>>>);
@@ -1051,8 +1042,6 @@ async fn start_gait_notifications(
     .map_err(|e| format!("Invalid service UUID: {}", e))?;
   let characteristic_uuid = Uuid::parse_str("8c4711b4-571b-41ba-a240-73e6884a85eb")
     .map_err(|e| format!("Invalid characteristic UUID: {}", e))?;
-  let heartbeat_uuid = Uuid::parse_str("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-    .map_err(|e| format!("Invalid heartbeat UUID: {}", e))?;
   
   println!("Discovering services for device: {}", device_id);
   
@@ -1115,27 +1104,12 @@ async fn start_gait_notifications(
     
   println!("Found gait characteristic on device: {}", device_id);
   
-  // Find the heartbeat characteristic
-  let heartbeat_characteristic = gait_service.characteristics.iter()
-    .find(|c| c.uuid == heartbeat_uuid)
-    .ok_or_else(|| {
-      let char_uuids: Vec<String> = gait_service.characteristics.iter().map(|c| c.uuid.to_string()).collect();
-      format!("Heartbeat characteristic {} not found on device {}. Available characteristics: [{}]", 
-        heartbeat_uuid, device_id, char_uuids.join(", "))
-    })?;
-    
-  println!("Found heartbeat characteristic on device: {}", device_id);
-  
   // Subscribe to notifications
   println!("Subscribing to gait notifications for device: {}", device_id);
   peripheral.subscribe(gait_characteristic).await
     .map_err(|e| format!("Failed to subscribe to gait notifications: {}", e))?;
   
-  println!("Subscribing to heartbeat notifications for device: {}", device_id);
-  peripheral.subscribe(heartbeat_characteristic).await
-    .map_err(|e| format!("Failed to subscribe to heartbeat notifications: {}", e))?;
-  
-  println!("Successfully subscribed to all notifications for device: {}", device_id);
+  println!("Successfully subscribed to gait notifications for device: {}", device_id);
   
   // Mark device as actively collecting
   {
@@ -1148,7 +1122,6 @@ async fn start_gait_notifications(
   let device_id_clone = device_id.clone();
   let active_notifications_clone = active_notifications.inner().clone();
   let sample_rate_state_clone = sample_rate_state.inner().clone();
-  let heartbeat_uuid_clone = heartbeat_uuid;
   
   // Start listening for notifications in a background task
   tauri::async_runtime::spawn(async move {
@@ -1210,12 +1183,6 @@ async fn start_gait_notifications(
             println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
               count, data_hash, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
           }
-        }
-      } else if data.uuid == heartbeat_uuid_clone && data.value.len() == 8 {
-        // Parse the 8-byte heartbeat packet (timestamp + sequence)
-        if let Ok(heartbeat_data) = parse_heartbeat_data(&data.value, &device_id_clone) {
-          // Emit heartbeat to frontend
-          let _ = app_handle_clone.emit("heartbeat-data", &heartbeat_data);
         }
       }
     }
@@ -1741,26 +1708,6 @@ fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
     y,
     z,
     timestamp,
-  })
-}
-
-fn parse_heartbeat_data(data: &[u8], device_id: &str) -> Result<HeartbeatData, String> {
-  if data.len() != 8 {
-    return Err(format!("Invalid heartbeat data length: {} (expected 8)", data.len()));
-  }
-  
-  // Parse timestamp (4 bytes) + sequence (4 bytes) in little-endian format (matching Arduino)
-  let device_timestamp = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
-  let sequence = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
-  
-  Ok(HeartbeatData {
-    device_id: device_id.to_string(),
-    device_timestamp,
-    sequence,
-    received_timestamp: std::time::SystemTime::now()
-      .duration_since(std::time::UNIX_EPOCH)
-      .unwrap()
-      .as_millis() as u64,
   })
 }
 

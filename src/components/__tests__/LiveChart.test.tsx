@@ -122,7 +122,6 @@ const mockDeviceContext = {
   connectedDevices: ['device-1', 'device-2'],
   activeCollectingDevices: ['device-1'],
   connectionStatus: new Map([['device-1', 'connected']]),
-  deviceHeartbeats: new Map(),
   subscribeToGaitData: jest.fn().mockReturnValue(jest.fn()), // Return unsubscribe function
   lastGaitDataTime: new Map(),
   getCurrentSampleRate: jest.fn().mockReturnValue(100),
@@ -910,13 +909,7 @@ describe('LiveChart', () => {
         ['device-123456789', 'connected'],
         ['device-987654321', 'timeout']
       ])
-      mockDeviceContext.deviceHeartbeats = new Map([
-        ['device-123456789', {
-          sequence: 42,
-          device_timestamp: 1000,
-          received_timestamp: Date.now() - 500
-        }]
-      ])
+      // Removed deviceHeartbeats since heartbeat functionality was removed
       mockDeviceContext.lastGaitDataTime = new Map([
         ['device-123456789', Date.now() - 2000]
       ])
