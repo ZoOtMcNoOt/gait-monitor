@@ -20,7 +20,6 @@ export default function MultiDeviceSelector() {
   // Use global device connection context
   const { 
     connectedDevices, 
-    deviceHeartbeats,
     startDeviceCollection,
     stopDeviceCollection,
     getActiveCollectingDevices
@@ -35,12 +34,9 @@ export default function MultiDeviceSelector() {
       // Get which devices are actively collecting using context method
       const activeIds = await getActiveCollectingDevices()
       
-      // Create device status objects with heartbeat info
+      // Create device status objects with simplified display names
       const deviceStatuses: DeviceStatus[] = connectedIds.map(id => {
-        const heartbeat = deviceHeartbeats.get(id)
-        const displayName = heartbeat ? 
-          `Device ${id.slice(-6)} (♥${heartbeat.sequence})` : 
-          `Device ${id.slice(-6)}`
+        const displayName = `Device ${id.slice(-6)}`
         
         return {
           id,
@@ -56,7 +52,7 @@ export default function MultiDeviceSelector() {
     } finally {
       setLoading(false)
     }
-  }, [connectedDevices, deviceHeartbeats, getActiveCollectingDevices])
+  }, [connectedDevices, getActiveCollectingDevices])
 
   const handleToggleCollection = async (deviceId: string, currentlyCollecting: boolean) => {
     try {

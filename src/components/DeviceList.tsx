@@ -23,7 +23,6 @@ export default function DeviceList() {
     scannedDevices,
     connectedDevices, 
     connectionStatus, 
-    deviceHeartbeats,
     isScanning,
     isConnecting,
     scanDevices,
@@ -237,7 +236,6 @@ export default function DeviceList() {
                 // Find device info from scanned devices
                 const deviceInfo = scannedDevices.find(d => d.id === deviceId)
                 const status = connectionStatus.get(deviceId)
-                const heartbeat = deviceHeartbeats.get(deviceId)
                 
                 return (
                   <li key={deviceId} className={`device-card connected gaitble-device`}>
@@ -273,7 +271,7 @@ export default function DeviceList() {
                           <span className="heartbeat-text">BLE Connected</span>
                         </div>
                         
-                        {(status || heartbeat) && (
+                        {status && (
                           <div className={`data-status ${status || 'unknown'}`}>
                             <span className={`data-icon ${status || 'unknown'}`}>
                               {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
@@ -281,11 +279,6 @@ export default function DeviceList() {
                             <span className="data-text">
                               {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
                             </span>
-                            {heartbeat && (
-                              <span className="heartbeat-sequence" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
-                                #{heartbeat.sequence}
-                              </span>
-                            )}
                           </div>
                         )}
                       </div>
@@ -419,7 +412,6 @@ export default function DeviceList() {
                     {/* Connection status for all devices */}
                     {(() => {
                       const status = connectionStatus.get(d.id)
-                      const heartbeat = deviceHeartbeats.get(d.id)
                       const isConnectedDevice = isConnected(d.id)
                       
                       return (
@@ -433,7 +425,7 @@ export default function DeviceList() {
                             </span>
                           </div>
                           
-                          {isConnectedDevice && (status || heartbeat) && (
+                          {isConnectedDevice && status && (
                             <div className={`data-status ${status || 'unknown'}`}>
                               <span className={`data-icon ${status || 'unknown'}`}>
                                 {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
@@ -441,11 +433,6 @@ export default function DeviceList() {
                               <span className="data-text">
                                 {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
                               </span>
-                              {heartbeat && (
-                                <span className="heartbeat-sequence" title={`Sequence: ${heartbeat.sequence}, Device time: ${heartbeat.device_timestamp}`}>
-                                  #{heartbeat.sequence}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>
