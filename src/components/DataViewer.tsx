@@ -7,6 +7,7 @@ import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { registerChartComponents } from '../utils/chartSetup'
 import { protectedOperations } from '../services/csrfProtection'
+import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
 import '../styles/modal.css'
 
 // Register Chart.js components
@@ -57,6 +58,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'chart' | 'table' | 'stats'>('chart')
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
+  
+  // Color management for multi-device support
+  const [deviceColors, setDeviceColors] = useState<Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>>(new Map())
   
   // Optimized timestamp management
   const { formatTimestamp } = useTimestampManager()
@@ -115,16 +119,67 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
   }, [])
 
-  // Helper function to generate consistent colors for device/data type combinations
-  const getDeviceColor = (device: string, dataType: string, alpha: number = 1) => {
+  // Initialize device colors when session data is loaded
+  useEffect(() => {
+    if (sessionData && sessionData.metadata.devices.length > 0) {
+      // Create a mapping of device -> data type -> color scheme
+      const deviceColorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+      
+      // Generate colors for each device
+      const deviceColorPalettes = generateMultiDeviceColors(sessionData.metadata.devices)
+      
+      sessionData.metadata.devices.forEach(deviceId => {
+        const palette = deviceColorPalettes.get(deviceId)!
+        const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
+        
+        // Map data types to channel colors
+        sessionData.metadata.data_types.forEach((dataType, index) => {
+          // Map data types to our channel system for consistent coloring
+          const channelMapping: Record<string, ChannelType> = {
+            'R1': 'R1', 'r1': 'R1', 'resistance_1': 'R1',
+            'R2': 'R2', 'r2': 'R2', 'resistance_2': 'R2', 
+            'R3': 'R3', 'r3': 'R3', 'resistance_3': 'R3',
+            'X': 'X', 'x': 'X', 'accel_x': 'X', 'acceleration_x': 'X',
+            'Y': 'Y', 'y': 'Y', 'accel_y': 'Y', 'acceleration_y': 'Y',
+            'Z': 'Z', 'z': 'Z', 'accel_z': 'Z', 'acceleration_z': 'Z'
+          }
+          
+          // Use explicit mapping if available, otherwise distribute evenly across all channels
+          const channel = channelMapping[dataType] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[index % 6]
+          dataTypeColors[dataType] = palette[channel]
+        })
+        
+        deviceColorMap.set(deviceId, dataTypeColors)
+      })
+      
+      setDeviceColors(deviceColorMap)
+    }
+  }, [sessionData])
+
+  // Helper function to get device and data type color using our improved system
+  const getDeviceColor = useCallback((device: string, dataType: string, alpha: number = 1): string => {
+    const devicePalette = deviceColors.get(device)
+    if (devicePalette && devicePalette[dataType]) {
+      const color = devicePalette[dataType].primary
+      if (alpha === 1) return color
+      
+      // Convert hex to rgba with alpha
+      const hex = color.replace('#', '')
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16) 
+      const b = parseInt(hex.substr(4, 2), 16)
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`
+    }
+    
+    // Fallback to neutral gray colors if device colors not ready (should rarely be seen)
     const hash = (device + dataType).split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0)
       return a & a
     }, 0)
     
-    const hue = Math.abs(hash) % 360
-    return `hsla(${hue}, 70%, 50%, ${alpha})`
-  }
+    const lightness = 40 + (Math.abs(hash) % 30) // 40-70% lightness for variety
+    return `hsl(0, 0%, ${lightness}%, ${alpha})` // Neutral gray
+  }, [deviceColors])
 
   // Filter data based on selected devices, data types, and time range
   const filteredData = useMemo(() => {
@@ -144,16 +199,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   // Prepare chart data
   const chartData = useMemo(() => {
-    if (!filteredData.length) return null
+    // Don't render chart until device colors are initialized to prevent color flickering
+    if (!filteredData.length || deviceColors.size === 0) return null
 
     const datasets = selectedDataTypes.map(dataType => {
       const typeData = filteredData.filter(point => point.data_type === dataType)
       
       return selectedDevices.map(device => {
         const deviceData = typeData.filter(point => point.device_id === device)
+        const deviceLabel = getDeviceLabel(device)
         
         return {
-          label: `${device} - ${dataType}`,
+          label: `${deviceLabel} - ${dataType}`,
           data: deviceData.map(point => {
             // Backend now generates millisecond timestamps directly
             return {
@@ -173,7 +230,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     return {
       datasets: datasets.filter(dataset => dataset.data.length > 0)
     }
-  }, [filteredData, selectedDevices, selectedDataTypes])
+  }, [filteredData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors])
 
   // Calculate statistics
   const statistics = useMemo(() => {

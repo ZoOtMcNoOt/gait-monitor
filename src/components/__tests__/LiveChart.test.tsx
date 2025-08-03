@@ -75,7 +75,6 @@ jest.mock('../../config', () => ({
   config: {
     debugEnabled: false,
     maxChartPoints: 1000,
-    heartbeatTimeout: 30000,
     bufferConfig: {
       maxChartPoints: 1000,
       maxDeviceBufferPoints: 500,
@@ -932,14 +931,6 @@ describe('LiveChart', () => {
       expect(firstDevice?.querySelector('.connection-indicator.connected')).toBeTruthy()
     })
 
-    it('should show heartbeat information when available', async () => {
-      await renderComponent()
-      
-      const heartbeatInfo = container.querySelector('.heartbeat-info')
-      expect(heartbeatInfo).toBeTruthy()
-      expect(heartbeatInfo?.textContent).toContain('♥#42') // Sequence number
-    })
-
     it('should show gait data timing when available', async () => {
       await renderComponent()
       
@@ -1344,17 +1335,6 @@ describe('LiveChart', () => {
       // Should display sample rate
       expect(mockDeviceContext.getCurrentSampleRate).toHaveBeenCalledWith('device-1')
     })
-
-    it('should handle device heartbeat timeouts', async () => {
-      const mockHeartbeats = new Map()
-      mockHeartbeats.set('device-1', Date.now() - 35000) // Older than heartbeat timeout
-      mockDeviceContext.deviceHeartbeats = mockHeartbeats
-      
-      await renderComponent({ isCollecting: true })
-      
-      // Should handle stale heartbeats
-      expect(container.querySelector('canvas')).toBeTruthy()
-    })
   })
 
   describe('User Interface Controls', () => {
@@ -1517,19 +1497,6 @@ describe('LiveChart', () => {
       const chart = getMockChart();
       // Chart should still create datasets even with empty data
       expect(chart.data.datasets.length).toBeGreaterThan(0);
-    });
-
-    test('should handle device heartbeat status updates', () => {
-      mockDeviceContext.deviceHeartbeats = new Map([['device1', Date.now()]]);
-      mockDeviceContext.connectedDevices = ['device1'];
-      mockDeviceContext.activeCollectingDevices = ['device1'];
-
-      flushSync(() => {
-        root.render(React.createElement(LiveChart, { isCollecting: true }));
-      });
-
-      // Should render without errors when device heartbeats are present
-      expect(container.querySelector('.chart-container')).toBeTruthy();
     });
 
     test('should handle sample rate calculations', () => {

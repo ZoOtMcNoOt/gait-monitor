@@ -16,6 +16,7 @@ import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
 import { useTimestampManager } from '../hooks/useTimestampManager'
 import BufferStatsPanel from './BufferStatsPanel'
+import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
 
 Chart.register(
   LineController, 
@@ -51,15 +52,6 @@ interface GaitDataPayload {
   sample_rate?: number  // Add optional sample rate field
 }
 
-const CHART_COLORS = {
-  R1: 'var(--chart-color-r1, #ef4444)', // red
-  R2: 'var(--chart-color-r2, #f97316)', // orange
-  R3: 'var(--chart-color-r3, #eab308)', // yellow
-  X: 'var(--chart-color-x, #22c55e)',  // green
-  Y: 'var(--chart-color-y, #3b82f6)',  // blue
-  Z: 'var(--chart-color-z, #8b5cf6)'   // purple
-} as const
-
 export default function LiveChart({ isCollecting = false }: Props) {
   // Chart state
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -68,6 +60,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const [showBufferStats, setShowBufferStats] = useState(false)
   const [showDataTable, setShowDataTable] = useState(false)
   const [announcementText, setAnnouncementText] = useState('')
+  
+  // Color management for multi-device support
+  const [deviceColors, setDeviceColors] = useState<Map<string, Record<ChannelType, { primary: string; light: string; dark: string; background: string }>>>(new Map())
   
   // Use global device connection context (read-only)
   const { 
@@ -88,6 +83,14 @@ export default function LiveChart({ isCollecting = false }: Props) {
     autoSetBase: true,
     cacheExpiration: 1000 // 1 second cache for high-frequency data
   })
+
+  // Update device colors when connected devices change
+  useEffect(() => {
+    if (connectedDevices.length > 0) {
+      const newColors = generateMultiDeviceColors(connectedDevices)
+      setDeviceColors(newColors)
+    }
+  }, [connectedDevices])
 
   // Calculate current sample rate display
   const getCurrentSampleRateDisplay = useCallback((): string => {
@@ -140,48 +143,33 @@ export default function LiveChart({ isCollecting = false }: Props) {
     if (!chartRef.current) return
 
     const chart = chartRef.current
-    const deviceLabel = deviceId === 'simulation' ? 'Sim' : `Device ${deviceId.slice(-4)}`
+    const deviceLabel = getDeviceLabel(deviceId)
     
-    // Device color mapping for multi-device support
-    const deviceColors = [
-      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
-      '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#eab308'
-    ]
-    
-    const getDeviceColor = (baseColor: string) => {
-      // Get all active device IDs from buffer manager for consistent indexing
-      const bufferStats = bufferManager.getBufferStats()
-      const deviceIds = bufferStats ? Array.from(bufferStats.deviceStats.keys()) : []
-      const deviceIndex = deviceIds.indexOf(deviceId)
-      
-      // If it's the first device or simulation, use base colors
-      if (deviceIndex === 0 || deviceId === 'simulation') {
-        return baseColor
-      }
-      
-      // For other devices, use device-specific colors while maintaining channel relationships
-      const modifier = deviceIndex % deviceColors.length
-      return deviceColors[modifier]
+    // Get color palette for this device
+    const deviceColorPalette = deviceColors.get(deviceId)
+    if (!deviceColorPalette) {
+      console.warn(`🎨 No color palette found for device ${deviceId}`)
+      return
     }
     
-    // Helper function to find or create dataset
-    const findOrCreateDataset = (color: string, fullLabel: string) => {
+    // Helper function to find or create dataset with proper colors
+    const findOrCreateDataset = (channel: ChannelType, fullLabel: string) => {
       const label = `${deviceLabel} - ${fullLabel}`
       let dataset = chart.data.datasets.find(ds => ds.label === label)
       
       if (!dataset) {
-        const finalColor = getDeviceColor(color)
+        const colors = deviceColorPalette[channel]
         dataset = {
           label,
           data: [],
-          borderColor: finalColor,
-          backgroundColor: finalColor + '20',
+          borderColor: colors.primary,
+          backgroundColor: colors.background,
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
         }
         chart.data.datasets.push(dataset)
-        console.log(`📊 Created new dataset: ${label} (total datasets: ${chart.data.datasets.length})`)
+        console.log(`📊 Created new dataset: ${label} with color ${colors.primary} (total datasets: ${chart.data.datasets.length})`)
       }
       
       return dataset
@@ -189,9 +177,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
     // Update datasets based on current mode
     if (chartMode === 'all' || chartMode === 'resistance') {
-      const r1Dataset = findOrCreateDataset(CHART_COLORS.R1, 'R1 (Resistance)')
-      const r2Dataset = findOrCreateDataset(CHART_COLORS.R2, 'R2 (Resistance)')
-      const r3Dataset = findOrCreateDataset(CHART_COLORS.R3, 'R3 (Resistance)')
+      const r1Dataset = findOrCreateDataset('R1', 'R1 (Resistance)')
+      const r2Dataset = findOrCreateDataset('R2', 'R2 (Resistance)')
+      const r3Dataset = findOrCreateDataset('R3', 'R3 (Resistance)')
       
       r1Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R1 })
       r2Dataset.data.push({ x: gaitData.timestamp, y: gaitData.R2 })
@@ -217,9 +205,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
     
     if (chartMode === 'all' || chartMode === 'acceleration') {
-      const xDataset = findOrCreateDataset(CHART_COLORS.X, 'X (Accel)')
-      const yDataset = findOrCreateDataset(CHART_COLORS.Y, 'Y (Accel)')
-      const zDataset = findOrCreateDataset(CHART_COLORS.Z, 'Z (Accel)')
+      const xDataset = findOrCreateDataset('X', 'X (Accel)')
+      const yDataset = findOrCreateDataset('Y', 'Y (Accel)')
+      const zDataset = findOrCreateDataset('Z', 'Z (Accel)')
       
       xDataset.data.push({ x: gaitData.timestamp, y: gaitData.X })
       yDataset.data.push({ x: gaitData.timestamp, y: gaitData.Y })
@@ -245,7 +233,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
 
     chart.update('none')
-  }, [chartMode, bufferManager])
+  }, [chartMode, deviceColors])
 
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
@@ -286,6 +274,16 @@ export default function LiveChart({ isCollecting = false }: Props) {
   useEffect(() => {
     if (!canvasRef.current) return
     
+    // Use default colors for initial chart setup (will be replaced when devices connect)
+    const defaultColors = {
+      R1: '#ef4444', // red
+      R2: '#f97316', // orange  
+      R3: '#eab308', // yellow
+      X: '#22c55e',  // green
+      Y: '#3b82f6',  // blue
+      Z: '#8b5cf6'   // purple
+    }
+    
     const datasets = []
     
     if (chartMode === 'all' || chartMode === 'resistance') {
@@ -293,8 +291,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'R1 (Resistance)', 
           data: [],
-          borderColor: CHART_COLORS.R1,
-          backgroundColor: CHART_COLORS.R1 + '20',
+          borderColor: defaultColors.R1,
+          backgroundColor: defaultColors.R1 + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -302,8 +300,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'R2 (Resistance)', 
           data: [],
-          borderColor: CHART_COLORS.R2,
-          backgroundColor: CHART_COLORS.R2 + '20',
+          borderColor: defaultColors.R2,
+          backgroundColor: defaultColors.R2 + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -311,8 +309,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'R3 (Resistance)', 
           data: [],
-          borderColor: CHART_COLORS.R3,
-          backgroundColor: CHART_COLORS.R3 + '20',
+          borderColor: defaultColors.R3,
+          backgroundColor: defaultColors.R3 + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -325,8 +323,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'X (Accel)', 
           data: [],
-          borderColor: CHART_COLORS.X,
-          backgroundColor: CHART_COLORS.X + '20',
+          borderColor: defaultColors.X,
+          backgroundColor: defaultColors.X + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -334,8 +332,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'Y (Accel)', 
           data: [],
-          borderColor: CHART_COLORS.Y,
-          backgroundColor: CHART_COLORS.Y + '20',
+          borderColor: defaultColors.Y,
+          backgroundColor: defaultColors.Y + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -343,8 +341,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { 
           label: 'Z (Accel)', 
           data: [],
-          borderColor: CHART_COLORS.Z,
-          backgroundColor: CHART_COLORS.Z + '20',
+          borderColor: defaultColors.Z,
+          backgroundColor: defaultColors.Z + '20',
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2
@@ -683,7 +681,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
               onClick={() => setChartMode('all')}
-              aria-pressed={chartMode === 'all'}
+              aria-pressed={chartMode === 'all' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               All Channels (1)
@@ -691,7 +689,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
               onClick={() => setChartMode('resistance')}
-              aria-pressed={chartMode === 'resistance'}
+              aria-pressed={chartMode === 'resistance' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               Resistance (2)
@@ -699,7 +697,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
               onClick={() => setChartMode('acceleration')}
-              aria-pressed={chartMode === 'acceleration'}
+              aria-pressed={chartMode === 'acceleration' ? 'true' : 'false'}
               aria-describedby="chart-mode-help"
             >
               Acceleration (3)
