@@ -60,16 +60,66 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [viewMode, setViewMode] = useState<'chart' | 'table' | 'stats'>('chart')
   const [timeRange] = useState<{ start: number; end: number } | null>(null)
   
+  // Performance settings for large datasets
+  const [maxDataPoints, setMaxDataPoints] = useState<number>(10000) // Default max points per dataset
+  const [useDownsampling, setUseDownsampling] = useState<boolean>(true)
+  
   // Color management for multi-device support
   const [deviceColors, setDeviceColors] = useState<Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>>(new Map())
   
   const { formatTimestamp } = useTimestampManager()
   const { showError, showInfo, showSuccess } = useToast()
 
+  // Downsampling utility for client-side optimization
+  const downsampleData = useCallback((points: ChartPoint[], maxPoints: number): ChartPoint[] => {
+    if (points.length <= maxPoints) return points
+    
+    // Use LTTB (Largest Triangle Three Buckets) algorithm for better visual preservation
+    const bucketSize = (points.length - 2) / (maxPoints - 2)
+    const sampled: ChartPoint[] = [points[0]] // Always keep first point
+    
+    for (let i = 1; i < maxPoints - 1; i++) {
+      const bucketStart = Math.floor(i * bucketSize) + 1
+      const bucketEnd = Math.floor((i + 1) * bucketSize) + 1
+      
+      // Find point with largest triangle area
+      let maxArea = 0
+      let selectedPoint = points[bucketStart]
+      
+      const prevPoint = sampled[sampled.length - 1]
+      const nextBucketPoint = i < maxPoints - 2 ? 
+        points[Math.floor(((i + 1) * bucketSize) + 1)] : 
+        points[points.length - 1]
+      
+      for (let j = bucketStart; j < Math.min(bucketEnd, points.length - 1); j++) {
+        const area = Math.abs(
+          (prevPoint.x - nextBucketPoint.x) * (points[j].y - prevPoint.y) -
+          (prevPoint.x - points[j].x) * (nextBucketPoint.y - prevPoint.y)
+        )
+        
+        if (area > maxArea) {
+          maxArea = area
+          selectedPoint = points[j]
+        }
+      }
+      
+      sampled.push(selectedPoint)
+    }
+    
+    sampled.push(points[points.length - 1]) // Always keep last point
+    return sampled
+  }, [])
+
   const loadSessionData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
+      
+      // Estimate appropriate downsampling based on session duration and device count
+      // For large datasets, use backend downsampling for better performance
+      const estimatedMaxPoints = useDownsampling ? maxDataPoints : null
+      
+      console.log(`🚀 Loading session with downsampling: ${estimatedMaxPoints ? `${estimatedMaxPoints} points max` : 'disabled'}`)
       
       // Use optimized Rust backend
       const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
@@ -78,7 +128,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         selectedDataTypes: [], // Load all data types initially
         startTime: null,
         endTime: null,
-        maxPointsPerDataset: null
+        maxPointsPerDataset: estimatedMaxPoints // Use backend downsampling for performance
       })
       
       setOptimizedData(data)
@@ -89,6 +139,20 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       
       setSelectedDevices(devices)
       setSelectedDataTypes(dataTypes)
+      
+      // Calculate total data points for performance info
+      const totalPoints = Object.values(data.datasets)
+        .flatMap(deviceData => Object.values(deviceData))
+        .reduce((sum, points) => sum + points.length, 0)
+      
+      console.log(`📊 Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`)
+      
+      // Auto-enable downsampling for very large datasets
+      if (totalPoints > 50000 && !useDownsampling) {
+        setUseDownsampling(true)
+        showInfo('Performance Optimization', 
+          `Large dataset detected (${totalPoints.toLocaleString()} points). Enabling downsampling for better performance.`)
+      }
       
       // Generate device colors for all detected devices
       if (devices.length > 0) {
@@ -128,7 +192,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     } finally {
       setLoading(false)
     }
-  }, [sessionId, showError])
+  }, [sessionId, showError, useDownsampling, maxDataPoints, showInfo])
 
   useEffect(() => {
     loadSessionData()
@@ -220,6 +284,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     if (!optimizedData || deviceColors.size === 0) return null
 
     const datasets = []
+    let totalDataPoints = 0
     
     for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
       if (!selectedDevices.includes(device)) continue
@@ -234,7 +299,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         
         if (filteredPoints.length > 0) {
           // Ensure all data points are properly formatted and not null/undefined
-          const validDataPoints = filteredPoints.filter(point => 
+          let validDataPoints = filteredPoints.filter(point => 
             point && 
             typeof point.x === 'number' && 
             typeof point.y === 'number' && 
@@ -242,26 +307,46 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             !isNaN(point.y)
           )
           
+          // Apply client-side downsampling if needed and enabled
+          if (useDownsampling && validDataPoints.length > maxDataPoints / selectedDevices.length / selectedDataTypes.length) {
+            const targetPoints = Math.max(50, Math.floor(maxDataPoints / selectedDevices.length / selectedDataTypes.length))
+            validDataPoints = downsampleData(validDataPoints, targetPoints)
+            console.log(`Client-side downsampled ${device}-${dataType}: ${filteredPoints.length} → ${validDataPoints.length} points`)
+          }
+          
           if (validDataPoints.length > 0) {
+            totalDataPoints += validDataPoints.length
+            
+            // Adjust visual styling based on dataset size for performance
+            const isLargeDataset = validDataPoints.length > 1000
+            
             datasets.push({
               label: `${deviceLabel} - ${dataType}`,
               data: validDataPoints,
               borderColor: getDeviceColor(device, dataType),
               backgroundColor: getDeviceColor(device, dataType, 0.1),
-              borderWidth: 2,
-              pointRadius: 1,
+              borderWidth: isLargeDataset ? 1 : 2,
+              pointRadius: isLargeDataset ? 0 : 1,
               tension: config.chartSmoothing,
               spanGaps: false, // Don't connect points across gaps
-              pointHoverRadius: 4,
-              pointHitRadius: 6
+              pointHoverRadius: isLargeDataset ? 2 : 4,
+              pointHitRadius: isLargeDataset ? 4 : 6
             })
           }
         }
       }
     }
     
+    // Log performance information
+    if (totalDataPoints > 0) {
+      console.log(`Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`)
+      if (totalDataPoints > maxDataPoints) {
+        console.warn(`High data point count (${totalDataPoints}) may impact performance. Consider enabling downsampling.`)
+      }
+    }
+    
     return { datasets }
-  }, [optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange])
+  }, [optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange, useDownsampling, maxDataPoints, downsampleData])
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -482,6 +567,34 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   {dataType}
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Performance Settings */}
+          <div className="control-group">
+            <label>Performance:</label>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={useDownsampling}
+                  onChange={(e) => setUseDownsampling(e.target.checked)}
+                />
+                Enable Downsampling
+              </label>
+            </div>
+            <div className="input-group">
+              <label htmlFor="maxDataPoints">Max Data Points:</label>
+              <input
+                id="maxDataPoints"
+                type="number"
+                min="100"
+                max="50000"
+                step="500"
+                value={maxDataPoints}
+                onChange={(e) => setMaxDataPoints(parseInt(e.target.value) || 5000)}
+                className="number-input"
+              />
             </div>
           </div>
 
