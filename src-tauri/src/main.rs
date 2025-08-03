@@ -1819,6 +1819,34 @@ struct SessionDataMetadata {
     duration: f64,
 }
 
+#[derive(Serialize)]
+struct OptimizedChartData {
+    datasets: std::collections::HashMap<String, std::collections::HashMap<String, Vec<ChartPoint>>>,
+    metadata: OptimizedMetadata,
+}
+
+#[derive(Serialize)]
+struct ChartDataset {
+    label: String,
+    device_id: String,
+    data_type: String,
+    data: Vec<ChartPoint>,
+}
+
+#[derive(Serialize, Clone)]
+struct ChartPoint {
+    x: u64, // timestamp
+    y: f64, // value
+}
+
+#[derive(Serialize)]
+struct OptimizedMetadata {
+    devices: Vec<String>,
+    data_types: Vec<String>,
+    sample_rate: f64,
+    duration: f64,
+}
+
 #[tauri::command]
 async fn load_session_data(
   session_id: String,
@@ -1940,6 +1968,159 @@ async fn load_session_data(
 }
 
 #[tauri::command]
+async fn load_optimized_chart_data(
+  session_id: String,
+  selected_devices: Vec<String>,
+  selected_data_types: Vec<String>,
+  start_time: Option<u64>,
+  end_time: Option<u64>,
+  max_points_per_dataset: Option<usize>,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<OptimizedChartData, String> {
+  // Get the session metadata first - using the same logic as load_session_data
+  let sessions = get_sessions(path_config.clone()).await?;
+  let session_metadata = sessions.iter()
+    .find(|s| s.id == session_id)
+    .ok_or("Session not found")?;
+
+  // Parse the CSV file - same as original
+  let file_path = &session_metadata.file_path;
+  if !std::path::Path::new(file_path).exists() {
+    return Err("Data file not found".to_string());
+  }
+
+  let content = tokio::fs::read_to_string(file_path).await
+    .map_err(|e| format!("Failed to read data file: {}", e))?;
+
+  // Use the same data structure approach as the original for compatibility
+  let mut all_devices = std::collections::HashSet::new();
+  let mut all_data_types = std::collections::HashSet::new();
+  let mut min_timestamp = u64::MAX;
+  let mut max_timestamp = 0u64;
+
+  // Create the device -> data_type -> points structure directly
+  let mut datasets: std::collections::HashMap<String, std::collections::HashMap<String, Vec<ChartPoint>>> = std::collections::HashMap::new();
+
+  // Parse CSV content - same logic as original load_session_data
+  let mut header_found = false;
+  for line in content.lines() {
+    let trimmed = line.trim();
+    
+    // Skip comment lines that start with #
+    if trimmed.starts_with('#') || trimmed.is_empty() {
+      continue;
+    }
+    
+    // Skip the header line (device_id,timestamp,r1,r2,r3,x,y,z)
+    if !header_found && trimmed.starts_with("device_id") {
+      header_found = true;
+      continue;
+    }
+    
+    let parts: Vec<&str> = line.split(',').collect();
+    // Expected format: device_id,timestamp,r1,r2,r3,x,y,z
+    if parts.len() >= 8 {
+      if let (Ok(timestamp), device_id) = (
+        parts[1].parse::<u64>(),
+        parts[0]
+      ) {
+        let device_id = device_id.to_string();
+        
+        // Apply time range filter if specified
+        if let (Some(start), Some(end)) = (start_time, end_time) {
+          if timestamp < start || timestamp > end {
+            continue;
+          }
+        }
+        
+        // If devices filter is specified and non-empty, apply it
+        if !selected_devices.is_empty() && !selected_devices.contains(&device_id) {
+          continue;
+        }
+        
+        all_devices.insert(device_id.clone());
+        min_timestamp = min_timestamp.min(timestamp);
+        max_timestamp = max_timestamp.max(timestamp);
+
+        // Ensure device entry exists
+        let device_data = datasets.entry(device_id.clone()).or_insert_with(std::collections::HashMap::new);
+
+        // Parse each sensor value as a separate data type - same as original
+        let sensor_data = [
+          ("r1", parts[2]),
+          ("r2", parts[3]), 
+          ("r3", parts[4]),
+          ("x", parts[5]),
+          ("y", parts[6]),
+          ("z", parts[7]),
+        ];
+
+        for (data_type, value_str) in sensor_data {
+          if let Ok(value) = value_str.parse::<f64>() {
+            // If data types filter is specified and non-empty, apply it
+            if !selected_data_types.is_empty() && !selected_data_types.contains(&data_type.to_string()) {
+              continue;
+            }
+            
+            all_data_types.insert(data_type.to_string());
+            
+            // Add point to the correct dataset
+            let data_type_points = device_data.entry(data_type.to_string()).or_insert_with(Vec::new);
+            data_type_points.push(ChartPoint { x: timestamp, y: value });
+          }
+        }
+      }
+    }
+  }
+
+  if datasets.is_empty() {
+    return Err("No valid data points found in file".to_string());
+  }
+
+  // Apply downsampling if requested
+  if let Some(max_points) = max_points_per_dataset {
+    for device_data in datasets.values_mut() {
+      for data_points in device_data.values_mut() {
+        if data_points.len() > max_points {
+          let step = data_points.len() / max_points;
+          *data_points = data_points.iter().step_by(step).cloned().collect();
+        }
+      }
+    }
+  }
+
+  // Calculate metadata - same as original
+  let duration = if max_timestamp > min_timestamp {
+    (max_timestamp - min_timestamp) as f64 / 1_000.0 // Convert milliseconds to seconds
+  } else {
+    0.0
+  };
+
+  // Calculate sample rate based on actual timestamps
+  let total_unique_timestamps: std::collections::HashSet<u64> = datasets.values()
+    .flat_map(|device_data| device_data.values())
+    .flat_map(|points| points.iter().map(|p| p.x))
+    .collect();
+  let actual_sample_count = total_unique_timestamps.len() as f64;
+  
+  let sample_rate = if duration > 0.0 {
+    actual_sample_count / duration
+  } else {
+    0.0
+  };
+
+  Ok(OptimizedChartData {
+    datasets,
+    metadata: OptimizedMetadata {
+      devices: all_devices.into_iter().collect(),
+      data_types: all_data_types.into_iter().collect(),
+      sample_rate,
+      duration,
+    },
+  })
+}
+
+#[tauri::command]
 async fn save_filtered_data(
   file_name: String,
   content: String,
@@ -2057,7 +2238,8 @@ fn main() {
       validate_csrf_token,
       get_path_config, 
       validate_path, 
-      load_session_data, 
+      load_session_data,
+      load_optimized_chart_data,
       save_filtered_data, 
       get_storage_path, 
       get_sample_rate

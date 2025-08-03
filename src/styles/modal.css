@@ -566,3 +566,16 @@
   background: var(--color-text) !important;
   color: var(--color-bg) !important;
 }
+
+/* Optimized Data Viewer Styles */
+.optimized-chart {
+  height: 400px;
+}
+
+.data-viewer-info {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}

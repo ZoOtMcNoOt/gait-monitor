@@ -1,16 +1,39 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToast } from '../contexts/ToastContext'
+import { useTimestampManager } from '../hooks/useTimestampManager'
+import { config } from '../config'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { registerChartComponents } from '../utils/chartSetup'
-import { config } from '../config'
-import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
-import { useTimestampManager } from '../hooks/useTimestampManager'
-import { useToast } from '../contexts/ToastContext'
 import { protectedOperations } from '../services/csrfProtection'
+import { generateMultiDeviceColors, getDeviceLabel } from '../utils/colorGeneration'
+import '../styles/modal.css'
 
 // Register Chart.js components
 registerChartComponents()
+
+interface DataPoint {
+  timestamp: number
+  device_id: string
+  data_type: string
+  value: number
+  unit: string
+}
+
+interface SessionData {
+  session_name: string
+  subject_id: string
+  start_time: number
+  end_time: number
+  data: DataPoint[]
+  metadata: {
+    devices: string[]
+    data_types: string[]
+    sample_rate: number
+    duration: number
+  }
+}
 
 interface DataViewerProps {
   sessionId: string
@@ -43,14 +66,6 @@ interface DeviceStats {
   unit: string
 }
 
-interface FilteredDataPoint {
-  device_id: string
-  data_type: string
-  timestamp: number
-  value: number
-  unit: string
-}
-
 export default function DataViewer({ sessionId, sessionName, onClose }: DataViewerProps) {
   const [optimizedData, setOptimizedData] = useState<OptimizedChartData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,12 +73,14 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'chart' | 'table' | 'stats'>('chart')
-  const [timeRange] = useState<{ start: number; end: number } | null>(null)
+  const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
   
   // Color management for multi-device support
   const [deviceColors, setDeviceColors] = useState<Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>>(new Map())
   
+  // Optimized timestamp management
   const { formatTimestamp } = useTimestampManager()
+  
   const { showError, showInfo, showSuccess } = useToast()
 
   const loadSessionData = useCallback(async () => {
@@ -71,54 +88,73 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setLoading(true)
       setError(null)
       
-      // Use optimized Rust backend
-      const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
-        sessionId,
-        selectedDevices: [], // Load all devices initially
-        selectedDataTypes: [], // Load all data types initially
-        startTime: null,
-        endTime: null,
-        maxPointsPerDataset: null
-      })
-      
-      setOptimizedData(data)
-      
-      // Auto-select all available devices and data types
-      const devices = data.metadata.devices
-      const dataTypes = data.metadata.data_types
-      
-      setSelectedDevices(devices)
-      setSelectedDataTypes(dataTypes)
-      
-      // Generate device colors for all detected devices
-      if (devices.length > 0) {
-        const deviceColorPalettes = generateMultiDeviceColors(devices)
-        const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
-        
-        devices.forEach(device => {
-          const palette = deviceColorPalettes.get(device)!
-          const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
-          
-          // Map data types to channel colors for consistent coloring
-          dataTypes.forEach((dataType, index) => {
-            // Map data types to our channel system
-            const channelMapping: Record<string, ChannelType> = {
-              'r1': 'R1', 'r2': 'R2', 'r3': 'R3',
-              'x': 'X', 'y': 'Y', 'z': 'Z',
-              'R1': 'R1', 'R2': 'R2', 'R3': 'R3',
-              'X': 'X', 'Y': 'Y', 'Z': 'Z'
-            }
-            
-            // Use explicit mapping if available, otherwise distribute evenly across channels
-            const channel = channelMapping[dataType] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[index % 6]
-            dataTypeColors[dataType] = palette[channel]
-          })
-          
-          colorMap.set(device, dataTypeColors)
+      if (useOptimizedBackend) {
+        // Use optimized Rust backend
+        const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
+          sessionId,
+          selectedDevices: [], // Load all devices initially (empty array means all)
+          selectedDataTypes: [], // Load all data types initially (empty array means all)
+          startTime: null,
+          endTime: null,
+          maxPointsPerDataset: null
         })
         
-        setDeviceColors(colorMap)
-        console.log('Generated device colors:', Object.fromEntries(colorMap))
+        setOptimizedData(data)
+        
+        // Auto-select all available devices and data types
+        const devices = Object.keys(data.datasets)
+        const dataTypes = Array.from(new Set(
+          Object.values(data.datasets).flatMap(deviceData => 
+            Object.keys(deviceData)
+          )
+        ))
+        
+        setSelectedDevices(devices)
+        setSelectedDataTypes(dataTypes)
+        
+        // For optimized data, we'll need to calculate time range from actual data
+        // This will be handled by the chart rendering logic
+        
+        // Generate device colors for all detected devices
+        if (devices.length > 0) {
+          const colors = generateMultiDeviceColors(devices)
+          const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+          
+          devices.forEach(device => {
+            colorMap.set(device, colors.get(device) || {})
+          })
+          
+          setDeviceColors(colorMap)
+          console.log('Generated device colors (optimized):', Object.fromEntries(colorMap))
+        }
+        
+      } else {
+        // Use legacy frontend processing
+        const data: SessionData = await invoke('load_session_data', { sessionId })
+        setSessionData(data)
+        
+        // Initialize filters with all available options
+        setSelectedDevices(data.metadata.devices)
+        setSelectedDataTypes(data.metadata.data_types)
+        
+        // Set initial time range to full session
+        setTimeRange({
+          start: data.start_time,
+          end: data.end_time
+        })
+        
+        // Generate device colors for all detected devices
+        if (data.metadata.devices.length > 0) {
+          const colors = generateMultiDeviceColors(data.metadata.devices)
+          const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+          
+          data.metadata.devices.forEach(device => {
+            colorMap.set(device, colors.get(device) || {})
+          })
+          
+          setDeviceColors(colorMap)
+          console.log('Generated device colors (legacy):', Object.fromEntries(colorMap))
+        }
       }
       
     } catch (err) {
@@ -128,7 +164,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     } finally {
       setLoading(false)
     }
-  }, [sessionId, showError])
+  }, [sessionId, useOptimizedBackend, showError])
 
   useEffect(() => {
     loadSessionData()
@@ -155,7 +191,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
   }, [])
 
-  // Helper function to get device and data type color
+  // Device colors are now initialized during data loading in loadSessionData
+  // This ensures colors are set consistently for both optimized and legacy backends
+
+  // Helper function to get device and data type color using our improved system
   const getDeviceColor = useCallback((device: string, dataType: string, alpha: number = 1): string => {
     const devicePalette = deviceColors.get(device)
     if (devicePalette && devicePalette[dataType]) {
@@ -170,7 +209,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       return `rgba(${r}, ${g}, ${b}, ${alpha})`
     }
     
-    // Fallback to neutral gray colors if device colors not ready
+    // Fallback to neutral gray colors if device colors not ready (should rarely be seen)
     const hash = (device + dataType).split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0)
       return a & a
@@ -180,88 +219,128 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     return `hsl(0, 0%, ${lightness}%, ${alpha})` // Neutral gray
   }, [deviceColors])
 
-  // Filter data and prepare for visualization
-  const filteredData = useMemo((): FilteredDataPoint[] => {
-    if (!optimizedData) return []
-    
-    const filtered: FilteredDataPoint[] = []
-    
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      if (!selectedDevices.includes(device)) continue
+  // Filter data based on selected devices, data types, and time range
+  const filteredData = useMemo(() => {
+    if (useOptimizedBackend) {
+      // For optimized backend, data is pre-structured by device and data type
+      if (!optimizedData) return []
       
-      for (const [dataType, points] of Object.entries(deviceData)) {
-        if (!selectedDataTypes.includes(dataType)) continue
+      const filtered = []
+      
+      for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
+        if (!selectedDevices.includes(device)) continue
         
-        for (const point of points) {
-          const timeMatch = !timeRange || (
-            point.x >= timeRange.start && 
-            point.x <= timeRange.end
-          )
+        for (const [dataType, points] of Object.entries(deviceData)) {
+          if (!selectedDataTypes.includes(dataType)) continue
           
-          if (timeMatch) {
-            filtered.push({
-              device_id: device,
-              data_type: dataType,
-              timestamp: point.x,
-              value: point.y,
-              unit: '' // Unit info not included in optimized format
-            })
+          for (const point of points) {
+            const timeMatch = !timeRange || (
+              point.x >= timeRange.start && 
+              point.x <= timeRange.end
+            )
+            
+            if (timeMatch) {
+              filtered.push({
+                device_id: device,
+                data_type: dataType,
+                timestamp: point.x,
+                value: point.y,
+                unit: '' // Unit info not included in optimized format
+              })
+            }
           }
         }
       }
+      
+      return filtered
+      
+    } else {
+      // Legacy data filtering
+      if (!sessionData) return []
+      
+      return sessionData.data.filter(point => {
+        const deviceMatch = selectedDevices.includes(point.device_id)
+        const typeMatch = selectedDataTypes.includes(point.data_type)
+        const timeMatch = !timeRange || (
+          point.timestamp >= timeRange.start && 
+          point.timestamp <= timeRange.end
+        )
+        
+        return deviceMatch && typeMatch && timeMatch
+      })
     }
-    
-    return filtered
-  }, [optimizedData, selectedDevices, selectedDataTypes, timeRange])
+  }, [sessionData, optimizedData, selectedDevices, selectedDataTypes, timeRange, useOptimizedBackend])
 
   // Prepare chart data
   const chartData = useMemo(() => {
-    // Don't render chart until device colors are initialized
-    if (!optimizedData || deviceColors.size === 0) return null
+    // Don't render chart until device colors are initialized to prevent color flickering
+    if (deviceColors.size === 0) return null
 
-    const datasets = []
-    
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      if (!selectedDevices.includes(device)) continue
+    if (useOptimizedBackend && optimizedData) {
+      // Use pre-structured optimized data directly
+      const datasets = []
       
-      for (const [dataType, points] of Object.entries(deviceData)) {
-        if (!selectedDataTypes.includes(dataType)) continue
+      for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
+        if (!selectedDevices.includes(device)) continue
         
-        const deviceLabel = getDeviceLabel(device)
-        const filteredPoints = timeRange 
-          ? points.filter((point: ChartPoint) => point.x >= timeRange.start && point.x <= timeRange.end)
-          : points
-        
-        if (filteredPoints.length > 0) {
-          // Ensure all data points are properly formatted and not null/undefined
-          const validDataPoints = filteredPoints.filter(point => 
-            point && 
-            typeof point.x === 'number' && 
-            typeof point.y === 'number' && 
-            !isNaN(point.x) && 
-            !isNaN(point.y)
-          )
+        for (const [dataType, points] of Object.entries(deviceData)) {
+          if (!selectedDataTypes.includes(dataType)) continue
           
-          if (validDataPoints.length > 0) {
+          const deviceLabel = getDeviceLabel(device)
+          const filteredPoints = timeRange 
+            ? points.filter((point: ChartPoint) => point.x >= timeRange.start && point.x <= timeRange.end)
+            : points
+          
+          if (filteredPoints.length > 0) {
             datasets.push({
               label: `${deviceLabel} - ${dataType}`,
-              data: validDataPoints,
+              data: filteredPoints,
               borderColor: getDeviceColor(device, dataType),
               backgroundColor: getDeviceColor(device, dataType, 0.1),
               borderWidth: 2,
               pointRadius: 1,
-              tension: config.chartSmoothing,
-              spanGaps: false, // Don't connect points across gaps
-              pointHoverRadius: 4,
-              pointHitRadius: 6
+              tension: config.chartSmoothing
             })
           }
         }
       }
+      
+      return { datasets }
+      
+    } else {
+      // Legacy data processing path
+      if (!filteredData.length) return null
+
+      const datasets = selectedDataTypes.map(dataType => {
+        const typeData = filteredData.filter(point => point.data_type === dataType)
+        
+        return selectedDevices.map(device => {
+          const deviceData = typeData.filter(point => point.device_id === device)
+          const deviceLabel = getDeviceLabel(device)
+          
+          return {
+            label: `${deviceLabel} - ${dataType}`,
+            data: deviceData.map(point => {
+              // Backend now generates millisecond timestamps directly
+              return {
+                x: point.timestamp,
+                y: point.value
+              }
+            }),
+            borderColor: getDeviceColor(device, dataType),
+            backgroundColor: getDeviceColor(device, dataType, 0.1),
+            borderWidth: 2,
+            pointRadius: 1,
+            tension: config.chartSmoothing
+          }
+        })
+      }).flat()
+
+      return {
+        datasets: datasets.filter(dataset => dataset.data.length > 0)
+      }
     }
-    
-    return { datasets }
-  }, [optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange])
+  }, [filteredData, optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange, useOptimizedBackend])
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -274,16 +353,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       
       selectedDevices.forEach(device => {
         const deviceData = filteredData.filter(
-          (point: FilteredDataPoint) => point.device_id === device && point.data_type === dataType
+          point => point.device_id === device && point.data_type === dataType
         )
         
         if (deviceData.length > 0) {
-          const values = deviceData.map((point: FilteredDataPoint) => point.value)
-          const mean = values.reduce((sum: number, val: number) => sum + val, 0) / values.length
+          const values = deviceData.map(point => point.value)
+          const mean = values.reduce((sum, val) => sum + val, 0) / values.length
           const min = Math.min(...values)
           const max = Math.max(...values)
           const std = Math.sqrt(
-            values.reduce((sum: number, val: number) => sum + Math.pow(val - mean, 2), 0) / values.length
+            values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
           )
           
           stats[dataType][device] = {
@@ -309,7 +388,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     try {
       const csvContent = [
         ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
-        ...filteredData.map((point: FilteredDataPoint) => {
+        ...filteredData.map(point => {
+          // Backend now generates millisecond timestamps directly
           return [
             new Date(point.timestamp).toISOString(),
             point.device_id,
@@ -350,14 +430,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     return (
       <div className="data-viewer-overlay">
         <div className="data-viewer-modal">
-          <div className="data-viewer-header">
-            <h2>Loading Session Data...</h2>
-          </div>
-          <div className="data-viewer-content">
-            <div className="loading-spinner">
-              <div className="spinner"></div>
-              <p>Loading {sessionName}...</p>
-            </div>
+          <div className="data-viewer-loading">
+            <div className="spinner"></div>
+            <p>Loading session data...</p>
           </div>
         </div>
       </div>
@@ -368,19 +443,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     return (
       <div className="data-viewer-overlay">
         <div className="data-viewer-modal">
-          <div className="data-viewer-header">
-            <h2>Error Loading Data</h2>
-            <button className="btn-close" onClick={onClose}>✕</button>
-          </div>
-          <div className="data-viewer-content">
-            <div className="data-viewer-error">
-              <h3>❌ No Data Available</h3>
-              <p>Session data could not be loaded.</p>
-              <p className="error-details">{error}</p>
-              <div className="button-group">
-                <button onClick={reloadData} className="btn-primary">🔄 Retry</button>
-                <button onClick={onClose} className="btn-secondary">Close</button>
-              </div>
+          <div className="data-viewer-error">
+            <h3>❌ Error Loading Data</h3>
+            <p>{error}</p>
+            <div className="error-actions">
+              <button className="btn-primary" onClick={reloadData}>
+                🔄 Retry
+              </button>
+              <button className="btn-secondary" onClick={onClose}>
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -388,14 +460,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     )
   }
 
-  if (!optimizedData) {
+  if (!sessionData) {
     return (
       <div className="data-viewer-overlay">
         <div className="data-viewer-modal">
           <div className="data-viewer-error">
             <h3>❌ No Data Available</h3>
             <p>Session data could not be loaded.</p>
-            <button className="btn-secondary" onClick={onClose}>Close</button>
+            <button className="btn-secondary" onClick={onClose}>
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -407,12 +481,14 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       <div className="data-viewer-modal">
         <div className="data-viewer-header">
           <div className="session-info">
-            <h2>📊 {sessionName}</h2>
-            <p>Duration: {Math.round(optimizedData.metadata.duration)}s | Sample Rate: {Math.round(optimizedData.metadata.sample_rate * 10) / 10}Hz | Devices: {optimizedData.metadata.devices.length}</p>
+            <h2>📊 {sessionData.session_name}</h2>
+            <p>Subject: {sessionData.subject_id} | Duration: {Math.round(sessionData.metadata.duration)}s | Sample Rate: {Math.round(sessionData.metadata.sample_rate * 10) / 10}Hz | Total Points: {sessionData.data.length.toLocaleString()}</p>
           </div>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
-        
+
         <div className="data-viewer-controls">
           {/* View Mode Selector */}
           <div className="control-group">
@@ -422,7 +498,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 className={`btn-small ${viewMode === 'chart' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setViewMode('chart')}
               >
-                � Chart
+                📈 Chart
               </button>
               <button 
                 className={`btn-small ${viewMode === 'table' ? 'btn-primary' : 'btn-secondary'}`}
@@ -434,16 +510,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 className={`btn-small ${viewMode === 'stats' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setViewMode('stats')}
               >
-                � Statistics
+                📊 Statistics
               </button>
             </div>
           </div>
-          
+
           {/* Device Filter */}
           <div className="control-group">
             <label>Devices:</label>
             <div className="checkbox-group">
-              {optimizedData.metadata.devices.map(device => (
+              {sessionData.metadata.devices.map(device => (
                 <label key={device} className="checkbox-label">
                   <input
                     type="checkbox"
@@ -456,17 +532,17 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       }
                     }}
                   />
-                  {getDeviceLabel(device)}
+                  {device}
                 </label>
               ))}
             </div>
           </div>
-          
+
           {/* Data Type Filter */}
           <div className="control-group">
             <label>Data Types:</label>
             <div className="checkbox-group">
-              {optimizedData.metadata.data_types.map(dataType => (
+              {sessionData.metadata.data_types.map(dataType => (
                 <label key={dataType} className="checkbox-label">
                   <input
                     type="checkbox"
@@ -496,6 +572,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         <div className="data-viewer-content">
           {viewMode === 'chart' && chartData && (
             <div className="chart-container" id="data-viewer-chart">
+              {/* Add error boundary around Chart component */}
               {(() => {
                 try {
                   return (
@@ -515,53 +592,22 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           },
                           title: {
                             display: true,
-                            text: `${sessionName} - Data Visualization`
-                          },
-                          tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            filter: function(tooltipItem) {
-                              // Filter out null/undefined values from tooltips
-                              return tooltipItem && 
-                                     tooltipItem.parsed && 
-                                     typeof tooltipItem.parsed.x === 'number' && 
-                                     typeof tooltipItem.parsed.y === 'number' &&
-                                     !isNaN(tooltipItem.parsed.x) &&
-                                     !isNaN(tooltipItem.parsed.y)
-                            },
-                            callbacks: {
-                              title: function(context) {
-                                if (context && context[0] && context[0].parsed) {
-                                  return `Time: ${new Date(context[0].parsed.x).toLocaleTimeString()}`
-                                }
-                                return 'Data Point'
-                              },
-                              label: function(context) {
-                                if (context && context.parsed && typeof context.parsed.y === 'number') {
-                                  return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`
-                                }
-                                return `${context.dataset.label}: N/A`
-                              }
-                            }
+                            text: `${sessionData.session_name} - Data Visualization`
                           }
                         },
                         scales: {
                           x: {
-                            type: 'linear',
-                            position: 'bottom',
+                            type: 'time',
+                            time: {
+                              displayFormats: {
+                                millisecond: 'HH:mm:ss.SSS',
+                                second: 'HH:mm:ss',
+                                minute: 'HH:mm'
+                              }
+                            },
                             title: {
                               display: true,
-                              text: 'Time (ms)'
-                            },
-                            ticks: {
-                              callback: function(value) {
-                                // Format timestamp for display
-                                if (typeof value === 'number' && !isNaN(value)) {
-                                  return new Date(value).toLocaleTimeString()
-                                }
-                                return value
-                              }
+                              text: 'Time'
                             }
                           },
                           y: {
@@ -574,13 +620,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         interaction: {
                           intersect: false,
                           mode: 'index'
-                        },
-                        elements: {
-                          point: {
-                            radius: 1,
-                            hoverRadius: 4,
-                            hitRadius: 6
-                          }
                         }
                       }}
                     />
@@ -589,9 +628,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   console.error('Chart rendering error:', error)
                   return (
                     <div className="chart-error">
-                      <p>❌ Error rendering chart. Please try refreshing the data.</p>
+                      <p>Error rendering chart. Please try refreshing the data.</p>
                       <button onClick={reloadData} className="btn-secondary">
-                        🔄 Reload Data
+                        Reload Data
                       </button>
                     </div>
                   )
@@ -599,7 +638,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               })()}
             </div>
           )}
-          
+
           {viewMode === 'table' && (
             <div className="table-container-scrollable">
               <table className="data-table">
@@ -609,54 +648,48 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     <th>Device</th>
                     <th>Data Type</th>
                     <th>Value</th>
+                    <th>Unit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.slice(0, 1000).map((point: FilteredDataPoint, index) => (
+                  {filteredData.slice(0, config.maxChartPoints).map((point, index) => (
                     <tr key={index}>
-                      <td>{formatTimestamp(point.timestamp)}</td>
-                      <td>{getDeviceLabel(point.device_id)}</td>
+                      <td>{formatTimestamp(point.timestamp, 'absolute')}</td>
+                      <td>{point.device_id}</td>
                       <td>{point.data_type}</td>
                       <td>{point.value.toFixed(3)}</td>
+                      <td>{point.unit}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {filteredData.length > 1000 && (
-                <p className="table-note">Showing first 1000 rows of {filteredData.length.toLocaleString()} total</p>
+              {filteredData.length > config.maxChartPoints && (
+                <div className="table-note">
+                  Showing first {config.maxChartPoints} of {filteredData.length} data points
+                </div>
               )}
             </div>
           )}
-          
+
           {viewMode === 'stats' && statistics && (
-            <div className="stats-container">
+            <div className="statistics-container">
               {Object.entries(statistics).map(([dataType, deviceStats]) => (
                 <div key={dataType} className="stats-section">
-                  <h3>{dataType} Statistics</h3>
-                  <table className="stats-table">
-                    <thead>
-                      <tr>
-                        <th>Device</th>
-                        <th>Count</th>
-                        <th>Mean</th>
-                        <th>Min</th>
-                        <th>Max</th>
-                        <th>Std Dev</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(deviceStats).map(([device, stats]) => (
-                        <tr key={device}>
-                          <td>{getDeviceLabel(device)}</td>
-                          <td>{stats.count.toLocaleString()}</td>
-                          <td>{stats.mean}</td>
-                          <td>{stats.min}</td>
-                          <td>{stats.max}</td>
-                          <td>{stats.std}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <h3>{dataType}</h3>
+                  <div className="stats-grid">
+                    {Object.entries(deviceStats).map(([device, stats]) => (
+                      <div key={device} className="stat-card">
+                        <h4>{device}</h4>
+                        <div className="stat-values">
+                          <div>Count: {stats.count}</div>
+                          <div>Mean: {stats.mean} {stats.unit}</div>
+                          <div>Min: {stats.min} {stats.unit}</div>
+                          <div>Max: {stats.max} {stats.unit}</div>
+                          <div>Std Dev: {stats.std} {stats.unit}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
