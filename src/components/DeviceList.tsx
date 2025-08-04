@@ -266,23 +266,16 @@ export default function DeviceList() {
                       </div>
 
                       {/* Connection status */}
-                      <div className="device-heartbeat-section">
-                        <div className="heartbeat-status ble-connected">
-                          <span className="heartbeat-icon ble-connected">🔗</span>
-                          <span className="heartbeat-text">BLE Connected</span>
+                      {status && (
+                        <div className={`data-status ${status || 'unknown'}`}>
+                          <span className={`data-icon ${status || 'unknown'}`}>
+                            {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                          </span>
+                          <span className="data-text">
+                            {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
+                          </span>
                         </div>
-                        
-                        {status && (
-                          <div className={`data-status ${status || 'unknown'}`}>
-                            <span className={`data-icon ${status || 'unknown'}`}>
-                              {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
-                            </span>
-                            <span className="data-text">
-                              {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                     <div className="device-footer">
@@ -415,29 +408,16 @@ export default function DeviceList() {
                       const status = connectionStatus.get(d.id)
                       const isConnectedDevice = isConnected(d.id)
                       
-                      return (
-                        <div className="device-heartbeat-section">
-                          <div className={`heartbeat-status ${isConnectedDevice ? 'ble-connected' : 'ble-disconnected'}`}>
-                            <span className={`heartbeat-icon ${isConnectedDevice ? 'ble-connected' : 'ble-disconnected'}`}>
-                              {isConnectedDevice ? '🔗' : '❌'}
-                            </span>
-                            <span className="heartbeat-text">
-                              {isConnectedDevice ? 'BLE Connected' : 'BLE Disconnected'}
-                            </span>
-                          </div>
-                          
-                          {isConnectedDevice && status && (
-                            <div className={`data-status ${status || 'unknown'}`}>
-                              <span className={`data-icon ${status || 'unknown'}`}>
-                                {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
-                              </span>
-                              <span className="data-text">
-                                {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
-                              </span>
-                            </div>
-                          )}
+                      return isConnectedDevice && status ? (
+                        <div className={`data-status ${status || 'unknown'}`}>
+                          <span className={`data-icon ${status || 'unknown'}`}>
+                            {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                          </span>
+                          <span className="data-text">
+                            {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
+                          </span>
                         </div>
-                      )
+                      ) : null
                     })()}
                   </div>
 

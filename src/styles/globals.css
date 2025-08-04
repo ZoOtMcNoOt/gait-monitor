@@ -416,6 +416,7 @@ tbody tr:hover {
 
 .device-card.gaitble-device:hover {
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
 }
 
 .device-card.gaitble-device .device-name {
@@ -537,12 +538,7 @@ tbody tr:hover {
   color: #4b5563;
 }
 
-/* Heartbeat Section */
-.device-heartbeat-section {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
-}
+/* Connection Status Section - styles for data-status elements */
 
 .heartbeat-status {
   display: flex;
@@ -863,6 +859,7 @@ tbody tr:hover {
 .dark .device-card:hover {
   border-color: var(--color-primary);
   background: var(--color-bg);
+  transform: translateY(-1px);
 }
 
 .dark .device-card.gaitble-device {
@@ -872,10 +869,69 @@ tbody tr:hover {
 
 .dark .device-card.gaitble-device:hover {
   border-color: var(--color-primary);
+  background: var(--color-bg);
+  transform: translateY(-1px);
 }
 
 .dark .device-card.gaitble-device .device-name {
   color: var(--color-text);
+}
+
+/* Dark mode for device list and related elements */
+.dark .device-list-card {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-list-header {
+  border-color: var(--color-border);
+}
+
+.dark .scanning-message {
+  color: var(--color-text-muted);
+}
+
+.dark .device-details {
+  color: var(--color-text);
+}
+
+.dark .device-rssi {
+  color: var(--color-primary);
+}
+
+.dark .device-connectable.connectable {
+  color: var(--success-color);
+}
+
+.dark .device-connectable.not-connectable {
+  color: var(--error-color);
+}
+
+.dark .device-type {
+  color: var(--color-text-muted);
+}
+
+.dark .device-services,
+.dark .device-manufacturer {
+  color: var(--color-text-muted);
+}
+
+.dark .device-services strong,
+.dark .device-manufacturer strong {
+  color: var(--color-text);
+}
+
+.dark .device-header {
+  border-color: var(--color-border);
+}
+
+.dark .device-name {
+  color: var(--color-text);
+}
+
+.dark .device-id {
+  color: var(--color-text-muted);
+  background-color: var(--color-border);
 }
 
 .dark .wizard-progress {
@@ -1125,6 +1181,25 @@ tbody tr:hover {
   display: flex;
   gap: 1rem;
   justify-content: center;
+}
+
+/* Dark mode pagination styles */
+.dark .pagination-controls label {
+  color: var(--color-text);
+}
+
+.dark .pagination-controls select {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .pagination-info {
+  color: var(--color-text-muted);
+}
+
+.dark .pagination-navigation {
+  border-color: var(--color-border);
 }
 
 /*────────────────────────────────────────────────────────
