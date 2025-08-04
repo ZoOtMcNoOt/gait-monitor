@@ -85,7 +85,7 @@ function AppContent() {
       <Sidebar page={page} onChange={setPage} />
       <ScrollableContainer id="main-content" className="content">
         {page === 'connect' && <ConnectTab />}
-        {page === 'collect' && <CollectTab />}
+        {page === 'collect' && <CollectTab onNavigateToConnect={() => setPage('connect')} />}
         {page === 'logs' && <LogsTab />}
         {page === 'settings' && <SettingsTab darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />}
       </ScrollableContainer>

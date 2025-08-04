@@ -34,7 +34,11 @@ interface CollectedData {
   timestamp: Date
 }
 
-export default function CollectTab() {
+interface CollectTabProps {
+  onNavigateToConnect?: () => void
+}
+
+export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   const [currentStep, setCurrentStep] = useState<CollectStep>('metadata')
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null)
   const [isCollecting, setIsCollecting] = useState(false)
@@ -49,7 +53,7 @@ export default function CollectTab() {
   const { confirmationState, showConfirmation } = useConfirmation()
 
   // Toast notifications
-  const { showError, showWarning, showSuccess, showInfo } = useToast()
+  const { showError, showWarning, showSuccess } = useToast()
 
   // Initialize security monitoring
   useEffect(() => {
@@ -488,7 +492,7 @@ ${warningText}`,
                     <p>The device selector encountered an error. Please refresh the page.</p>
                   </div>
                 }>
-                  <DeviceStatusViewer />
+                  <DeviceStatusViewer onNavigateToConnect={onNavigateToConnect} />
                 </ErrorBoundary>
               </div>
             </div>

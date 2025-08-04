@@ -457,8 +457,10 @@ input:checked + .toggle-slider:before {
 
 .settings-actions .btn.btn-primary:hover {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(16, 185, 129, 0.35),
+    0 3px 8px rgba(16, 185, 129, 0.25);
 }
 
 .settings-actions .btn.btn-primary:active {
@@ -509,8 +511,10 @@ input:checked + .toggle-slider:before {
 .settings-actions .btn.btn-danger:hover,
 .setting-actions .btn.btn-danger:hover {
   background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(220, 38, 38, 0.35),
+    0 3px 8px rgba(220, 38, 38, 0.25);
 }
 
 /* Secondary button styling */
@@ -529,8 +533,10 @@ input:checked + .toggle-slider:before {
 .settings-actions .btn.btn-secondary:hover,
 .setting-actions .btn.btn-secondary:hover {
   background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(107, 114, 128, 0.35),
+    0 3px 8px rgba(107, 114, 128, 0.25);
 }
 
 /* Dark mode adjustments */

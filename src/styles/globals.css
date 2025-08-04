@@ -371,19 +371,29 @@ tbody tr:hover {
   margin: 0.75rem 0;
   border-radius: 8px;
   background-color: var(--color-card-bg);
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .device-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transform: translateY(-1px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
 }
 
 .device-card.connected {
   background-color: #ecfdf5;
   border-color: #10b981;
   border-width: 2px;
+}
+
+.device-card.connected:hover {
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.15),
+    0 4px 12px rgba(16, 185, 129, 0.1);
+  background-color: #f0fdf4;
 }
 
 .dark .device-card.connected {
@@ -412,11 +422,23 @@ tbody tr:hover {
   border-radius: 0 6px 0 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.device-card.gaitble-device:hover::before {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  transform: scale(1.05);
 }
 
 .device-card.gaitble-device:hover {
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
+  box-shadow: 
+    0 12px 32px rgba(59, 130, 246, 0.25),
+    0 6px 16px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #dbeafe 0%, #f8fafc 100%);
+  border-color: #2563eb;
 }
 
 .device-card.gaitble-device .device-name {
@@ -611,7 +633,10 @@ tbody tr:hover {
 
 .btn-connect:hover:not(:disabled) {
   background-color: var(--color-primary-light);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(var(--color-primary), 0.25),
+    0 3px 8px rgba(var(--color-primary), 0.15);
 }
 
 .btn-connect:disabled {
@@ -627,7 +652,10 @@ tbody tr:hover {
 
 .btn-disconnect:hover:not(:disabled) {
   background-color: #b91c1c;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(220, 38, 38, 0.25),
+    0 3px 8px rgba(220, 38, 38, 0.15);
 }
 
 .btn-debug {
@@ -637,7 +665,10 @@ tbody tr:hover {
 
 .btn-debug:hover {
   background-color: #4b5563;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(107, 114, 128, 0.25),
+    0 3px 8px rgba(107, 114, 128, 0.15);
 }
 
 /* Responsive adjustments */
@@ -859,18 +890,35 @@ tbody tr:hover {
 .dark .device-card:hover {
   border-color: var(--color-primary);
   background: var(--color-bg);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(var(--color-primary), 0.1);
+}
+
+.dark .device-card.connected:hover {
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.3),
+    0 4px 12px rgba(16, 185, 129, 0.2),
+    0 0 0 1px rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.05);
+  border-color: var(--success-color);
 }
 
 .dark .device-card.gaitble-device {
-  background: var(--color-card-bg);
-  border-color: var(--color-border);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), var(--color-card-bg));
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .dark .device-card.gaitble-device:hover {
   border-color: var(--color-primary);
-  background: var(--color-bg);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), var(--color-bg));
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 32px rgba(59, 130, 246, 0.2),
+    0 6px 16px rgba(59, 130, 246, 0.15),
+    0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .dark .device-card.gaitble-device .device-name {
@@ -1204,7 +1252,7 @@ tbody tr:hover {
 
 /* Dark mode device status viewer styles */
 .dark .device-status-viewer .status-header {
-  background: var(--color-card-bg);
+  background: transparent;
   border-color: var(--color-border);
 }
 
@@ -1212,9 +1260,21 @@ tbody tr:hover {
   color: var(--color-text);
 }
 
+.dark .device-status-viewer .last-update {
+  color: var(--text-secondary);
+}
+
 .dark .device-status-viewer .status-summary {
-  background: var(--color-bg);
+  background: var(--color-card-bg);
   border-color: var(--color-border);
+}
+
+.dark .device-status-viewer .stat-number {
+  color: var(--color-primary);
+}
+
+.dark .device-status-viewer .stat-label {
+  color: var(--text-secondary);
 }
 
 .dark .device-status-viewer .sync-indicator {
@@ -1229,40 +1289,103 @@ tbody tr:hover {
 
 .dark .device-status-viewer .device-status-item:hover {
   background: var(--color-border);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(var(--color-primary), 0.15);
 }
 
-.dark .device-status-viewer .device-status-item.collecting {
-  background: rgba(16, 185, 129, 0.05);
-  border-left-color: var(--success-color);
+.dark .device-status-viewer .device-status-item.collecting:hover {
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.08), var(--color-border));
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.25),
+    0 4px 12px rgba(16, 185, 129, 0.15),
+    0 0 0 1px rgba(16, 185, 129, 0.2);
+}
+
+.dark .device-status-viewer .device-status-item.error:hover {
+  background: linear-gradient(to right, rgba(220, 38, 38, 0.08), var(--color-border));
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 8px 25px rgba(220, 38, 38, 0.25),
+    0 4px 12px rgba(220, 38, 38, 0.15),
+    0 0 0 1px rgba(220, 38, 38, 0.2);
 }
 
 .dark .device-status-viewer .device-name {
-  color: var(--color-text);
-}
-
-.dark .device-status-viewer .device-label {
-  color: var(--color-text-muted);
-}
-
-.dark .device-status-viewer .status-label {
-  color: var(--color-text);
-}
-
-.dark .device-status-viewer .activity-indicator {
-  color: var(--success-color);
-}
-
-.dark .device-status-viewer .status-footer {
-  background: var(--color-card-bg);
+  background: var(--color-bg);
   border-color: var(--color-border);
 }
 
-.dark .device-status-viewer .help-text {
-  color: var(--color-text-muted);
+.dark .device-status-viewer .device-status-item:hover .device-name {
+  border-color: var(--color-primary);
+  background: var(--color-card-bg);
+}
+
+.dark .device-status-viewer .device-label {
+  background: rgba(156, 163, 175, 0.1);
+}
+
+.dark .device-status-viewer .data-indicators {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+.dark .device-status-viewer .device-status-item:hover .data-indicators {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dark .device-status-viewer .data-rate,
+.dark .device-status-viewer .signal-strength {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.dark .device-status-viewer .error-indicator {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.15);
+}
+
+.dark .device-status-viewer .device-status-item:hover .error-indicator {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.dark .device-status-viewer .activity-indicator {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.12));
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.dark .device-status-viewer .device-status-item:hover .activity-indicator {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.18));
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.dark .device-status-viewer .stat {
+  background: rgba(30, 64, 175, 0.06);
+  border-color: rgba(30, 64, 175, 0.15);
+}
+
+.dark .device-status-viewer .stat:hover {
+  background: rgba(30, 64, 175, 0.12);
+  border-color: rgba(30, 64, 175, 0.3);
+  box-shadow: 
+    0 6px 20px rgba(30, 64, 175, 0.2),
+    0 3px 8px rgba(30, 64, 175, 0.15);
+}
+
+.dark .device-status-viewer .sync-indicator {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.08));
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
 }
 
 .dark .device-status-viewer .no-devices {
-  color: var(--color-text-muted);
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.03), rgba(156, 163, 175, 0.06));
+  border-color: var(--color-border);
 }
 
 /*────────────────────────────────────────────────────────
@@ -1349,7 +1472,7 @@ tbody tr:hover {
 }
 
 /*────────────────────────────────────────────────────────
-  15. Collection Layout & Device Status Viewer
+  15. Collection Layout & Device Status Viewer Enhanced
 ────────────────────────────────────────────────────────*/
 
 /* Device Status Viewer Styles - Sidebar Style */
@@ -1367,6 +1490,434 @@ tbody tr:hover {
   flex-direction: column;
 }
 
+/* Enhanced Status Header */
+.device-status-viewer .status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.device-status-viewer .status-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.device-status-viewer .last-update {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.device-status-viewer .update-indicator {
+  color: var(--success-color);
+  animation: pulse-live 2s infinite;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Enhanced No Devices State */
+.device-status-viewer .no-devices {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  flex: 1;
+  background: linear-gradient(135deg, rgba(var(--text-secondary), 0.02), rgba(var(--text-secondary), 0.05));
+  border-radius: calc(var(--radius) + 4px);
+  border: 2px dashed var(--color-border);
+  margin: 1rem;
+}
+
+.device-status-viewer .no-devices-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.4;
+  filter: grayscale(20%);
+  animation: gentle-pulse 3s infinite ease-in-out;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.device-status-viewer .no-devices-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.01em;
+}
+
+.device-status-viewer .no-devices-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.5;
+  max-width: 280px;
+  font-size: 0.95rem;
+}
+
+.device-status-viewer .no-devices-action {
+  margin-top: 1rem;
+}
+
+.device-status-viewer .no-devices-action .btn-secondary {
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.25px;
+  border-radius: calc(var(--radius) + 2px);
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.device-status-viewer .no-devices-action .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Enhanced Device Status Items */
+.device-status-viewer .device-status-item {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) + 2px);
+  padding: 1.25rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.device-status-viewer .device-status-item:hover {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(var(--color-primary), 0.1);
+}
+
+.device-status-viewer .device-status-item:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+.device-status-viewer .device-status-item:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.device-status-viewer .device-status-item.collecting {
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.03), var(--color-card-bg));
+  border-left: 4px solid var(--success-color);
+  padding-left: calc(1.25rem - 3px); /* Compensate for thicker border */
+}
+
+.device-status-viewer .device-status-item.collecting:hover {
+  background: linear-gradient(to right, rgba(16, 185, 129, 0.06), var(--color-bg));
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.12),
+    0 4px 12px rgba(16, 185, 129, 0.08),
+    0 0 0 1px rgba(16, 185, 129, 0.15);
+}
+
+.device-status-viewer .device-status-item.error {
+  background: linear-gradient(to right, rgba(220, 38, 38, 0.03), var(--color-card-bg));
+  border-left: 4px solid var(--error-color);
+  padding-left: calc(1.25rem - 3px); /* Compensate for thicker border */
+}
+
+.device-status-viewer .device-status-item.error:hover {
+  background: linear-gradient(to right, rgba(220, 38, 38, 0.06), var(--color-bg));
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 8px 25px rgba(220, 38, 38, 0.12),
+    0 4px 12px rgba(220, 38, 38, 0.08),
+    0 0 0 1px rgba(220, 38, 38, 0.15);
+}
+
+/* Device Info Layout */
+.device-status-viewer .device-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.device-status-viewer .device-name-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.device-status-viewer .device-name {
+  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  padding: 0.375rem 0.75rem;
+  background: var(--color-bg);
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.device-status-viewer .device-status-item:hover .device-name {
+  border-color: var(--color-primary);
+  background: var(--color-card-bg);
+}
+
+.device-status-viewer .device-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(var(--text-secondary), 0.1);
+  border-radius: calc(var(--radius) - 3px);
+}
+
+/* Device Indicators */
+.device-status-viewer .device-indicators {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.device-status-viewer .connection-status,
+.device-status-viewer .collection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.device-status-viewer .status-dot {
+  font-size: 0.75rem;
+}
+
+.device-status-viewer .status-dot.connected {
+  color: var(--success-color);
+}
+
+.device-status-viewer .status-dot.disconnected {
+  color: var(--error-color);
+}
+
+.device-status-viewer .status-icon.collecting {
+  animation: collecting-pulse 1.5s infinite;
+}
+
+@keyframes collecting-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.device-status-viewer .status-label {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* Enhanced Data Indicators */
+.device-status-viewer .data-indicators {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: calc(var(--radius) + 1px);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  margin-top: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.device-status-viewer .device-status-item:hover .data-indicators {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.device-status-viewer .data-rate {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.device-status-viewer .rate-value {
+  font-weight: 700;
+  color: var(--success-color);
+  font-size: 0.95rem;
+}
+
+.device-status-viewer .rate-unit {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.device-status-viewer .signal-strength {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.device-status-viewer .signal-bars {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.device-status-viewer .signal-bar {
+  width: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.device-status-viewer .signal-bar:nth-child(1) { height: 8px; }
+.device-status-viewer .signal-bar:nth-child(2) { height: 12px; }
+.device-status-viewer .signal-bar:nth-child(3) { height: 16px; }
+.device-status-viewer .signal-bar:nth-child(4) { height: 20px; }
+
+.device-status-viewer .signal-bar.active {
+  background: var(--success-color);
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.3);
+}
+
+/* Error Indicator */
+.device-status-viewer .error-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.15);
+  border-radius: calc(var(--radius) + 1px);
+  color: var(--error-color);
+  margin-top: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.device-status-viewer .device-status-item:hover .error-indicator {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.device-status-viewer .error-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 1px 2px rgba(220, 38, 38, 0.2));
+}
+
+.device-status-viewer .error-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+/* Activity Indicator */
+.device-status-viewer .activity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.12));
+  border-radius: calc(var(--radius) + 1px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: var(--success-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.device-status-viewer .device-status-item:hover .activity-indicator {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.18));
+  border-color: rgba(16, 185, 129, 0.3);
+  transform: scale(1.02);
+}
+
+.device-status-viewer .pulse-animation {
+  width: 10px;
+  height: 10px;
+  background: var(--success-color);
+  border-radius: 50%;
+  animation: pulse-activity 1.2s infinite ease-in-out;
+  box-shadow: 
+    0 0 0 0 rgba(16, 185, 129, 0.7),
+    0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+@keyframes pulse-activity {
+  0% { 
+    opacity: 1; 
+    transform: scale(1);
+    box-shadow: 
+      0 0 0 0 rgba(16, 185, 129, 0.7),
+      0 0 8px rgba(16, 185, 129, 0.3);
+  }
+  70% { 
+    opacity: 0.8; 
+    transform: scale(1.3);
+    box-shadow: 
+      0 0 0 8px rgba(16, 185, 129, 0),
+      0 0 12px rgba(16, 185, 129, 0.5);
+  }
+  100% { 
+    opacity: 1; 
+    transform: scale(1);
+    box-shadow: 
+      0 0 0 0 rgba(16, 185, 129, 0),
+      0 0 8px rgba(16, 185, 129, 0.3);
+  }
+}
+
+.device-status-viewer .activity-text {
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Status Footer */
+.device-status-viewer .status-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.device-status-viewer .help-text {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Legacy Multi-Device Selector Support */
 .multi-device-selector .selector-header {
   display: flex;
   justify-content: space-between;
@@ -1397,6 +1948,42 @@ tbody tr:hover {
 .multi-device-selector .refresh-btn:hover:not(:disabled) {
   background: var(--bg-color);
   border-color: var(--accent-color);
+}
+
+/* Responsive Design for Device Status Viewer */
+@media (max-width: 768px) {
+  .device-status-viewer .device-indicators {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .device-status-viewer .data-indicators {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .device-status-viewer .device-name {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .device-status-viewer .device-status-item {
+    padding: 0.75rem;
+  }
+  
+  .device-status-viewer .device-info {
+    gap: 0.5rem;
+  }
+  
+  .device-status-viewer .no-devices {
+    padding: 1.5rem 1rem;
+  }
+  
+  .device-status-viewer .no-devices-icon {
+    font-size: 2.5rem;
+  }
 }
 
 .multi-device-selector .refresh-btn:disabled {
@@ -1608,21 +2195,67 @@ tbody tr:hover {
 }
 
 .device-status-viewer .status-summary {
-  padding: 1rem;
+  padding: 1.25rem 1rem;
   background: var(--color-card-bg);
   border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.5rem;
+}
+
+.device-status-viewer .summary-stats {
+  display: flex;
+  gap: 3rem;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.device-status-viewer .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: calc(var(--radius) + 1px);
+  background: rgba(var(--color-primary), 0.03);
+  border: 1px solid rgba(var(--color-primary), 0.1);
+  transition: all 0.2s ease;
+}
+
+.device-status-viewer .stat:hover {
+  background: rgba(var(--color-primary), 0.08);
+  border-color: rgba(var(--color-primary), 0.25);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(var(--color-primary), 0.15),
+    0 3px 8px rgba(var(--color-primary), 0.1);
+}
+
+.device-status-viewer .stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.device-status-viewer .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.75px;
 }
 
 .device-status-viewer .sync-indicator {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   margin-top: 0.75rem;
-  padding: 0.5rem;
-  background: var(--success-bg);
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, var(--success-bg), rgba(16, 185, 129, 0.08));
   border: 1px solid var(--success-color);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 2px);
   font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
 }
 
 .device-status-viewer .sync-icon {
