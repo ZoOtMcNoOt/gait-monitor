@@ -4,6 +4,7 @@ import type { SessionMetadata } from '../types'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import ConfirmationModal from './ConfirmationModal'
+import TypedConfirmationModal from './TypedConfirmationModal'
 import ScrollableContainer from './ScrollableContainer'
 import { protectedOperations } from '../services/csrfProtection'
 import '../styles/settings.css'
@@ -40,7 +41,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   
   // Add hooks for proper error handling
   const { showSuccess, showError, showInfo, showSettingsSaved } = useToast()
-  const { confirmationState, showConfirmation } = useConfirmation()
+  const { confirmationState, typedConfirmationState, showConfirmation, showTypedConfirmation } = useConfirmation()
 
   // Load settings from localStorage
   useEffect(() => {
@@ -193,9 +194,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     })
     
     if (firstConfirmed) {
-      const finalConfirmed = await showConfirmation({
-        title: 'Final Confirmation',
-        message: 'This will delete ALL saved sessions and logs permanently. This action cannot be undone. Are you absolutely sure?',
+      const finalConfirmed = await showTypedConfirmation({
+        title: 'Final Confirmation - Type to Confirm',
+        message: 'This will permanently delete ALL saved sessions and logs. This action cannot be undone.',
+        requiredPhrase: 'DELETE ALL DATA',
         confirmText: 'Delete All Data',
         cancelText: 'Cancel',
         type: 'danger'
@@ -451,6 +453,19 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         onConfirm={confirmationState.onConfirm}
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
+      />
+      
+      {/* Typed Confirmation Modal */}
+      <TypedConfirmationModal
+        isOpen={typedConfirmationState.isOpen}
+        title={typedConfirmationState.title}
+        message={typedConfirmationState.message}
+        requiredPhrase={typedConfirmationState.requiredPhrase}
+        confirmText={typedConfirmationState.confirmText}
+        cancelText={typedConfirmationState.cancelText}
+        onConfirm={typedConfirmationState.onConfirm}
+        onCancel={typedConfirmationState.onCancel}
+        type={typedConfirmationState.type}
       />
     </ScrollableContainer>
   )
