@@ -67,7 +67,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   // Color management for multi-device support
   const [deviceColors, setDeviceColors] = useState<Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>>(new Map())
   
-  const { formatTimestamp } = useTimestampManager()
+  const { formatTimestamp, getChartTimestamp } = useTimestampManager({
+    useRelativeTime: true, // Match LiveChart configuration
+  })
   const { showError, showInfo, showSuccess } = useToast()
 
   // Downsampling utility for client-side optimization
@@ -257,16 +259,20 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         if (!selectedDataTypes.includes(dataType)) continue
         
         for (const point of points) {
+          // Convert timestamp to seconds first
+          const convertedTimestamp = getChartTimestamp(point.x)
+          
+          // Apply time range filtering on converted timestamps if timeRange exists
           const timeMatch = !timeRange || (
-            point.x >= timeRange.start && 
-            point.x <= timeRange.end
+            convertedTimestamp >= getChartTimestamp(timeRange.start) && 
+            convertedTimestamp <= getChartTimestamp(timeRange.end)
           )
           
           if (timeMatch) {
             filtered.push({
               device_id: device,
               data_type: dataType,
-              timestamp: point.x,
+              timestamp: convertedTimestamp, // Already converted to seconds
               value: point.y,
               unit: '' // Unit info not included in optimized format
             })
@@ -276,7 +282,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
     
     return filtered
-  }, [optimizedData, selectedDevices, selectedDataTypes, timeRange])
+  }, [optimizedData, selectedDevices, selectedDataTypes, timeRange, getChartTimestamp])
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -293,9 +299,19 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         if (!selectedDataTypes.includes(dataType)) continue
         
         const deviceLabel = getDeviceLabel(device)
+        
+        // Convert timestamps to seconds first, then apply time range filtering
+        const processedPoints = points.map((point: ChartPoint) => ({
+          ...point,
+          x: getChartTimestamp(point.x) // Convert milliseconds to relative seconds
+        }))
+        
         const filteredPoints = timeRange 
-          ? points.filter((point: ChartPoint) => point.x >= timeRange.start && point.x <= timeRange.end)
-          : points
+          ? processedPoints.filter((point: ChartPoint) => 
+              point.x >= getChartTimestamp(timeRange.start) && 
+              point.x <= getChartTimestamp(timeRange.end)
+            )
+          : processedPoints
         
         if (filteredPoints.length > 0) {
           // Ensure all data points are properly formatted and not null/undefined
@@ -346,7 +362,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
     
     return { datasets }
-  }, [optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange, useDownsampling, maxDataPoints, downsampleData])
+  }, [optimizedData, selectedDevices, selectedDataTypes, getDeviceColor, deviceColors, timeRange, useDownsampling, maxDataPoints, downsampleData, getChartTimestamp])
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -646,7 +662,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             callbacks: {
                               title: function(context) {
                                 if (context && context[0] && context[0].parsed) {
-                                  return `Time: ${new Date(context[0].parsed.x).toLocaleTimeString()}`
+                                  return `Time: ${context[0].parsed.x.toFixed(2)}s`
                                 }
                                 return 'Data Point'
                               },
@@ -665,13 +681,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             position: 'bottom',
                             title: {
                               display: true,
-                              text: 'Time (ms)'
+                              text: 'Time (seconds)'
                             },
                             ticks: {
                               callback: function(value) {
-                                // Format timestamp for display
+                                // Format relative time in seconds (matching LiveChart)
                                 if (typeof value === 'number' && !isNaN(value)) {
-                                  return new Date(value).toLocaleTimeString()
+                                  return `${value.toFixed(1)}s`
                                 }
                                 return value
                               }
