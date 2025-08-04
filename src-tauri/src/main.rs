@@ -608,6 +608,16 @@ impl SampleRateState {
     }
 }
 
+// Duplicate detection state - stores last packet data for each device
+#[derive(Clone)]
+pub struct DuplicateDetectionState(Arc<Mutex<HashMap<String, (f32, f32, f32, f32, f32, f32)>>>);
+
+impl DuplicateDetectionState {
+    fn new() -> Self {
+        Self(Arc::new(Mutex::new(HashMap::new())))
+    }
+}
+
 // Cross-platform path configuration state
 #[derive(Clone)]
 pub struct PathConfigState(Arc<Mutex<path_manager::PathConfig>>);
@@ -1018,6 +1028,7 @@ async fn start_gait_notifications(
   connected_devices: tauri::State<'_, ConnectedDevicesState>,
   active_notifications: tauri::State<'_, ActiveNotificationsState>,
   sample_rate_state: tauri::State<'_, SampleRateState>,
+  duplicate_detection_state: tauri::State<'_, DuplicateDetectionState>,
   app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
   use btleplug::api::Peripheral;
@@ -1122,6 +1133,7 @@ async fn start_gait_notifications(
   let device_id_clone = device_id.clone();
   let active_notifications_clone = active_notifications.inner().clone();
   let sample_rate_state_clone = sample_rate_state.inner().clone();
+  let duplicate_detection_clone = duplicate_detection_state.inner().clone();
   
   // Start listening for notifications in a background task
   tauri::async_runtime::spawn(async move {
@@ -1141,13 +1153,31 @@ async fn start_gait_notifications(
       if data.uuid == characteristic_uuid && data.value.len() == 24 {
         let parse_start = std::time::Instant::now();
         
-        // Debug: Log raw packet data to detect duplicates at BLE level
-        let data_hash = format!("{:02x}{:02x}{:02x}{:02x}", 
-          data.value[0], data.value[1], data.value[2], data.value[3]);
-        
         // Parse the 24-byte packet (6 floats)
         if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
           let parse_duration = parse_start.elapsed();
+          
+          // Check for duplicate data (comparing sensor values)
+          let current_data = (gait_data.r1, gait_data.r2, gait_data.r3, gait_data.x, gait_data.y, gait_data.z);
+          let is_duplicate = {
+            let mut duplicate_cache = duplicate_detection_clone.0.lock().await;
+            if let Some(last_data) = duplicate_cache.get(&device_id_clone) {
+              *last_data == current_data
+            } else {
+              false
+            }
+          };
+          
+          // Skip duplicate packets
+          if is_duplicate {
+            continue;
+          }
+          
+          // Update cache with current data
+          {
+            let mut duplicate_cache = duplicate_detection_clone.0.lock().await;
+            duplicate_cache.insert(device_id_clone.clone(), current_data);
+          }
           
           // Calculate sample rate
           let sample_rate = {
@@ -1178,10 +1208,10 @@ async fn start_gait_notifications(
           static PACKET_COUNT: AtomicU32 = AtomicU32::new(0);
           
           let count = PACKET_COUNT.fetch_add(1, Ordering::Relaxed);
-          if count % 5 == 0 {  // More frequent logging to catch duplicates
+          if count % 100 == 0 {  // Log every 100th packet to reduce overhead
             let rate_info = sample_rate.map(|r| format!("{:.1} Hz", r)).unwrap_or_else(|| "calculating...".to_string());
-            println!("🕐 BLE Packet [{}]: Hash: {}, Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
-              count, data_hash, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
+            println!("🕐 BLE Packet [{}]: Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
+              count, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
           }
         }
       }
@@ -2190,6 +2220,7 @@ fn main() {
   let csrf_token_state = CSRFTokenState::new();
   let path_config_state = PathConfigState::new().expect("Failed to initialize path config");
   let sample_rate_state = SampleRateState::new();
+  let duplicate_detection_state = DuplicateDetectionState::new();
 
   info!("All application states initialized successfully");
   
@@ -2215,6 +2246,7 @@ fn main() {
     .manage(csrf_token_state)
     .manage(path_config_state)
     .manage(sample_rate_state)
+    .manage(duplicate_detection_state)
     .invoke_handler(tauri::generate_handler![
       scan_devices, 
       connect_device, 

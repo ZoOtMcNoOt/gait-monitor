@@ -15,7 +15,6 @@ import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
 import { useTimestampManager } from '../hooks/useTimestampManager'
-import BufferStatsPanel from './BufferStatsPanel'
 import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
 
 Chart.register(
@@ -57,7 +56,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
-  const [showBufferStats, setShowBufferStats] = useState(false)
   const [showDataTable, setShowDataTable] = useState(false)
   const [announcementText, setAnnouncementText] = useState('')
   
@@ -187,6 +185,14 @@ export default function LiveChart({ isCollecting = false }: Props) {
       
       // Time-based data retention using configuration
       const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
+      
+      // Debug logging for timestamp issues
+      if (r1Dataset.data.length > 0 && r1Dataset.data.length % 500 === 0) {
+        const oldestPoint = r1Dataset.data[0] as { x: number; y: number }
+        const newestPoint = r1Dataset.data[r1Dataset.data.length - 1] as { x: number; y: number }
+        console.log(`🕐 Chart timestamps - Current: ${gaitData.timestamp}s, Cutoff: ${cutoffTime}s, Oldest: ${oldestPoint.x}s, Newest: ${newestPoint.x}s, Points: ${r1Dataset.data.length}`)
+      }
+      
       r1Dataset.data = (r1Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       r2Dataset.data = (r2Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
       r3Dataset.data = (r3Dataset.data as Array<{ x: number; y: number }>).filter(point => point.x >= cutoffTime)
@@ -745,28 +751,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
           })()}</span>
           <span>•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
-          {config.debugEnabled && (
-            <>
-              <span>•</span>
-              <button
-                onClick={() => setShowBufferStats(!showBufferStats)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  showBufferStats 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {showBufferStats ? 'Hide' : 'Show'} Buffer Stats
-              </button>
-            </>
-          )}
         </div>
       </div>
       
       {/* Buffer Statistics Panel (Debug Mode) */}
-      {config.debugEnabled && (
-        <BufferStatsPanel isVisible={showBufferStats} />
-      )}
+      {/* Removed buffer stats panel to simplify UI */}
 
       {/* Data Table for Accessibility */}
       {showDataTable && (

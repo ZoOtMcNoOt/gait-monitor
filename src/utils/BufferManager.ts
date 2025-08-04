@@ -73,7 +73,7 @@ class CircularBuffer {
    */
   getTimeWindow(currentTimestamp: number, windowSeconds?: number): GaitDataPoint[] {
     const window = windowSeconds || this.windowDuration
-    const cutoffTime = currentTimestamp - window
+    const cutoffTime = currentTimestamp - (window * 1000) // Convert seconds to milliseconds
     
     const result: GaitDataPoint[] = []
     
@@ -139,7 +139,7 @@ class CircularBuffer {
    * Remove data older than the specified timestamp
    */
   private cleanupOldData(currentTimestamp: number): void {
-    const cutoffTime = currentTimestamp - this.windowDuration
+    const cutoffTime = currentTimestamp - (this.windowDuration * 1000) // Convert seconds to milliseconds
     
     // Remove old data points from tail
     while (this.size > 0) {
@@ -265,7 +265,7 @@ export class BufferManager {
     const buffer = this.deviceBuffers.get(deviceId)
     if (!buffer) return []
 
-    const currentTime = Date.now() / 1000 // Convert to seconds
+    const currentTime = Date.now() // Keep in milliseconds to match data timestamps
     return buffer.getTimeWindow(currentTime, windowSeconds || this.config.slidingWindowSeconds)
   }
 

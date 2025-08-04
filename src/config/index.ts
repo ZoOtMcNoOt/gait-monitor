@@ -140,7 +140,7 @@ export const loadConfig = (): AppConfig => {
     // Buffer management settings
     bufferConfig: {
       maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 1000),
-      maxDeviceBufferPoints: parseNumber(getEnvVar('VITE_MAX_DEVICE_BUFFER_POINTS'), 500),
+      maxDeviceBufferPoints: parseNumber(getEnvVar('VITE_MAX_DEVICE_BUFFER_POINTS'), 1200), // Increased for 10+ seconds at 100Hz
       maxDeviceDatasets: parseNumber(getEnvVar('VITE_MAX_DEVICE_DATASETS'), 12),
       memoryThresholdMB: parseNumber(getEnvVar('VITE_MEMORY_THRESHOLD_MB'), 50),
       cleanupInterval: parseNumber(getEnvVar('VITE_BUFFER_CLEANUP_INTERVAL'), 5000),
