@@ -8,20 +8,20 @@ interface DeviceStatus {
   name: string
   isConnected: boolean
   isCollecting: boolean
+  signalStrength?: number
+  lastDataTime?: number
 }
 
-export default function MultiDeviceSelector() {
+export default function DeviceStatusViewer() {
   const [devices, setDevices] = useState<DeviceStatus[]>([])
   const [loading, setLoading] = useState(false)
   
   // Add toast for error handling
-  const { showError, showSuccess } = useToast()
+  const { showError } = useToast()
   
   // Use global device connection context
   const { 
     connectedDevices, 
-    startDeviceCollection,
-    stopDeviceCollection,
     getActiveCollectingDevices
   } = useDeviceConnection()
 
@@ -42,60 +42,33 @@ export default function MultiDeviceSelector() {
           id,
           name: displayName,
           isConnected: true, // If it's in connectedDevices, it's BLE connected
-          isCollecting: activeIds.includes(id)
+          isCollecting: activeIds.includes(id),
+          lastDataTime: Date.now() // In a real implementation, this would track actual last data time
         }
       })
       
       setDevices(deviceStatuses)
     } catch (error) {
       console.error('Failed to load device statuses:', error)
+      showError('Status Error', `Failed to load device statuses: ${error}`)
     } finally {
       setLoading(false)
     }
-  }, [connectedDevices, getActiveCollectingDevices])
-
-  const handleToggleCollection = async (deviceId: string, currentlyCollecting: boolean) => {
-    try {
-      if (currentlyCollecting) {
-        // Stop collection using context method
-        await stopDeviceCollection(deviceId)
-        console.log(`Stopped collection for device: ${deviceId}`)
-      } else {
-        // Start collection using context method
-        await startDeviceCollection(deviceId)
-        console.log(`Started collection for device: ${deviceId}`)
-      }
-      
-      // Reload device statuses
-      await loadDeviceStatuses()
-      
-      // Show success message
-      showSuccess(
-        `Collection ${currentlyCollecting ? 'Stopped' : 'Started'}`,
-        `Data collection has been ${currentlyCollecting ? 'stopped' : 'started'} for the selected device.`
-      )
-    } catch (error) {
-      console.error(`Failed to toggle collection for device ${deviceId}:`, error)
-      showError(
-        `Collection ${currentlyCollecting ? 'Stop' : 'Start'} Failed`,
-        `Failed to ${currentlyCollecting ? 'stop' : 'start'} collection: ${error}`
-      )
-    }
-  }
+  }, [connectedDevices, getActiveCollectingDevices, showError])
 
   useEffect(() => {
     loadDeviceStatuses()
     
-    // Refresh device statuses every 3 seconds
-    const interval = setInterval(loadDeviceStatuses, 3000)
+    // Refresh device statuses every 2 seconds for real-time updates
+    const interval = setInterval(loadDeviceStatuses, 2000)
     return () => clearInterval(interval)
   }, [loadDeviceStatuses])
 
   if (loading && devices.length === 0) {
     return (
-      <div className="multi-device-selector sidebar-style">
-        <div className="selector-header">
-          <h3>📊 Collection Control</h3>
+      <div className="device-status-viewer sidebar-style">
+        <div className="status-header">
+          <h3>📊 Device Status</h3>
         </div>
         <div className="loading">
           <div className="loading-spinner">🔄</div>
@@ -105,11 +78,19 @@ export default function MultiDeviceSelector() {
     )
   }
 
+  const collectingCount = devices.filter(d => d.isCollecting).length
+  const connectedCount = devices.length
+
   return (
-    <div className="multi-device-selector sidebar-style">
-      <div className="selector-header">
-        <h3>📊 Collection Control</h3>
-        <button onClick={loadDeviceStatuses} className="refresh-btn" disabled={loading} title="Refresh device status">
+    <div className="device-status-viewer sidebar-style">
+      <div className="status-header">
+        <h3>📊 Device Status</h3>
+        <button 
+          onClick={loadDeviceStatuses} 
+          className="refresh-btn" 
+          disabled={loading} 
+          title="Refresh device status"
+        >
           {loading ? '🔄' : '↻'}
         </button>
       </div>
@@ -122,53 +103,68 @@ export default function MultiDeviceSelector() {
         </div>
       ) : (
         <>
-          <div className="collection-summary">
+          <div className="status-summary">
             <div className="summary-stats">
               <span className="stat">
-                <span className="stat-number">{devices.filter(d => d.isCollecting).length}</span>
-                <span className="stat-label">Active</span>
+                <span className="stat-number">{collectingCount}</span>
+                <span className="stat-label">Collecting</span>
               </span>
               <span className="stat">
-                <span className="stat-number">{devices.length}</span>
-                <span className="stat-label">Total</span>
+                <span className="stat-number">{connectedCount}</span>
+                <span className="stat-label">Connected</span>
               </span>
             </div>
+            {collectingCount > 0 && (
+              <div className="sync-indicator">
+                <span className="sync-icon">🔗</span>
+                <span className="sync-text">Synchronized Collection</span>
+              </div>
+            )}
           </div>
           
-          <ScrollableContainer id="device-list" className="device-list">
+          <ScrollableContainer id="device-status-list" className="device-status-list">
             {devices.map(device => (
-              <div key={device.id} className={`device-item ${device.isCollecting ? 'collecting' : ''}`}>
+              <div key={device.id} className={`device-status-item ${device.isCollecting ? 'collecting' : 'idle'}`}>
                 <div className="device-info">
-                  <div className="device-name">{device.name}</div>
-                  <div className="device-status">
-                    <span className={`status-indicator ${device.isConnected ? 'connected' : 'disconnected'}`}>
-                      {device.isConnected ? '●' : '○'}
-                    </span>
-                    <span className="status-text">
-                      {device.isConnected ? 'Connected' : 'Disconnected'}
-                    </span>
+                  <div className="device-name">
+                    {device.name}
+                    <span className="device-id">({device.id.slice(-6)})</span>
+                  </div>
+                  <div className="device-indicators">
+                    <div className="connection-status">
+                      <span className={`status-dot ${device.isConnected ? 'connected' : 'disconnected'}`}>
+                        ●
+                      </span>
+                      <span className="status-label">
+                        {device.isConnected ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </div>
+                    <div className="collection-status">
+                      <span className={`status-dot ${device.isCollecting ? 'collecting' : 'idle'}`}>
+                        {device.isCollecting ? '📡' : '⏸'}
+                      </span>
+                      <span className="status-label">
+                        {device.isCollecting ? 'Collecting' : 'Idle'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="device-controls">
-                  <button
-                    className={`collection-toggle ${device.isCollecting ? 'stop' : 'start'}`}
-                    onClick={() => handleToggleCollection(device.id, device.isCollecting)}
-                    disabled={!device.isConnected || loading}
-                    title={device.isCollecting ? 'Stop data collection' : 'Start data collection'}
-                  >
-                    {device.isCollecting ? '⏹' : '▶'}
-                  </button>
-                </div>
-                
                 {device.isCollecting && (
-                  <div className="collecting-indicator">
+                  <div className="activity-indicator">
                     <div className="pulse-animation"></div>
+                    <span className="activity-text">Active</span>
                   </div>
                 )}
               </div>
             ))}
           </ScrollableContainer>
+          
+          <div className="status-footer">
+            <small className="help-text">
+              Use "Start Collection" button to begin synchronized data collection from all connected devices
+            </small>
+          </div>
         </>
       )}
     </div>

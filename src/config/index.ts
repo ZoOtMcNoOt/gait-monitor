@@ -88,13 +88,13 @@ const getEnvVar = (key: string): string | undefined => {
     VITE_DEBUG_ENABLED: 'true',
     VITE_DEBUG_DEVICES: 'true',
     VITE_DEBUG_CHARTS: 'false',
-    VITE_MAX_CHART_POINTS: '1000',
+    VITE_MAX_CHART_POINTS: '10000',        // Increased for smooth 10-second display
     VITE_DATA_UPDATE_INTERVAL: '100',
     VITE_HEARTBEAT_TIMEOUT: '10000',
     VITE_CONNECTION_TIMEOUT: '30000',
-    VITE_MAX_DEVICE_BUFFER_POINTS: '500',
-    VITE_MAX_DEVICE_DATASETS: '12',
-    VITE_MEMORY_THRESHOLD_MB: '50',
+    VITE_MAX_DEVICE_BUFFER_POINTS: '6000', // 4 devices × 6 channels × 100Hz × 10s = 24k, but per-device = 6k
+    VITE_MAX_DEVICE_DATASETS: '24',        // 4 devices × 6 channels
+    VITE_MEMORY_THRESHOLD_MB: '100',       // Increased for larger buffers
     VITE_BUFFER_CLEANUP_INTERVAL: '5000',
     VITE_SLIDING_WINDOW_SECONDS: '10',
     VITE_ENABLE_CIRCULAR_BUFFERS: 'true',
@@ -132,17 +132,17 @@ export const loadConfig = (): AppConfig => {
     debugCharts: parseBoolean(getEnvVar('VITE_DEBUG_CHARTS'), false),
     
     // Data collection settings
-    maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 1000),
+    maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 10000),
     dataUpdateInterval: parseNumber(getEnvVar('VITE_DATA_UPDATE_INTERVAL'), 100),
     heartbeatTimeout: parseNumber(getEnvVar('VITE_HEARTBEAT_TIMEOUT'), 10000),
     connectionTimeout: parseNumber(getEnvVar('VITE_CONNECTION_TIMEOUT'), 30000),
     
     // Buffer management settings
     bufferConfig: {
-      maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 1000),
-      maxDeviceBufferPoints: parseNumber(getEnvVar('VITE_MAX_DEVICE_BUFFER_POINTS'), 1200), // Increased for 10+ seconds at 100Hz
-      maxDeviceDatasets: parseNumber(getEnvVar('VITE_MAX_DEVICE_DATASETS'), 12),
-      memoryThresholdMB: parseNumber(getEnvVar('VITE_MEMORY_THRESHOLD_MB'), 50),
+      maxChartPoints: parseNumber(getEnvVar('VITE_MAX_CHART_POINTS'), 10000),        // For smooth 10-second display
+      maxDeviceBufferPoints: parseNumber(getEnvVar('VITE_MAX_DEVICE_BUFFER_POINTS'), 6000), // Per-device buffer: 6 channels × 100Hz × 10s
+      maxDeviceDatasets: parseNumber(getEnvVar('VITE_MAX_DEVICE_DATASETS'), 24),     // 4 devices × 6 channels
+      memoryThresholdMB: parseNumber(getEnvVar('VITE_MEMORY_THRESHOLD_MB'), 100),    // Increased for larger buffers
       cleanupInterval: parseNumber(getEnvVar('VITE_BUFFER_CLEANUP_INTERVAL'), 5000),
       slidingWindowSeconds: parseNumber(getEnvVar('VITE_SLIDING_WINDOW_SECONDS'), 10),
       enableCircularBuffers: parseBoolean(getEnvVar('VITE_ENABLE_CIRCULAR_BUFFERS'), true),

@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import MetadataForm from './MetadataForm'
 import LiveChart from './LiveChart'
-import MultiDeviceSelector from './MultiDeviceSelector'
+import DeviceStatusViewer from './MultiDeviceSelector'
 import ScrollableContainer from './ScrollableContainer'
+import ConfirmationModal from './ConfirmationModal'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useToast } from '../contexts/ToastContext'
+import { useConfirmation } from '../hooks/useConfirmation'
 import ErrorBoundary from './ErrorBoundary'
 import { protectedOperations, securityMonitor } from '../services/csrfProtection'
 import '../styles/modal.css'
@@ -37,11 +40,16 @@ export default function CollectTab() {
   const [isCollecting, setIsCollecting] = useState(false)
   const [isUsingRealData, setIsUsingRealData] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [showStopConfirmation, setShowStopConfirmation] = useState(false)
   const [isStopping, setIsStopping] = useState(false) // Prevent multiple stop calls
 
   // Data collection buffer
   const dataBuffer = useRef<GaitDataPoint[]>([])
+
+  // Confirmation modal for stop collection
+  const { confirmationState, showConfirmation } = useConfirmation()
+
+  // Toast notifications
+  const { showError, showWarning, showSuccess, showInfo } = useToast()
 
   // Initialize security monitoring
   useEffect(() => {
@@ -128,8 +136,11 @@ export default function CollectTab() {
 
   const handleStartCollection = async () => {
     try {
+      console.log('🚀 Starting synchronized collection for all connected devices')
+      console.log('Connected devices:', connectedDevices)
+      
       if (connectedDevices.length === 0) {
-        alert('No connected devices found. Please connect to a device first in the Connect tab.')
+        showError('No Devices Connected', 'Please connect to devices first in the Connect tab.')
         return
       }
 
@@ -137,33 +148,81 @@ export default function CollectTab() {
       dataBuffer.current = []
       console.log('🧹 Cleared data buffer for new collection')
 
-      // Try to start real BLE notifications on the first connected device
-      const deviceId = connectedDevices[0]
+      // Start collection on ALL connected devices simultaneously
+      const startPromises = connectedDevices.map(async (deviceId) => {
+        try {
+          console.log(`📡 Starting collection for device: ${deviceId}`)
+          await startDeviceCollection(deviceId)
+          console.log(`✅ Successfully started collection for device: ${deviceId}`)
+          return { deviceId, success: true }
+        } catch (error) {
+          console.error(`❌ Failed to start collection for device ${deviceId}:`, error)
+          return { deviceId, success: false, error }
+        }
+      })
       
-      try {
-        await startDeviceCollection(deviceId)
-        console.log('✅ Started real BLE data collection:', deviceId)
+      // Wait for all devices to start (or fail)
+      const results = await Promise.allSettled(startPromises)
+      const successfulDevices = results
+        .filter(result => result.status === 'fulfilled' && result.value.success)
+        .map(result => (result as PromiseFulfilledResult<{deviceId: string, success: boolean}>).value.deviceId)
+      
+      const failedDevices = results
+        .filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success))
+        
+      console.log(`📊 Collection start results: ${successfulDevices.length} successful, ${failedDevices.length} failed`)
+      
+      if (successfulDevices.length > 0) {
+        console.log('✅ Successfully started synchronized data collection')
         setIsUsingRealData(true)
         setIsCollecting(true)
-      } catch (bleError) {
-        console.warn('BLE notifications failed, using simulation:', bleError)
-        alert(`BLE notifications failed: ${bleError}\n\nUsing simulation mode instead.`)
-        setIsUsingRealData(false)
-        setIsCollecting(true)
+        
+        if (failedDevices.length > 0) {
+          showWarning('Partial Success', `Started collection on ${successfulDevices.length} devices, but ${failedDevices.length} devices failed to start. Collection will continue with available devices.`)
+        }
+      } else {
+        console.error('❌ Failed to start collection on any devices')
+        showError('Collection Failed', 'Failed to start collection on any connected devices. Please check device connections and try again.')
       }
     } catch (error) {
-      console.error('Failed to start collection:', error)
-      alert(`Failed to start collection: ${error}`)
+      console.error('Failed to start synchronized collection:', error)
+      showError('Collection Error', `Failed to start collection: ${error}`)
     }
   }
 
-  const handleStopCollectionRequest = () => {
+  const handleStopCollectionRequest = async () => {
     // Prevent multiple stop requests
     if (isStopping) {
       console.log('⚠️ Stop collection already in progress, ignoring request')
       return
     }
-    setShowStopConfirmation(true)
+
+    // Show confirmation modal with collection details
+    const collectionTimeText = dataBuffer.current.length > 0 && collectedData?.timestamp ? 
+      `${Math.round((Date.now() - collectedData.timestamp.getTime()) / 1000)}s` : 
+      'N/A'
+
+    const warningText = dataBuffer.current.length > 0 
+      ? "Your collected data will be saved and you can review it in the next step."
+      : "⚠️ No data has been collected yet. You may want to continue collecting before stopping."
+
+    const confirmed = await showConfirmation({
+      title: 'Stop Data Collection?',
+      message: `Are you sure you want to stop collecting data?
+
+Current Session: ${collectedData?.sessionName}
+Data Points Collected: ${dataBuffer.current.length}
+Collection Time: ${collectionTimeText}
+
+${warningText}`,
+      confirmText: 'Yes, Stop Collection',
+      cancelText: 'No, Continue Collecting',
+      type: 'warning'
+    })
+
+    if (confirmed) {
+      await handleConfirmStopCollection()
+    }
   }
 
   const handleConfirmStopCollection = async () => {
@@ -175,7 +234,6 @@ export default function CollectTab() {
     
     console.log('🛑 User confirmed stop collection')
     setIsStopping(true)
-    setShowStopConfirmation(false)
     
     try {
       console.log('🛑 Stopping data collection...')
@@ -190,12 +248,35 @@ export default function CollectTab() {
       const finalDataPoints = [...dataBuffer.current]
       console.log(`📊 Captured ${finalDataPoints.length} data points before stopping`)
       
-      // Stop BLE notifications if using real data
+      // Stop BLE notifications on ALL connected devices if using real data
       if (isUsingRealData && connectedDevices.length > 0) {
-        const deviceId = connectedDevices[0]
-        console.log('🔄 Stopping BLE notifications for device:', deviceId)
-        await stopDeviceCollection(deviceId)
-        console.log('✅ Successfully stopped BLE data collection')
+        console.log('🔄 Stopping BLE notifications for all connected devices')
+        
+        // Stop collection on ALL connected devices simultaneously
+        const stopPromises = connectedDevices.map(async (deviceId) => {
+          try {
+            console.log(`� Stopping collection for device: ${deviceId}`)
+            await stopDeviceCollection(deviceId)
+            console.log(`✅ Successfully stopped collection for device: ${deviceId}`)
+            return { deviceId, success: true }
+          } catch (error) {
+            console.error(`❌ Failed to stop collection for device ${deviceId}:`, error)
+            return { deviceId, success: false, error }
+          }
+        })
+        
+        // Wait for all devices to stop (or fail)
+        const results = await Promise.allSettled(stopPromises)
+        const successfulStops = results.filter(result => result.status === 'fulfilled' && result.value.success).length
+        const failedStops = results.filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)).length
+        
+        console.log(`📊 Collection stop results: ${successfulStops} successful, ${failedStops} failed`)
+        
+        if (failedStops > 0) {
+          console.warn(`⚠️ Failed to stop collection on ${failedStops} devices`)
+        }
+        
+        console.log('✅ Successfully stopped synchronized data collection')
         setIsUsingRealData(false)
       }
       
@@ -250,11 +331,6 @@ export default function CollectTab() {
     }
   }
 
-  const handleCancelStopCollection = () => {
-    setShowStopConfirmation(false)
-    // Don't reset isStopping here as user cancelled
-  }
-
   const handleSaveData = async () => {
     if (!collectedData) {
       console.error('❌ No collected data to save')
@@ -290,7 +366,7 @@ export default function CollectTab() {
       )
 
       console.log('✅ Session saved successfully to:', filePath)
-      alert(`Session saved successfully!\n\nFile: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
+      showSuccess('Session Saved', `File: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
       
       // Reset wizard
       setCurrentStep('metadata')
@@ -366,15 +442,15 @@ export default function CollectTab() {
                 <p><strong>Session:</strong> {collectedData?.sessionName}</p>
                 <p><strong>Subject:</strong> {collectedData?.subjectId}</p>
                 <p><strong>Status:</strong> {isCollecting ? 'Collecting...' : 'Ready'}</p>
-                <p><strong>Connected Devices:</strong> {connectedDevices.length > 0 ? connectedDevices.join(', ') : 'None'}</p>
+                <p><strong>Connected Devices:</strong> {connectedDevices.length} device(s)</p>
                 <p><strong>Data Points Collected:</strong> {dataBuffer.current.length}</p>
-                {isUsingRealData && <p><strong>Data Source:</strong> Real BLE Device</p>}
+                {isUsingRealData && <p><strong>Data Source:</strong> Synchronized BLE Devices</p>}
                 {!isUsingRealData && isCollecting && <p><strong>Data Source:</strong> Simulation Mode</p>}
               </div>
               <div className="collection-buttons">
                 {!isCollecting ? (
                   <button className="btn-primary" onClick={handleStartCollection}>
-                    Start Collection
+                    Start All Connected Devices
                   </button>
                 ) : (
                   <button 
@@ -382,7 +458,7 @@ export default function CollectTab() {
                     onClick={handleStopCollectionRequest}
                     disabled={isStopping}
                   >
-                    {isStopping ? 'Stopping...' : 'Stop Collection'}
+                    {isStopping ? 'Stopping All Devices...' : 'Stop All Devices'}
                   </button>
                 )}
                 <button className="btn-tertiary" onClick={() => setCurrentStep('metadata')}>
@@ -412,7 +488,7 @@ export default function CollectTab() {
                     <p>The device selector encountered an error. Please refresh the page.</p>
                   </div>
                 }>
-                  <MultiDeviceSelector />
+                  <DeviceStatusViewer />
                 </ErrorBoundary>
               </div>
             </div>
@@ -470,46 +546,17 @@ export default function CollectTab() {
         )}
       </div>
 
-      {/* Stop Collection Confirmation Modal */}
-      {showStopConfirmation && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Stop Data Collection?</h3>
-            <p>
-              Are you sure you want to stop collecting data?
-            </p>
-            <div className="modal-details">
-              <p><strong>Current Session:</strong> {collectedData?.sessionName}</p>
-              <p><strong>Data Points Collected:</strong> {dataBuffer.current.length}</p>
-              <p><strong>Collection Time:</strong> {
-                dataBuffer.current.length > 0 && collectedData?.timestamp ? 
-                  `${Math.round((Date.now() - collectedData.timestamp.getTime()) / 1000)}s` : 
-                  'N/A'
-              }</p>
-            </div>
-            <p className="modal-warning">
-              {dataBuffer.current.length > 0 
-                ? "Your collected data will be saved and you can review it in the next step."
-                : "⚠️ No data has been collected yet. You may want to continue collecting before stopping."
-              }
-            </p>
-            <div className="modal-actions">
-              <button 
-                className="btn-danger modal-confirm-btn" 
-                onClick={handleConfirmStopCollection}
-              >
-                Yes, Stop Collection
-              </button>
-              <button 
-                className="btn-secondary" 
-                onClick={handleCancelStopCollection}
-              >
-                No, Continue Collecting
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        confirmText={confirmationState.confirmText}
+        cancelText={confirmationState.cancelText}
+        onConfirm={confirmationState.onConfirm}
+        onCancel={confirmationState.onCancel}
+        type={confirmationState.type}
+      />
     </ScrollableContainer>
   )
 }

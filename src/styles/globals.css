@@ -1211,10 +1211,11 @@ tbody tr:hover {
 }
 
 /*────────────────────────────────────────────────────────
-  15. Collection Layout & Multi-Device Selector
+  15. Collection Layout & Device Status Viewer
 ────────────────────────────────────────────────────────*/
 
-/* Multi-Device Selector Styles - Sidebar Style */
+/* Device Status Viewer Styles - Sidebar Style */
+.collection-sidebar .device-status-viewer.sidebar-style,
 .collection-sidebar .multi-device-selector.sidebar-style {
   background: transparent;
   border: none;
@@ -1445,6 +1446,156 @@ tbody tr:hover {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Device Status Viewer Specific Styles */
+.device-status-viewer .status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.device-status-viewer .status-header h3 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.device-status-viewer .status-summary {
+  padding: 1rem;
+  background: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.device-status-viewer .sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: var(--success-bg);
+  border: 1px solid var(--success-color);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.device-status-viewer .sync-icon {
+  color: var(--success-color);
+}
+
+.device-status-viewer .sync-text {
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.device-status-viewer .device-status-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.device-status-viewer .device-status-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.device-status-viewer .device-status-item:hover {
+  background: var(--color-hover-bg);
+}
+
+.device-status-viewer .device-status-item.collecting {
+  border-left: 3px solid var(--success-color);
+  background: var(--success-bg);
+}
+
+.device-status-viewer .device-status-item.idle {
+  border-left: 3px solid transparent;
+}
+
+.device-status-viewer .device-name {
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.device-status-viewer .device-id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.device-status-viewer .device-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.device-status-viewer .connection-status,
+.device-status-viewer .collection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.device-status-viewer .status-dot {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.device-status-viewer .status-dot.connected {
+  color: var(--success-color);
+}
+
+.device-status-viewer .status-dot.disconnected {
+  color: var(--error-color);
+}
+
+.device-status-viewer .status-dot.collecting {
+  color: var(--accent-color);
+}
+
+.device-status-viewer .status-dot.idle {
+  color: var(--text-muted);
+}
+
+.device-status-viewer .status-label {
+  color: var(--text-color);
+}
+
+.device-status-viewer .activity-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--success-color);
+}
+
+.device-status-viewer .activity-text {
+  font-weight: 500;
+}
+
+.device-status-viewer .status-footer {
+  padding: 1rem;
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.device-status-viewer .help-text {
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.4;
 }
 
 .multi-device-selector .no-devices {
