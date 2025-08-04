@@ -39,7 +39,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const [storagePathInputValue, setStoragePathInputValue] = useState('./gait_data')
   
   // Add hooks for proper error handling
-  const { showSuccess, showError, showInfo } = useToast()
+  const { showSuccess, showError, showInfo, showSettingsSaved } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
 
   // Load settings from localStorage
@@ -138,7 +138,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     try {
       localStorage.setItem('appSettings', JSON.stringify(settings))
       setIsModified(false)
-      showSuccess('Settings Saved', 'Your settings have been saved successfully!')
+      showSettingsSaved()
     } catch (e) {
       showError('Save Failed', `Failed to save settings: ${e}`)
     }
@@ -395,7 +395,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
             <div className="setting-item">
               <div className="setting-actions">
                 <button 
-                  className="btn-danger"
+                  className="btn btn-danger"
                   onClick={handleClearAllData}
                 >
                   Clear All Data
@@ -409,7 +409,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
             <div className="setting-item">
               <div className="setting-actions">
                 <button 
-                  className="btn-secondary"
+                  className="btn btn-secondary"
                   onClick={handleResetSettings}
                 >
                   Reset to Defaults
@@ -426,13 +426,18 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       {/* Save Settings */}
       {isModified && (
         <div className="settings-actions">
-          <button 
-            className="btn-primary"
-            onClick={handleSaveSettings}
-          >
-            Save Settings
-          </button>
-          <p className="unsaved-changes">You have unsaved changes</p>
+          <div className="unsaved-indicator">
+            <p className="unsaved-changes">You have unsaved changes</p>
+          </div>
+          <div className="action-buttons">
+            <button 
+              className="btn btn-primary"
+              onClick={handleSaveSettings}
+              aria-describedby="unsaved-changes-text"
+            >
+              Save Settings
+            </button>
+          </div>
         </div>
       )}
       

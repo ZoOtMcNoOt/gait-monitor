@@ -9,6 +9,7 @@ export interface Toast {
   title: string;
   message?: string;
   duration?: number;
+  metadata?: Record<string, string>; // For custom data attributes
 }
 
 interface ToastContextType {
@@ -19,6 +20,7 @@ interface ToastContextType {
   showError: (title: string, message?: string) => void;
   showWarning: (title: string, message?: string) => void;
   showInfo: (title: string, message?: string) => void;
+  showSettingsSaved: (title?: string, message?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -100,6 +102,15 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
     addToast({ type: 'info', title, message });
   }, [addToast]);
 
+  const showSettingsSaved = useCallback((title = 'Settings Saved', message = 'Your settings have been saved successfully!') => {
+    addToast({ 
+      type: 'success', 
+      title, 
+      message,
+      metadata: { 'settings-save': 'true' }
+    });
+  }, [addToast]);
+
   const value = {
     toasts,
     addToast,
@@ -107,7 +118,8 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
     showSuccess,
     showError,
     showWarning,
-    showInfo
+    showInfo,
+    showSettingsSaved
   };
 
   return (
@@ -148,8 +160,16 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
     info: 'ℹ️'
   };
 
+  // Build data attributes from metadata
+  const dataAttributes = toast.metadata 
+    ? Object.entries(toast.metadata).reduce((acc, [key, value]) => {
+        acc[`data-${key}`] = value;
+        return acc;
+      }, {} as Record<string, string>)
+    : {};
+
   return (
-    <div className={`toast toast-${toast.type}`}>
+    <div className={`toast toast-${toast.type}`} {...dataAttributes}>
       <div className="toast-content">
         <div className="toast-header">
           <span className="toast-icon">{typeIcons[toast.type]}</span>

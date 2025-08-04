@@ -255,3 +255,93 @@
     width: 100%;
   }
 }
+
+/*────────────────────────────────────────────────────────
+  Enhanced Settings Save Toast
+────────────────────────────────────────────────────────*/
+.toast-success[data-settings-save="true"] {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border-left: 5px solid var(--success-color);
+  box-shadow: 
+    0 4px 12px rgba(16, 185, 129, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.toast-success[data-settings-save="true"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 16px rgba(16, 185, 129, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.toast-success[data-settings-save="true"] .toast-icon {
+  color: var(--success-color);
+  font-size: 18px;
+  animation: settings-save-bounce 0.6s ease-out;
+}
+
+.toast-success[data-settings-save="true"] .toast-title {
+  color: #065f46;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.toast-success[data-settings-save="true"] .toast-message {
+  color: #047857;
+  font-size: 0.87rem;
+  margin-left: 26px;
+}
+
+@keyframes settings-save-bounce {
+  0% { transform: scale(0.3) rotate(-180deg); opacity: 0; }
+  50% { transform: scale(1.1) rotate(-10deg); opacity: 0.8; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* Dark mode for settings save toast */
+@media (prefers-color-scheme: dark) {
+  .toast-success[data-settings-save="true"] {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    border-left-color: #10b981;
+  }
+  
+  .toast-success[data-settings-save="true"] .toast-title {
+    color: #d1fae5;
+  }
+  
+  .toast-success[data-settings-save="true"] .toast-message {
+    color: #a7f3d0;
+  }
+}
+
+.dark .toast-success[data-settings-save="true"] {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  border-left-color: #10b981;
+}
+
+.dark .toast-success[data-settings-save="true"] .toast-title {
+  color: #d1fae5;
+}
+
+.dark .toast-success[data-settings-save="true"] .toast-message {
+  color: #a7f3d0;
+}
+
+/* High contrast mode for settings save */
+.high-contrast .toast-success[data-settings-save="true"] {
+  background: var(--success-bg) !important;
+  border: 4px solid var(--success-color) !important;
+  border-left: 8px solid var(--success-color) !important;
+}
+
+.high-contrast .toast-success[data-settings-save="true"] .toast-title {
+  color: var(--success-color) !important;
+  font-weight: 800 !important;
+  text-shadow: 1px 1px 0 var(--color-bg) !important;
+}
+
+.high-contrast .toast-success[data-settings-save="true"] .toast-message {
+  color: var(--success-color) !important;
+  font-weight: 700 !important;
+}

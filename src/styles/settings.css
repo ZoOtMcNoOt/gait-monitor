@@ -144,15 +144,16 @@ input:checked + .toggle-slider:before {
 }
 
 .settings-actions {
-  position: sticky;
-  bottom: 0;
   background: var(--color-bg);
-  padding: 1rem;
+  padding: 1.5rem 1rem;
   border-top: 1px solid var(--color-border);
+  border-radius: 0 0 8px 8px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   margin-top: 2rem;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .unsaved-changes {
@@ -160,6 +161,16 @@ input:checked + .toggle-slider:before {
   color: #f59e0b;
   font-style: italic;
   font-size: 0.9rem;
+}
+
+.unsaved-indicator {
+  flex: 1;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 /* Settings page specific styling */
@@ -426,4 +437,135 @@ input:checked + .toggle-slider:before {
   .settings-actions {
     padding: 0.75rem;
   }
+}
+
+/*────────────────────────────────────────────────────────
+  Enhanced Save Button Styling
+────────────────────────────────────────────────────────*/
+.settings-actions .btn.btn-primary {
+  position: relative;
+  background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: calc(var(--radius) * 1.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  min-width: 120px;
+}
+
+.settings-actions .btn.btn-primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
+.settings-actions .btn.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.settings-actions .btn.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Success animation for save button */
+.settings-actions .btn.btn-primary.success-flash {
+  animation: save-success-flash 0.6s ease-out;
+}
+
+@keyframes save-success-flash {
+  0% { 
+    background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+    transform: scale(1);
+  }
+  50% { 
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+  }
+  100% { 
+    background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+    transform: scale(1);
+  }
+}
+
+/* Reset button styling */
+.settings-actions .btn.btn-danger,
+.setting-actions .btn.btn-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: calc(var(--radius) * 1.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+.settings-actions .btn.btn-danger:hover,
+.setting-actions .btn.btn-danger:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+/* Secondary button styling */
+.settings-actions .btn.btn-secondary,
+.setting-actions .btn.btn-secondary {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: calc(var(--radius) * 1.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.25);
+}
+
+.settings-actions .btn.btn-secondary:hover,
+.setting-actions .btn.btn-secondary:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.35);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .settings-actions .btn.btn-primary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  }
+  
+  .settings-actions .btn.btn-primary:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+  }
+}
+
+.dark .settings-actions .btn.btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.dark .settings-actions .btn.btn-primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+}
+
+/* High contrast mode */
+.high-contrast .settings-actions .btn.btn-primary {
+  background: var(--success-color) !important;
+  border: 3px solid var(--color-border) !important;
+  font-weight: 800 !important;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.high-contrast .settings-actions .btn.btn-primary:hover {
+  background: var(--color-text) !important;
+  color: var(--color-bg) !important;
+  border-color: var(--success-color) !important;
 }
