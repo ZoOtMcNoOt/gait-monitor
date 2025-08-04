@@ -33,16 +33,17 @@ export interface DeviceBufferStats {
  * Efficient circular buffer implementation for time-series data
  */
 class CircularBuffer {
-  private buffer: GaitDataPoint[]
+  private buffer: (GaitDataPoint | null)[]
   private head: number = 0
   private tail: number = 0
   private size: number = 0
   private capacity: number
   private windowDuration: number // seconds
+  private lastCleanupTime: number = 0
 
   constructor(capacity: number, windowDuration: number = 10) {
     this.capacity = capacity
-    this.buffer = new Array(capacity)
+    this.buffer = new Array(capacity).fill(null)
     this.windowDuration = windowDuration
   }
 
@@ -60,12 +61,16 @@ class CircularBuffer {
     if (this.size < this.capacity) {
       this.size++
     } else {
-      // Buffer is full, move tail forward
+      // Buffer is full, move tail forward (overwriting oldest data)
       this.tail = (this.tail + 1) % this.capacity
     }
     
-    // Time-based cleanup: remove data older than window
-    this.cleanupOldData(data.timestamp)
+    // Periodic time-based cleanup - only run occasionally for performance
+    const now = Date.now()
+    if (now - this.lastCleanupTime > 1000) { // Cleanup every 1 second max
+      this.cleanupOldData(data.timestamp)
+      this.lastCleanupTime = now
+    }
   }
 
   /**
@@ -79,6 +84,9 @@ class CircularBuffer {
     
     if (this.size === 0) return result
     
+    // Trigger cleanup if we have very old data
+    this.cleanupOldDataIfNeeded(currentTimestamp)
+    
     // Iterate from tail to head
     let current = this.tail
     for (let i = 0; i < this.size; i++) {
@@ -90,6 +98,17 @@ class CircularBuffer {
     }
     
     return result.sort((a, b) => a.timestamp - b.timestamp)
+  }
+
+  /**
+   * Cleanup old data if needed (used by getTimeWindow)
+   */
+  private cleanupOldDataIfNeeded(currentTimestamp: number): void {
+    const now = Date.now()
+    if (now - this.lastCleanupTime > 500) { // Force cleanup every 500ms when querying
+      this.cleanupOldData(currentTimestamp)
+      this.lastCleanupTime = now
+    }
   }
 
   /**
@@ -142,16 +161,23 @@ class CircularBuffer {
     const cutoffTime = currentTimestamp - (this.windowDuration * 1000) // Convert seconds to milliseconds
     
     // Remove old data points from tail
+    let removedCount = 0
     while (this.size > 0) {
       const tailPoint = this.buffer[this.tail]
       if (tailPoint && tailPoint.timestamp < cutoffTime) {
-        // Remove from tail
-        delete this.buffer[this.tail]
+        // Properly clear the reference instead of using delete
+        this.buffer[this.tail] = null
         this.tail = (this.tail + 1) % this.capacity
         this.size--
+        removedCount++
       } else {
         break
       }
+    }
+    
+    // Debug logging for significant cleanups
+    if (removedCount > 0) {
+      console.debug(`🧹 CircularBuffer: Cleaned ${removedCount} old data points`)
     }
   }
 
@@ -202,9 +228,10 @@ class CircularBuffer {
     this.head = 0
     this.tail = 0
     this.size = 0
+    this.lastCleanupTime = 0
     // Clear references to help garbage collection
     for (let i = 0; i < this.capacity; i++) {
-      delete this.buffer[i]
+      this.buffer[i] = null
     }
   }
 
@@ -265,8 +292,11 @@ export class BufferManager {
     const buffer = this.deviceBuffers.get(deviceId)
     if (!buffer) return []
 
-    const currentTime = Date.now() // Keep in milliseconds to match data timestamps
-    return buffer.getTimeWindow(currentTime, windowSeconds || this.config.slidingWindowSeconds)
+    // Use the most recent data point's timestamp as reference, fallback to current time
+    const recentData = buffer.getRecent(1)
+    const referenceTime = recentData.length > 0 ? recentData[0].timestamp : Date.now()
+    
+    return buffer.getTimeWindow(referenceTime, windowSeconds || this.config.slidingWindowSeconds)
   }
 
   /**

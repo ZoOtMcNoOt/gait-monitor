@@ -796,7 +796,6 @@ describe('DeviceConnectionContext', () => {
         expect(contextRef.availableDevices).not.toContain('test-device-1')
         expect(contextRef.expectedDevices.has('test-device-1')).toBe(false)
         expect(contextRef.connectionStatus.has('test-device-1')).toBe(false)
-        expect(contextRef.deviceHeartbeats.has('test-device-1')).toBe(false)
         expect(contextRef.lastGaitDataTime.has('test-device-1')).toBe(false)
         
         expect(consoleLogSpy).toHaveBeenCalledWith('🗑️ Removing device from global state:', 'test-device-1')
@@ -1119,13 +1118,7 @@ describe('DeviceConnectionContext', () => {
         for (let i = 0; i < 55; i++) {
           contextRef.addDevice(`device-${i}`)
           contextRef.updateGaitDataTime(`device-${i}`)
-          // Simulate heartbeat for each device
-          contextRef.deviceHeartbeats.set(`device-${i}`, {
-            device_id: `device-${i}`,
-            device_timestamp: Date.now(),
-            sequence: 1,
-            received_timestamp: Date.now()
-          })
+          // No need to simulate heartbeats since BLE connection is maintained
         }
         
         // Advance timer to trigger memory monitoring
@@ -1157,14 +1150,10 @@ describe('DeviceConnectionContext', () => {
       await renderWithProvider(React.createElement(TestComponent))
       
       if (contextRef) {
-        // Add a device with old heartbeat (older than 5 minutes)
+        // Add a device with old gait data (older than 5 minutes) 
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000 - 1000
-        contextRef.deviceHeartbeats.set('stale-device', {
-          device_id: 'stale-device',
-          device_timestamp: fiveMinutesAgo,
-          sequence: 1,
-          received_timestamp: fiveMinutesAgo
-        })
+        contextRef.addDevice('stale-device')
+        contextRef.lastGaitDataTime.set('stale-device', fiveMinutesAgo)
         
         // Make sure the device is not in connectedDevices so it will be cleaned up
         contextRef.setConnectedDevices([])
@@ -1178,7 +1167,7 @@ describe('DeviceConnectionContext', () => {
         })
         
         expect(consoleLogSpy).toHaveBeenCalledWith('🧹 Cleaning up stale device data for 1 devices')
-        expect(contextRef.deviceHeartbeats.has('stale-device')).toBe(false)
+        expect(contextRef.lastGaitDataTime.has('stale-device')).toBe(false)
       }
       
       consoleLogSpy.mockRestore()
@@ -1218,7 +1207,6 @@ describe('DeviceConnectionContext', () => {
         expect(typeof contextRef.updateGaitDataTime).toBe('function')
         
         // Test that the data structures exist
-        expect(contextRef.deviceHeartbeats).toBeInstanceOf(Map)
         expect(contextRef.lastGaitDataTime).toBeInstanceOf(Map)
         expect(contextRef.connectionStatus).toBeInstanceOf(Map)
         

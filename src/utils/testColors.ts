@@ -1,5 +1,6 @@
 // Test script to verify color generation
-import { generateMultiDeviceColors } from '../colorGeneration'
+import { generateMultiDeviceColors } from './colorGeneration'
+import type { ColorScheme } from './colorGeneration'
 
 // Test with multiple devices
 const testDevices = ['device1', 'device2', 'device3']
@@ -21,7 +22,7 @@ testDevices.forEach(device => {
 const allColors = new Set()
 testDevices.forEach(device => {
   const palette = colors.get(device)!
-  Object.values(palette).forEach(scheme => {
+  Object.values(palette).forEach((scheme: ColorScheme) => {
     allColors.add(scheme.primary)
   })
 })
