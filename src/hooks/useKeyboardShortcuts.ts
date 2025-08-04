@@ -50,26 +50,37 @@ export function useKeyboardShortcuts({
 
     const { key, ctrlKey, altKey, shiftKey } = event;
     
-    // Safety check: ensure key is defined
-    if (!key) {
-      console.warn('Keyboard event received with undefined key');
+    // Filter out undefined, empty, or non-printable keys early
+    if (!key || key === 'Unidentified' || key.length === 0) {
       return;
     }
     
-    // Find matching shortcut
+    // Skip modifier-only key events (performance optimization)
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
+      return;
+    }
+    
+    // Early exit if no shortcuts to check (performance optimization)
+    if (shortcutsRef.current.length === 0) {
+      return;
+    }
+    
+    // Find matching shortcut with optimized comparison
     const matchingShortcut = shortcutsRef.current.find(shortcut => {
       // Safety check: ensure shortcut and key are defined
-      if (!shortcut || !shortcut.key) {
-        console.warn('Invalid shortcut found:', shortcut);
+      if (!shortcut?.key) {
         return false;
       }
       
-      const keyMatches = shortcut.key.toLowerCase() === key.toLowerCase();
-      const ctrlMatches = !!shortcut.ctrl === ctrlKey;
-      const altMatches = !!shortcut.alt === altKey;
-      const shiftMatches = !!shortcut.shift === shiftKey;
+      // Case-insensitive key comparison with early exit
+      if (shortcut.key.toLowerCase() !== key.toLowerCase()) {
+        return false;
+      }
       
-      return keyMatches && ctrlMatches && altMatches && shiftMatches;
+      // Modifier key matching
+      return (!!shortcut.ctrl === ctrlKey) && 
+             (!!shortcut.alt === altKey) && 
+             (!!shortcut.shift === shiftKey);
     });
 
     if (matchingShortcut) {
@@ -87,11 +98,20 @@ export function useKeyboardShortcuts({
   }, [enabled, preventDefault]);
 
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown, { capture: true });
+    // Only add listener if we have shortcuts and are enabled
+    if (!enabled || shortcutsRef.current.length === 0) {
+      return;
+    }
+    
+    document.addEventListener('keydown', handleKeyDown, { 
+      capture: true,
+      passive: false // Cannot be passive since we may preventDefault
+    });
+    
     return () => {
       document.removeEventListener('keydown', handleKeyDown, { capture: true });
     };
-  }, [handleKeyDown]);
+  }, [handleKeyDown, enabled]);
 
   return {
     shortcuts: shortcuts
