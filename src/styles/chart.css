@@ -46,21 +46,33 @@
 }
 
 .dark .chart-mode-selector {
-  background: var(--color-bg);
+  background: var(--color-card-bg);
   border-color: var(--color-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 .dark .mode-btn {
   color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .dark .mode-btn:hover {
-  background: var(--color-card-bg);
+  background: var(--color-border);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .dark .mode-btn.active {
   background: var(--color-primary);
   color: var(--color-text-light);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.dark .mode-btn:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .dark .chart-container {
