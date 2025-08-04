@@ -152,13 +152,6 @@ jest.mock('../../contexts/DeviceConnectionContext', () => ({
     React.createElement('div', { 'data-testid': 'mock-provider' }, children)
 }))
 
-// Mock BufferStatsPanel
-jest.mock('../BufferStatsPanel', () => {
-  return function MockBufferStatsPanel({ isVisible }: { isVisible: boolean }) {
-    return isVisible ? React.createElement('div', { 'data-testid': 'buffer-stats-panel' }, 'Buffer Stats') : null
-  }
-})
-
 describe('LiveChart', () => {
   let container: HTMLDivElement
   let root: ReturnType<typeof createRoot>
@@ -399,43 +392,6 @@ describe('LiveChart', () => {
     afterEach(() => {
       // Reset debug mode
       config.debugEnabled = false
-    })
-
-    it('should show buffer stats button when debug enabled', async () => {
-      await renderComponent()
-      
-      const button = Array.from(container.querySelectorAll('button'))
-        .find(btn => btn.textContent?.includes('Show Buffer Stats'))
-      
-      expect(button).toBeTruthy()
-    })
-
-    it('should not show buffer stats button when debug disabled', async () => {
-      config.debugEnabled = false
-      await renderComponent()
-      
-      const button = Array.from(container.querySelectorAll('button'))
-        .find(btn => btn.textContent?.includes('Buffer Stats'))
-      
-      expect(button).toBeFalsy()
-    })
-
-    it('should toggle buffer stats panel when clicked', async () => {
-      await renderComponent()
-      
-      const button = Array.from(container.querySelectorAll('button'))
-        .find(btn => btn.textContent?.includes('Show Buffer Stats')) as HTMLElement
-      
-      // Initially hidden
-      expect(container.querySelector('[data-testid="buffer-stats-panel"]')).toBeFalsy()
-      
-      // Click to show
-      flushSync(() => {
-        button?.click()
-      })
-      
-      expect(container.querySelector('[data-testid="buffer-stats-panel"]')).toBeTruthy()
-      expect(button?.textContent).toContain('Hide Buffer Stats')
     })
   })
 
@@ -1338,23 +1294,6 @@ describe('LiveChart', () => {
   })
 
   describe('User Interface Controls', () => {
-    it('should toggle buffer stats panel', async () => {
-      await renderComponent()
-      
-      const toggleButton = Array.from(container.querySelectorAll('button'))
-        .find(btn => btn.textContent?.includes('Stats') || btn.textContent?.includes('Buffer'))
-      
-      if (toggleButton) {
-        flushSync(() => {
-          toggleButton.click()
-        })
-        
-        // Should show buffer stats
-        const bufferStats = container.querySelector('.buffer-stats, .stats-panel')
-        expect(bufferStats).toBeTruthy()
-      }
-    })
-
     it('should toggle data table view', async () => {
       await renderComponent()
       
@@ -1533,26 +1472,6 @@ describe('LiveChart', () => {
       expect(chart.update).toHaveBeenCalled();
 
       jest.useRealTimers();
-    });
-
-    test('should handle buffer stats panel toggle', () => {
-      // Enable debug mode for buffer stats
-      (config.debugEnabled as boolean) = true;
-
-      flushSync(() => {
-        root.render(React.createElement(LiveChart, { isCollecting: false }));
-      });
-
-      const bufferStatsBtn = container.querySelector('[data-testid="buffer-stats-toggle"]') as HTMLButtonElement;
-      if (bufferStatsBtn) {
-        bufferStatsBtn.click();
-      }
-
-      // Should handle buffer stats toggle
-      expect(container).toBeTruthy();
-
-      // Reset config
-      (config.debugEnabled as boolean) = false;
     });
 
     test('should handle data table toggle', () => {
