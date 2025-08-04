@@ -1371,6 +1371,10 @@ tbody tr:hover {
   cursor: pointer;
   font-size: 0.8rem;
   transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent compression */
+  box-sizing: border-box; /* Ensure consistent sizing */
+  min-width: 2rem; /* Prevent shrinking */
+  min-height: 2rem; /* Prevent shrinking */
 }
 
 .multi-device-selector .collection-toggle.start {
