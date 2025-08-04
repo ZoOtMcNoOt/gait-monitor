@@ -1202,6 +1202,69 @@ tbody tr:hover {
   border-color: var(--color-border);
 }
 
+/* Dark mode device status viewer styles */
+.dark .device-status-viewer .status-header {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-status-viewer .status-header h3 {
+  color: var(--color-text);
+}
+
+.dark .device-status-viewer .status-summary {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-status-viewer .sync-indicator {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--success-color);
+}
+
+.dark .device-status-viewer .device-status-item {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-status-viewer .device-status-item:hover {
+  background: var(--color-border);
+}
+
+.dark .device-status-viewer .device-status-item.collecting {
+  background: rgba(16, 185, 129, 0.05);
+  border-left-color: var(--success-color);
+}
+
+.dark .device-status-viewer .device-name {
+  color: var(--color-text);
+}
+
+.dark .device-status-viewer .device-label {
+  color: var(--color-text-muted);
+}
+
+.dark .device-status-viewer .status-label {
+  color: var(--color-text);
+}
+
+.dark .device-status-viewer .activity-indicator {
+  color: var(--success-color);
+}
+
+.dark .device-status-viewer .status-footer {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .device-status-viewer .help-text {
+  color: var(--color-text-muted);
+}
+
+.dark .device-status-viewer .no-devices {
+  color: var(--color-text-muted);
+}
+
 /*────────────────────────────────────────────────────────
   12. Device List & Multi-Select
 ────────────────────────────────────────────────────────*/
@@ -1524,6 +1587,10 @@ tbody tr:hover {
 }
 
 /* Device Status Viewer Specific Styles */
+.device-status-viewer {
+  min-height: 200px; /* Prevent container layout shifts */
+}
+
 .device-status-viewer .status-header {
   display: flex;
   justify-content: space-between;
@@ -1578,6 +1645,9 @@ tbody tr:hover {
   background: var(--color-card-bg);
   transition: all 0.2s ease;
   position: relative;
+  min-height: 80px; /* Prevent layout shifts */
+  display: flex;
+  align-items: center;
 }
 
 .device-status-viewer .device-status-item:hover {
@@ -1593,17 +1663,24 @@ tbody tr:hover {
   border-left: 3px solid transparent;
 }
 
-.device-status-viewer .device-name {
-  font-weight: 600;
-  color: var(--text-color);
+.device-status-viewer .device-name-section {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
-.device-status-viewer .device-id {
+.device-status-viewer .device-name {
+  font-weight: 600;
+  color: var(--text-color);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.device-status-viewer .device-label {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: normal;
-  margin-left: 0.5rem;
 }
 
 .device-status-viewer .device-indicators {

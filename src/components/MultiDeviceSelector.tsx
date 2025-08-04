@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
-import { useToast } from '../contexts/ToastContext'
 import ScrollableContainer from './ScrollableContainer'
 
 interface DeviceStatus {
@@ -10,14 +9,13 @@ interface DeviceStatus {
   isCollecting: boolean
   signalStrength?: number
   lastDataTime?: number
+  dataRate?: number
+  errorState?: string
 }
 
 export default function DeviceStatusViewer() {
   const [devices, setDevices] = useState<DeviceStatus[]>([])
-  const [loading, setLoading] = useState(false)
-  
-  // Add toast for error handling
-  const { showError } = useToast()
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now())
   
   // Use global device connection context
   const { 
@@ -25,57 +23,55 @@ export default function DeviceStatusViewer() {
     getActiveCollectingDevices
   } = useDeviceConnection()
 
-  const loadDeviceStatuses = useCallback(async () => {
-    setLoading(true)
-    try {
-      // Use connected devices from global context
-      const connectedIds = connectedDevices
-      
-      // Get which devices are actively collecting using context method
-      const activeIds = await getActiveCollectingDevices()
-      
-      // Create device status objects with simplified display names
-      const deviceStatuses: DeviceStatus[] = connectedIds.map(id => {
-        const displayName = `Device ${id.slice(-6)}`
-        
-        return {
-          id,
-          name: displayName,
-          isConnected: true, // If it's in connectedDevices, it's BLE connected
-          isCollecting: activeIds.includes(id),
-          lastDataTime: Date.now() // In a real implementation, this would track actual last data time
-        }
-      })
-      
-      setDevices(deviceStatuses)
-    } catch (error) {
-      console.error('Failed to load device statuses:', error)
-      showError('Status Error', `Failed to load device statuses: ${error}`)
-    } finally {
-      setLoading(false)
-    }
-  }, [connectedDevices, getActiveCollectingDevices, showError])
-
+  // Update devices automatically when context changes - no manual loading needed
   useEffect(() => {
-    loadDeviceStatuses()
-    
-    // Refresh device statuses every 2 seconds for real-time updates
-    const interval = setInterval(loadDeviceStatuses, 2000)
-    return () => clearInterval(interval)
-  }, [loadDeviceStatuses])
+    const updateDeviceStatuses = async () => {
+      try {
+        // Get which devices are actively collecting using context method
+        const activeIds = await getActiveCollectingDevices()
+        
+        // Create device status objects with clean display names
+        const deviceStatuses: DeviceStatus[] = connectedDevices.map(id => {
+          // Use last 6 characters for compact but unique identification
+          const deviceShortId = id.slice(-6).toUpperCase()
+          
+          return {
+            id,
+            name: deviceShortId, // Just the short ID, no redundancy
+            isConnected: true, // If it's in connectedDevices, it's BLE connected
+            isCollecting: activeIds.includes(id),
+            lastDataTime: Date.now(), // In a real implementation, this would track actual last data time
+            dataRate: Math.floor(Math.random() * 50) + 10, // Mock data rate for demo
+            signalStrength: Math.floor(Math.random() * 100) + 1 // Mock signal strength
+          }
+        })
+        
+        setDevices(deviceStatuses)
+        setLastUpdateTime(Date.now())
+      } catch (error) {
+        console.error('Failed to update device statuses:', error)
+        // Set error state for devices that failed to update
+        setDevices(prev => prev.map(device => ({ 
+          ...device, 
+          errorState: 'Connection error' 
+        })))
+      }
+    }
 
-  if (loading && devices.length === 0) {
-    return (
-      <div className="device-status-viewer sidebar-style">
-        <div className="status-header">
-          <h3>📊 Device Status</h3>
-        </div>
-        <div className="loading">
-          <div className="loading-spinner">🔄</div>
-          <p>Loading devices...</p>
-        </div>
-      </div>
-    )
+    updateDeviceStatuses()
+  }, [connectedDevices, getActiveCollectingDevices]) // React to context changes automatically
+
+  const collectingCount = devices.filter(d => d.isCollecting).length
+  const connectedCount = devices.length
+  
+  // Format time ago for data freshness
+  const formatTimeAgo = (timestamp: number) => {
+    const secondsAgo = Math.floor((Date.now() - timestamp) / 1000)
+    if (secondsAgo < 60) return `${secondsAgo}s ago`
+    const minutesAgo = Math.floor(secondsAgo / 60)
+    if (minutesAgo < 60) return `${minutesAgo}m ago`
+    const hoursAgo = Math.floor(minutesAgo / 60)
+    return `${hoursAgo}h ago`
   }
 
   const collectingCount = devices.filter(d => d.isCollecting).length
@@ -85,14 +81,6 @@ export default function DeviceStatusViewer() {
     <div className="device-status-viewer sidebar-style">
       <div className="status-header">
         <h3>📊 Device Status</h3>
-        <button 
-          onClick={loadDeviceStatuses} 
-          className="refresh-btn" 
-          disabled={loading} 
-          title="Refresh device status"
-        >
-          {loading ? '🔄' : '↻'}
-        </button>
       </div>
       
       {devices.length === 0 ? (
@@ -126,9 +114,9 @@ export default function DeviceStatusViewer() {
             {devices.map(device => (
               <div key={device.id} className={`device-status-item ${device.isCollecting ? 'collecting' : 'idle'}`}>
                 <div className="device-info">
-                  <div className="device-name">
-                    {device.name}
-                    <span className="device-id">({device.id.slice(-6)})</span>
+                  <div className="device-name-section">
+                    <span className="device-name">{device.name}</span>
+                    <span className="device-label">Device</span>
                   </div>
                   <div className="device-indicators">
                     <div className="connection-status">
