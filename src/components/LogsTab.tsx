@@ -76,6 +76,14 @@ function LogsTabContent() {
         devices: session.devices
       }))
       
+      // Sort logs by timestamp - most recent at the top
+      logEntries.sort((a, b) => {
+        // Handle cases where timestamps might be missing or invalid
+        const timestampA = a.timestamp || 0
+        const timestampB = b.timestamp || 0
+        return timestampB - timestampA // Descending order (newest first)
+      })
+      
       setLogs(logEntries)
       
       // Calculate stats
