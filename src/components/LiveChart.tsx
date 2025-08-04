@@ -238,6 +238,25 @@ export default function LiveChart({ isCollecting = false }: Props) {
       }
     }
 
+    // Update sliding window x-axis range based on latest data
+    const currentTime = gaitData.timestamp
+    const windowSize = config.bufferConfig.slidingWindowSeconds
+    const xScale = chart.options.scales?.x
+    if (xScale && typeof xScale === 'object') {
+      // For sliding window effect: 
+      // - If we have less than windowSize seconds of data, show from 0 to current time
+      // - If we have more, slide the window to always show the last windowSize seconds
+      if (currentTime <= windowSize) {
+        // Early data: show from 0 to current time (growing window)
+        xScale.min = 0
+        xScale.max = Math.max(windowSize, currentTime + 1) // +1 to give some buffer
+      } else {
+        // Sliding window: show the last windowSize seconds
+        xScale.min = currentTime - windowSize
+        xScale.max = currentTime + 1 // +1 second buffer on the right
+      }
+    }
+
     chart.update('none')
   }, [chartMode, deviceColors])
 
@@ -376,6 +395,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
             },
             grid: {
               color: 'rgba(0,0,0,0.1)'
+            },
+            // Fixed sliding window configuration
+            min: 0,
+            max: config.bufferConfig.slidingWindowSeconds, // Show last N seconds
+            ticks: {
+              stepSize: 2 // Show tick every 2 seconds
             }
           },
           y: {
