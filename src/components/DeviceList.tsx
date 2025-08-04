@@ -32,9 +32,10 @@ export default function DeviceList() {
     removeScannedDevice // Add manual device removal
   } = useDeviceConnection()
 
-  // Sort devices function
+  // Sort devices function - filter out connected devices from available list
   const getSortedDevices = useCallback(() => {
     return scannedDevices
+      .filter(device => !connectedDevices.includes(device.id)) // Remove connected devices from available list
       .sort((a, b) => {
         // Sort GaitBLE devices to the top
         const aIsGaitBLE = (a.name || '').toLowerCase().startsWith('gaitble');
@@ -48,7 +49,7 @@ export default function DeviceList() {
         const bName = b.name || 'Unknown Device';
         return aName.localeCompare(bName);
       })
-  }, [scannedDevices])
+  }, [scannedDevices, connectedDevices])
 
   // Keyboard navigation functions
   const focusDevice = useCallback((index: number) => {
@@ -331,7 +332,7 @@ export default function DeviceList() {
         {scannedDevices.length > 0 && (
           <div>
             <div className="device-list-header">
-              <h3>Available Devices ({scannedDevices.length})</h3>
+              <h3>Available Devices ({sortedDevices.length})</h3>
               <div className="pagination-controls">
                 <label>
                   Devices per page:
@@ -570,9 +571,15 @@ export default function DeviceList() {
         </div>
         )}
 
-        {scannedDevices.length === 0 && !isScanning && (
+        {sortedDevices.length === 0 && scannedDevices.length === 0 && !isScanning && (
           <div className="no-devices-message">
             <p>No devices found. Click "Scan for Devices" to search for Bluetooth devices.</p>
+          </div>
+        )}
+
+        {sortedDevices.length === 0 && scannedDevices.length > 0 && !isScanning && (
+          <div className="no-devices-message">
+            <p>All scanned devices are already connected. Scan for more devices to find additional options.</p>
           </div>
         )}
       </div>
