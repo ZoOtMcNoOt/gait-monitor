@@ -639,7 +639,26 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             position: 'top',
                             labels: {
                               boxWidth: 12,
-                              padding: 10
+                              padding: 15,
+                              font: {
+                                size: 12
+                              },
+                              // Improve label formatting for better readability
+                              generateLabels: function(chart) {
+                                const original = Chart.defaults.plugins.legend.labels.generateLabels(chart)
+                                return original.map(item => {
+                                  // Shorten long labels by using abbreviated device names
+                                  if (item.text) {
+                                    const match = item.text.match(/^Device (\w+) - (.+)$/)
+                                    if (match) {
+                                      const [, deviceId, dataType] = match
+                                      // Use shorter device identifier
+                                      item.text = `${deviceId.slice(-4)} ${dataType.toUpperCase()}`
+                                    }
+                                  }
+                                  return item
+                                })
+                              }
                             }
                           },
                           title: {

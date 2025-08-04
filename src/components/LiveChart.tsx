@@ -421,7 +421,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
             position: 'top',
             labels: {
               usePointStyle: true,
-              pointStyle: 'line'
+              pointStyle: 'line',
+              padding: 15,
+              font: {
+                size: 12
+              }
             }
           },
           tooltip: {
@@ -712,7 +716,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
               onClick={() => setChartMode('all')}
-              aria-pressed={chartMode === 'all' ? 'true' : 'false'}
+              aria-pressed={chartMode === 'all'}
               aria-describedby="chart-mode-help"
             >
               All Channels (1)
@@ -720,7 +724,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
               onClick={() => setChartMode('resistance')}
-              aria-pressed={chartMode === 'resistance' ? 'true' : 'false'}
+              aria-pressed={chartMode === 'resistance'}
               aria-describedby="chart-mode-help"
             >
               Resistance (2)
@@ -728,7 +732,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
               onClick={() => setChartMode('acceleration')}
-              aria-pressed={chartMode === 'acceleration' ? 'true' : 'false'}
+              aria-pressed={chartMode === 'acceleration'}
               aria-describedby="chart-mode-help"
             >
               Acceleration (3)
