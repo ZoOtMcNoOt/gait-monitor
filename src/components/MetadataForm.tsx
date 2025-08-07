@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePersistentForm } from '../hooks/usePersistentForm'
 import '../styles/forms.css'
 
 // Input validation utilities
@@ -31,11 +32,21 @@ interface Props {
 }
 
 export default function MetadataForm({ onSubmit }: Props) {
-  const [metadata, setMetadata] = useState({ 
-    sessionName: '', 
-    subjectId: '', 
-    notes: ''
-  })
+  // Use persistent form hook for automatic localStorage persistence
+  const {
+    values: metadata,
+    updateField,
+    handleSubmit,
+    hasSavedData,
+    isInitialized
+  } = usePersistentForm(
+    { sessionName: '', subjectId: '', notes: '' },
+    { 
+      storageKey: 'gait-monitor-metadata-form',
+      debounceMs: 300,
+      clearOnSubmit: true
+    }
+  )
 
   // Validation state
   const [errors, setErrors] = useState<{
@@ -66,7 +77,7 @@ export default function MetadataForm({ onSubmit }: Props) {
 
   // Handle field changes with validation
   const handleFieldChange = (field: string, value: string) => {
-    setMetadata(prev => ({ ...prev, [field]: value }))
+    updateField(field as keyof typeof metadata, value)
     
     // Validate if field has been touched
     if (touched[field as keyof typeof touched]) {
@@ -83,7 +94,7 @@ export default function MetadataForm({ onSubmit }: Props) {
     setErrors(prev => ({ ...prev, [field]: error }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validate all fields
@@ -103,11 +114,16 @@ export default function MetadataForm({ onSubmit }: Props) {
     // Check if there are any errors
     const hasErrors = Object.values(validationErrors).some(error => error !== null)
     
-    if (!hasErrors && onSubmit) {
-      onSubmit({
-        sessionName: metadata.sessionName.trim(),
-        subjectId: metadata.subjectId.trim(),
-        notes: metadata.notes.trim()
+    if (!hasErrors) {
+      // Use the persistent form's handleSubmit which will clear saved data
+      handleSubmit(() => {
+        if (onSubmit) {
+          onSubmit({
+            sessionName: metadata.sessionName.trim(),
+            subjectId: metadata.subjectId.trim(),
+            notes: metadata.notes.trim()
+          })
+        }
       })
     }
   }
@@ -125,10 +141,37 @@ export default function MetadataForm({ onSubmit }: Props) {
           margin-top: 0.25rem;
           display: block;
         }
+        
+        .saved-data-indicator {
+          background: #e8f5e8;
+          border: 1px solid #c3e6c3;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-bottom: 1rem;
+          font-size: 0.875rem;
+          color: #2d5a2d;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        
+        .dark .saved-data-indicator {
+          background: #1a2e1a;
+          border-color: #2d4a2d;
+          color: #a3d4a3;
+        }
       `}</style>
+      
+      {hasSavedData() && isInitialized && (
+        <div className="saved-data-indicator">
+          <span>💾</span>
+          <span>Your previous form data has been restored. Continue where you left off!</span>
+        </div>
+      )}
+      
       <section className="card">
         <h2>Session Metadata</h2>
-        <form onSubmit={handleSubmit} className="metadata-form">
+        <form onSubmit={handleFormSubmit} className="metadata-form">
         <div className="form-group">
           <label htmlFor="sessionName">Session Name *</label>
           <input 
