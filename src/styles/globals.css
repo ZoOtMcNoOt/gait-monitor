@@ -366,13 +366,15 @@ tbody tr:hover {
 .device-card {
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
   border: 1px solid var(--color-border);
-  margin: 0.75rem 0;
+  margin: clamp(0.5rem, 1.5vw, 0.75rem) 0;
   border-radius: 8px;
   background-color: var(--color-card-bg);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .device-card:hover {
@@ -719,13 +721,16 @@ tbody tr:hover {
   width: 100%; /* Ensure consistent width */
   display: flex;
   flex-direction: column;
+  gap: clamp(0.75rem, 2vw, 1.5rem); /* Responsive gap */
 }
 
-/* Ensure the Bluetooth devices card has consistent width */
+/* Ensure the Bluetooth devices card has responsive width */
 .device-list-card {
-  min-width: 600px; /* Fixed minimum width for device list card */
-  max-width: 800px; /* Fixed maximum width for device list card */
-  width: 700px; /* Fixed width to prevent content-based resizing */
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto; /* Center the card */
+  padding: clamp(1rem, 3vw, 1.5rem);
+  box-sizing: border-box;
 }
 
 .scanning-message {
@@ -1080,6 +1085,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   max-width: 600px;
   margin: 0 auto 2rem auto;
   padding: 1.5rem;
@@ -1087,6 +1093,8 @@ tbody tr:hover {
   border-radius: var(--radius);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   position: relative;
+  min-height: 80px; /* Fixed height to prevent shifts */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .wizard-step {
@@ -1127,6 +1135,7 @@ tbody tr:hover {
   transition: all 0.3s ease;
   border: 2px solid transparent;
   box-sizing: border-box;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .step-indicator.active {
@@ -1153,10 +1162,14 @@ tbody tr:hover {
 .wizard-content {
   margin-top: 2rem;
   min-height: 500px; /* Prevent layout shift between steps */
+  width: 100%; /* Fixed width to prevent step-based width changes */
+  max-width: 100%; /* Ensure it doesn't exceed container */
 }
 
 .wizard-step-content {
   animation: fadeIn 0.3s ease-in-out;
+  width: 100%; /* Ensure consistent width */
+  box-sizing: border-box; /* Include padding in width */
 }
 
 @keyframes fadeIn {
@@ -1185,6 +1198,8 @@ tbody tr:hover {
   border-radius: var(--radius);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   min-height: 100px; /* Prevent layout shift */
+  width: 100%; /* Fixed width */
+  box-sizing: border-box; /* Include padding in width */
 }
 
 .collection-info {
@@ -1402,6 +1417,9 @@ tbody tr:hover {
 @media (max-width: 768px) {
   .wizard-progress {
     padding: 1rem;
+    min-height: 80px; /* Maintain consistent height */
+    width: 100%; /* Ensure full width */
+    max-width: 100%; /* Override max-width for smaller screens */
   }
   
   .step-label {
@@ -1413,6 +1431,7 @@ tbody tr:hover {
     width: 2rem;
     height: 2rem;
     font-size: 0.8rem;
+    flex-shrink: 0; /* Prevent shrinking */
   }
   
   .form-row {
@@ -1452,6 +1471,10 @@ tbody tr:hover {
   .wizard-progress {
     flex-direction: column;
     gap: 1rem;
+    min-height: 120px; /* Slightly taller for column layout */
+    padding: 1rem;
+    width: 100%; /* Maintain full width */
+    max-width: 100%; /* Override max-width for mobile */
   }
   
   .wizard-step:not(:last-child)::after {
@@ -1468,6 +1491,20 @@ tbody tr:hover {
   .btn-tertiary,
   .btn-danger {
     min-width: 100px;
+  }
+  
+  /* Device list responsive adjustments */
+  .device-list-card {
+    padding: clamp(0.75rem, 2vw, 1rem);
+  }
+  
+  .device-card {
+    padding: clamp(0.75rem, 2vw, 1rem);
+    margin: clamp(0.25rem, 1vw, 0.5rem) 0;
+  }
+  
+  .device-list-container {
+    gap: clamp(0.5rem, 1.5vw, 0.75rem);
   }
 }
 

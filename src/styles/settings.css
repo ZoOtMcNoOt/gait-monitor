@@ -5,7 +5,11 @@
 .settings-grid {
   display: grid;
   gap: 1.5rem;
+  width: 100%;
   max-width: 800px;
+  margin: 0 auto; /* Center the settings grid */
+  padding: 0 clamp(1rem, 4vw, 2rem); /* Responsive padding */
+  box-sizing: border-box;
 }
 
 .setting-group {
@@ -427,15 +431,16 @@ input:checked + .toggle-slider:before {
 
 @media (max-width: 480px) {
   .settings-grid {
-    gap: 1rem;
+    gap: clamp(0.75rem, 2vw, 1rem);
+    padding: 0 clamp(0.5rem, 3vw, 1rem);
   }
   
   .setting-group {
-    padding: 0.75rem;
+    padding: clamp(0.75rem, 3vw, 1rem);
   }
   
   .settings-actions {
-    padding: 0.75rem;
+    padding: clamp(0.75rem, 3vw, 1rem);
   }
 }
 

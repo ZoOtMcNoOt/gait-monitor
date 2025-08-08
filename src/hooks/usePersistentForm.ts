@@ -16,6 +16,9 @@ export function usePersistentForm<T extends Record<string, unknown>>(
 ) {
   const { storageKey, debounceMs = 500, clearOnSubmit = true } = options
   
+  // Store initial values in a ref to avoid dependency issues
+  const initialValuesRef = useRef(initialValues)
+  
   // State for form values
   const [values, setValues] = useState<T>(initialValues)
   
@@ -32,7 +35,7 @@ export function usePersistentForm<T extends Record<string, unknown>>(
       if (savedData) {
         const parsedData = JSON.parse(savedData)
         // Merge with initial values to handle schema changes
-        const mergedData = { ...initialValues, ...parsedData }
+        const mergedData = { ...initialValuesRef.current, ...parsedData }
         setValues(mergedData)
       }
     } catch (error) {
@@ -40,7 +43,7 @@ export function usePersistentForm<T extends Record<string, unknown>>(
     } finally {
       setIsInitialized(true)
     }
-  }, [storageKey, initialValues])
+  }, [storageKey]) // Remove initialValues from dependencies
   
   // Save to localStorage with debouncing
   useEffect(() => {
@@ -81,7 +84,7 @@ export function usePersistentForm<T extends Record<string, unknown>>(
   
   // Reset form to initial values
   const resetForm = () => {
-    setValues(initialValues)
+    setValues(initialValuesRef.current)
   }
   
   // Clear saved data from localStorage

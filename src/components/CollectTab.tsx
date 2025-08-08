@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import MetadataForm from './MetadataForm'
 import LiveChart from './LiveChart'
 import DeviceStatusViewer from './MultiDeviceSelector'
@@ -7,6 +7,7 @@ import ConfirmationModal from './ConfirmationModal'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
+import { usePersistentWorkflow } from '../hooks/usePersistentWorkflow'
 import ErrorBoundary from './ErrorBoundary'
 import { protectedOperations, securityMonitor } from '../services/csrfProtection'
 import '../styles/modal.css'
@@ -38,16 +39,68 @@ interface CollectTabProps {
   onNavigateToConnect?: () => void
 }
 
+interface WorkflowState extends Record<string, unknown> {
+  currentStep: CollectStep
+  collectedData: CollectedData | null
+  isCollecting: boolean
+  isUsingRealData: boolean
+  isSaving: boolean
+  isStopping: boolean
+}
+
 export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
-  const [currentStep, setCurrentStep] = useState<CollectStep>('metadata')
-  const [collectedData, setCollectedData] = useState<CollectedData | null>(null)
-  const [isCollecting, setIsCollecting] = useState(false)
-  const [isUsingRealData, setIsUsingRealData] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isStopping, setIsStopping] = useState(false) // Prevent multiple stop calls
+  // Use persistent workflow state
+  const {
+    state: workflowState,
+    updateField: updateWorkflowField,
+    hasSavedData,
+    isInitialized,
+    completeWorkflow
+  } = usePersistentWorkflow<WorkflowState>(
+    {
+      currentStep: 'metadata' as CollectStep,
+      collectedData: null,
+      isCollecting: false,
+      isUsingRealData: false,
+      isSaving: false,
+      isStopping: false
+    },
+    {
+      storageKey: 'gait-monitor-collect-workflow',
+      debounceMs: 300,
+      clearOnComplete: true
+    }
+  )
+
+  // Extract state for easier access
+  const { currentStep, collectedData, isCollecting, isUsingRealData, isSaving, isStopping } = workflowState
+
+  // Create setter functions that use the persistent workflow
+  const setCurrentStep = (step: CollectStep) => updateWorkflowField('currentStep', step)
+  const setCollectedData = (data: CollectedData | null) => updateWorkflowField('collectedData', data)
+  const setIsCollecting = (collecting: boolean) => updateWorkflowField('isCollecting', collecting)
+  const setIsUsingRealData = (useReal: boolean) => updateWorkflowField('isUsingRealData', useReal)
+  const setIsSaving = (saving: boolean) => updateWorkflowField('isSaving', saving)
+  const setIsStopping = (stopping: boolean) => updateWorkflowField('isStopping', stopping)
+
+  // Handle workflow restoration - reset any active states that shouldn't persist
+  useEffect(() => {
+    if (isInitialized && hasSavedData()) {
+      // Reset active collection states on restoration to prevent issues
+      const currentState = workflowState
+      if (currentState.isCollecting || currentState.isStopping || currentState.isSaving) {
+        updateWorkflowField('isCollecting', false)
+        updateWorkflowField('isStopping', false)
+        updateWorkflowField('isSaving', false)
+      }
+    }
+  }, [isInitialized, hasSavedData, workflowState, updateWorkflowField])
 
   // Data collection buffer
   const dataBuffer = useRef<GaitDataPoint[]>([])
+
+  // Metadata form clear function ref
+  const metadataFormClearRef = useRef<(() => void) | null>(null)
 
   // Confirmation modal for stop collection
   const { confirmationState, showConfirmation } = useConfirmation()
@@ -372,10 +425,12 @@ ${warningText}`,
       console.log('✅ Session saved successfully to:', filePath)
       showSuccess('Session Saved', `File: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
       
-      // Reset wizard
-      setCurrentStep('metadata')
-      setCollectedData(null)
+      // Reset workflow using persistent workflow hook
+      completeWorkflow()
       dataBuffer.current = []
+      
+      // Clear metadata form data
+      metadataFormClearRef.current?.()
       
     } catch (error) {
       console.error('❌ Failed to save session:', error)
@@ -396,13 +451,66 @@ ${warningText}`,
   }
 
   const handleDiscardData = () => {
-    setCurrentStep('metadata')
-    setCollectedData(null)
+    completeWorkflow()
     dataBuffer.current = []
+    
+    // Clear metadata form data
+    metadataFormClearRef.current?.()
   }
 
   return (
     <ScrollableContainer id="collect-tab" className="tab-content">
+      <style>{`
+        .workflow-restored-indicator {
+          background: #e8f5e8;
+          border: 1px solid #c3e6c3;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          color: #2d5a2d;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          overflow: hidden;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          
+          /* Default hidden state */
+          opacity: 0;
+          max-height: 0;
+          padding: 0 0.75rem;
+          margin-bottom: 0;
+          border-width: 0;
+        }
+        
+        .workflow-restored-indicator.visible {
+          opacity: 1;
+          max-height: 60px;
+          padding: 0.75rem;
+          margin-bottom: 1rem;
+          border-width: 1px;
+        }
+        
+        .workflow-restored-indicator.loading {
+          opacity: 0.7;
+          max-height: 60px;
+          padding: 0.75rem;
+          margin-bottom: 1rem;
+          border-width: 1px;
+          background: #f0f0f0;
+          color: #666;
+        }
+        
+        .dark .workflow-restored-indicator {
+          background: #1a2e1a;
+          border-color: #2d4a2d;
+          color: #a3d4a3;
+        }
+        
+        .dark .workflow-restored-indicator.loading {
+          background: #2d2d2d;
+          color: #999;
+        }
+      `}</style>
+      
       <div className="tab-header">
         <h1>Data Collection</h1>
         <p>Follow the 3-step process to collect and save gait data.</p>
@@ -434,7 +542,12 @@ ${warningText}`,
         {currentStep === 'metadata' && (
           <div className="wizard-step-content">
             <h2>Step 1: Enter Session Metadata</h2>
-            <MetadataForm onSubmit={handleMetadataSubmit} />
+            <MetadataForm 
+              onSubmit={handleMetadataSubmit} 
+              onRegisterClearFunction={(clearFn) => {
+                metadataFormClearRef.current = clearFn
+              }}
+            />
           </div>
         )}
 

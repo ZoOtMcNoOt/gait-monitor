@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePersistentForm } from '../hooks/usePersistentForm'
 import '../styles/forms.css'
 
@@ -29,22 +29,22 @@ const validateNotes = (notes: string): string | null => {
 
 interface Props {
   onSubmit?: (metadata: { sessionName: string; subjectId: string; notes: string }) => void
+  onRegisterClearFunction?: (clearFn: () => void) => void
 }
 
-export default function MetadataForm({ onSubmit }: Props) {
+export default function MetadataForm({ onSubmit, onRegisterClearFunction }: Props) {
   // Use persistent form hook for automatic localStorage persistence
   const {
     values: metadata,
     updateField,
     handleSubmit,
-    hasSavedData,
-    isInitialized
+    clearSavedData
   } = usePersistentForm(
     { sessionName: '', subjectId: '', notes: '' },
     { 
       storageKey: 'gait-monitor-metadata-form',
       debounceMs: 300,
-      clearOnSubmit: true
+      clearOnSubmit: false
     }
   )
 
@@ -60,6 +60,11 @@ export default function MetadataForm({ onSubmit }: Props) {
     subjectId?: boolean;
     notes?: boolean;
   }>({})
+
+  // Register clear function with parent component
+  useEffect(() => {
+    onRegisterClearFunction?.(clearSavedData)
+  }, [onRegisterClearFunction, clearSavedData])
 
   // Validate individual fields
   const validateField = (field: string, value: string) => {
@@ -161,13 +166,6 @@ export default function MetadataForm({ onSubmit }: Props) {
           color: #a3d4a3;
         }
       `}</style>
-      
-      {hasSavedData() && isInitialized && (
-        <div className="saved-data-indicator">
-          <span>💾</span>
-          <span>Your previous form data has been restored. Continue where you left off!</span>
-        </div>
-      )}
       
       <section className="card">
         <h2>Session Metadata</h2>

@@ -4,9 +4,11 @@
 
 /* Tab content layout */
 .tab-content {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing);
+  padding: clamp(1rem, 4vw, 2rem); /* Responsive padding using fluid typography */
+  box-sizing: border-box;
 }
 
 .tab-header {
@@ -16,7 +18,7 @@
 
 .tab-header h1 {
   margin: 0 0 0.5rem 0;
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem); /* Responsive font size */
   font-weight: 700;
   color: var(--text-color);
 }
@@ -24,7 +26,7 @@
 .tab-header p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 2.5vw, 1.1rem); /* Responsive font size */
   opacity: 0.8;
 }
 
@@ -136,15 +138,7 @@
 /* Responsive tab adjustments */
 @media (max-width: 768px) {
   .tab-content {
-    padding: 1rem;
-  }
-  
-  .tab-header h1 {
-    font-size: 1.5rem;
-  }
-  
-  .tab-header p {
-    font-size: 1rem;
+    padding: clamp(0.75rem, 3vw, 1rem); /* More refined responsive padding */
   }
   
   .tab-nav {
@@ -269,11 +263,11 @@
 
 @media (max-width: 480px) {
   .tab-content {
-    padding: 0.75rem;
+    padding: clamp(0.5rem, 2vw, 0.75rem); /* Even more refined for mobile */
   }
   
   .tab-panel {
-    padding: 0.75rem;
+    padding: clamp(0.75rem, 3vw, 1rem);
   }
   
   .tab-header {
