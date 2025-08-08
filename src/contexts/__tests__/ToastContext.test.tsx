@@ -131,7 +131,8 @@ describe('ToastContext', () => {
     expect(toastElement).toBeTruthy()
     expect(toastElement?.textContent).toContain('Success Title')
     expect(toastElement?.textContent).toContain('Success message')
-    expect(toastElement?.textContent).toContain('✅')
+    // Icon is now an inline SVG
+    expect(toastElement?.querySelector('.toast-icon svg')).toBeTruthy()
   })
 
   it('should add error toast with longer duration', async () => {
@@ -148,7 +149,8 @@ describe('ToastContext', () => {
     expect(toastElement).toBeTruthy()
     expect(toastElement?.textContent).toContain('Error Title')
     expect(toastElement?.textContent).toContain('Error message')
-    expect(toastElement?.textContent).toContain('❌')
+    // Icon is now an inline SVG
+    expect(toastElement?.querySelector('.toast-icon svg')).toBeTruthy()
   })
 
   it('should add warning toast', async () => {
@@ -164,7 +166,8 @@ describe('ToastContext', () => {
     expect(toastElement).toBeTruthy()
     expect(toastElement?.textContent).toContain('Warning Title')
     expect(toastElement?.textContent).toContain('Warning message')
-    expect(toastElement?.textContent).toContain('⚠️')
+    // Icon is now an inline SVG
+    expect(toastElement?.querySelector('.toast-icon svg')).toBeTruthy()
   })
 
   it('should add info toast', async () => {
@@ -180,7 +183,8 @@ describe('ToastContext', () => {
     expect(toastElement).toBeTruthy()
     expect(toastElement?.textContent).toContain('Info Title')
     expect(toastElement?.textContent).toContain('Info message')
-    expect(toastElement?.textContent).toContain('ℹ️')
+    // Icon is now an inline SVG
+    expect(toastElement?.querySelector('.toast-icon svg')).toBeTruthy()
   })
 
   it('should add custom toast', async () => {

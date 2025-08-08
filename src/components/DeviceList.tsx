@@ -5,6 +5,7 @@ import { useConfirmation } from '../hooks/useConfirmation'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import type { KeyboardShortcut } from '../hooks/useKeyboardShortcuts'
 import ConfirmationModal from './ConfirmationModal'
+import { Icon } from './icons'
 
 export default function DeviceList() {
   // Pagination state
@@ -268,8 +269,8 @@ export default function DeviceList() {
                       {/* Connection status */}
                       {status && (
                         <div className={`data-status ${status || 'unknown'}`}>
-                          <span className={`data-icon ${status || 'unknown'}`}>
-                            {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                          <span className={`data-icon ${status || 'unknown'}`} aria-hidden="true">
+                            {status === 'connected' ? <Icon.Heart title="Data Live" /> : status === 'timeout' ? <Icon.Clock title="Data Timeout" /> : <Icon.HeartOff title="No Data" />}
                           </span>
                           <span className="data-text">
                             {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}
@@ -316,9 +317,9 @@ export default function DeviceList() {
           </div>
         )}
 
-        {isScanning && scannedDevices.length === 0 && (
+    {isScanning && scannedDevices.length === 0 && (
           <div className="scanning-message">
-            <p>🔍 Scanning for devices...</p>
+      <p><span aria-hidden="true" className="tab-icon"><Icon.Search title="Scanning" /></span> Scanning for devices...</p>
           </div>
         )}
         
@@ -410,8 +411,8 @@ export default function DeviceList() {
                       
                       return isConnectedDevice && status ? (
                         <div className={`data-status ${status || 'unknown'}`}>
-                          <span className={`data-icon ${status || 'unknown'}`}>
-                            {status === 'connected' ? '💓' : status === 'timeout' ? '⏰' : '💔'}
+                          <span className={`data-icon ${status || 'unknown'}`} aria-hidden="true">
+                            {status === 'connected' ? <Icon.Heart title="Data Live" /> : status === 'timeout' ? <Icon.Clock title="Data Timeout" /> : <Icon.HeartOff title="No Data" />}
                           </span>
                           <span className="data-text">
                             {status === 'connected' ? 'Data Live' : status === 'timeout' ? 'Data Timeout' : 'No Data'}

@@ -1428,7 +1428,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             ) : (
               <>
                 <div className="empty-chart-state">
-                  <div className="empty-state-icon">📊</div>
+                  <div className="empty-state-icon" aria-hidden="true">{Icons.chart}</div>
                   <h3 className="empty-state-title">No Chart Data Available</h3>
                   <p className="empty-state-message">Unable to display chart visualization for this session.</p>
                 </div>

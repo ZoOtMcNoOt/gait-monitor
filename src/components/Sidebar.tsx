@@ -1,5 +1,6 @@
 // Sidebar Component
 import '../styles/sidebar.css'
+import { Icon } from './icons'
 
 interface Props { 
   page: 'connect' | 'collect' | 'logs' | 'settings'
@@ -7,10 +8,10 @@ interface Props {
 }
 
 const tabs = [
-  { id: 'connect', label: 'Connect', icon: '🔗', shortcut: 'Ctrl+1' },
-  { id: 'collect', label: 'Collect', icon: '📊', shortcut: 'Ctrl+2' },
-  { id: 'logs', label: 'Logs', icon: '📋', shortcut: 'Ctrl+3' },
-  { id: 'settings', label: 'Settings', icon: '⚙️', shortcut: 'Ctrl+4' }
+  { id: 'connect', label: 'Connect', icon: <Icon.Link title="Connect" />, shortcut: 'Ctrl+1' },
+  { id: 'collect', label: 'Collect', icon: <Icon.Chart title="Collect" />, shortcut: 'Ctrl+2' },
+  { id: 'logs', label: 'Logs', icon: <Icon.Clipboard title="Logs" />, shortcut: 'Ctrl+3' },
+  { id: 'settings', label: 'Settings', icon: <Icon.Gear title="Settings" />, shortcut: 'Ctrl+4' }
 ] as const
 
 export default function Sidebar({ page, onChange }: Props) {

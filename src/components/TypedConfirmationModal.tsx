@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import '../styles/modal.css'
+import { Icon } from './icons'
 
 interface TypedConfirmationModalProps {
   isOpen: boolean;
@@ -92,18 +93,18 @@ export const TypedConfirmationModal = ({
 
   const typeStyles = {
     warning: {
-      icon: '⚠️',
+      icon: <Icon.Warning title="Warning" />,
       confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
     },
     danger: {
-      icon: '🗑️',
+      icon: <Icon.Error title="Danger" />,
       confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
     },
     info: {
-      icon: 'ℹ️',
+      icon: <Icon.Info title="Information" />,
       confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
     }
-  }
+  } as const
 
   const currentStyle = typeStyles[type]
 

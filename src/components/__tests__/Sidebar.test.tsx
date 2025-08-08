@@ -119,7 +119,7 @@ describe('Sidebar', () => {
     });
   });
 
-  test('displays correct icons and shortcuts', async () => {
+  test('displays icons (svg) and shortcuts', async () => {
     await renderComponent('connect');
     
     const icons = container.querySelectorAll('.tab-icon');
@@ -128,12 +128,11 @@ describe('Sidebar', () => {
     expect(icons).toHaveLength(4);
     expect(shortcuts).toHaveLength(4);
     
-    const expectedIcons = ['🔗', '📊', '📋', '⚙️'];
     const expectedShortcuts = ['Ctrl+1', 'Ctrl+2', 'Ctrl+3', 'Ctrl+4'];
     
-    expectedIcons.forEach((icon, index) => {
-      expect(icons[index].textContent).toBe(icon);
-      expect(icons[index].getAttribute('aria-hidden')).toBe('true');
+    icons.forEach((iconEl) => {
+      expect(iconEl.querySelector('svg')).not.toBeNull();
+      expect(iconEl.getAttribute('aria-hidden')).toBe('true');
     });
     
     expectedShortcuts.forEach((shortcut, index) => {

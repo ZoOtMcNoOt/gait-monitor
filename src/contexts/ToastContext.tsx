@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect } f
 import type { ReactNode } from 'react'
 import { config } from '../config'
 import '../styles/toast.css'
+import { Icon } from '../components/icons'
 
 export interface Toast {
   id: string;
@@ -154,11 +155,11 @@ interface ToastItemProps {
 
 const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const typeIcons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️'
-  };
+    success: <Icon.Success className="toast-icon-svg" title="Success" />, 
+    error: <Icon.Error className="toast-icon-svg" title="Error" />, 
+    warning: <Icon.Warning className="toast-icon-svg" title="Warning" />, 
+    info: <Icon.Info className="toast-icon-svg" title="Information" />
+  } as const
 
   // Build data attributes from metadata
   const dataAttributes = toast.metadata 
@@ -169,10 +170,10 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
     : {};
 
   return (
-    <div className={`toast toast-${toast.type}`} {...dataAttributes}>
+  <div className={`toast toast-${toast.type}`} {...dataAttributes}>
       <div className="toast-content">
         <div className="toast-header">
-          <span className="toast-icon">{typeIcons[toast.type]}</span>
+      <span className="toast-icon" aria-hidden="true">{typeIcons[toast.type]}</span>
           <span className="toast-title">{toast.title}</span>
           <button 
             className="toast-close"

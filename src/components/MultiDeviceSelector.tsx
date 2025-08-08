@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import ScrollableContainer from './ScrollableContainer'
+import { Icon } from './icons'
 
 interface DeviceStatus {
   id: string
@@ -69,7 +70,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
   return (
     <div className="device-status-viewer sidebar-style" role="region" aria-label="Device Status Viewer">
       <div className="status-header">
-        <h3>📊 Device Status</h3>
+        <h3><span aria-hidden="true" className="tab-icon"><Icon.Chart title="Device Status" /></span> Device Status</h3>
         <div className="last-update" aria-live="polite">
           <span className="update-indicator">●</span>
           <span className="update-text">Live</span>
@@ -78,7 +79,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
       
       {devices.length === 0 ? (
         <div className="no-devices" role="status" aria-label="No devices connected">
-          <div className="no-devices-icon">🔌</div>
+          <div className="no-devices-icon" aria-hidden="true"><Icon.Plug title="No devices" size={48} /></div>
           <p className="no-devices-title">No connected devices</p>
           <small className="no-devices-subtitle">Connect devices in the Connect tab to begin monitoring</small>
           {onNavigateToConnect && (
@@ -108,7 +109,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
             </div>
             {collectingCount > 0 && (
               <div className="sync-indicator" aria-label="Synchronized collection active">
-                <span className="sync-icon">🔗</span>
+                <span className="sync-icon" aria-hidden="true"><Icon.Link title="Synchronized" /></span>
                 <span className="sync-text">Synchronized Collection</span>
               </div>
             )}
@@ -150,7 +151,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                           className={`status-icon ${device.isCollecting ? 'collecting' : 'idle'}`}
                           aria-hidden="true"
                         >
-                          {device.isCollecting ? '📡' : '⏸'}
+                          {device.isCollecting ? <Icon.Radio title="Collecting" /> : <Icon.Pause title="Idle" />}
                         </span>
                         <span className="status-label">
                           {device.isCollecting ? 'Collecting' : 'Idle'}
@@ -184,7 +185,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                     
                     {device.errorState && (
                       <div className="error-indicator" role="alert">
-                        <span className="error-icon">⚠️</span>
+                        <span className="error-icon" aria-hidden="true"><Icon.Warning title="Error" /></span>
                         <span className="error-text">{device.errorState}</span>
                       </div>
                     )}
