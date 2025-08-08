@@ -411,3 +411,63 @@ tbody tr:hover {
     font-size: clamp(0.7rem, 2vw, 0.75rem);
   }
 }
+
+/*────────────────────────────────────────────────────────
+  Data Table Styles (for DataViewer table view)
+────────────────────────────────────────────────────────*/
+
+.table-container-scrollable {
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card-bg);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.data-table thead {
+  background: var(--color-bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 2px solid var(--color-border);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--text-color);
+}
+
+.data-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--text-color);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.01);
+}
+
+.table-note {
+  padding: 0.75rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+}
