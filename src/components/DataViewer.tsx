@@ -242,6 +242,21 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     setZoomLevel(1)
   }, [])
 
+  // Memoized settings handlers to prevent unnecessary re-renders
+  const handleDownsamplingChange = useCallback((enabled: boolean) => {
+    setUseDownsampling(enabled)
+    console.log(`Downsampling ${enabled ? 'enabled' : 'disabled'}`)
+  }, [])
+
+  const handleMaxDataPointsChange = useCallback((value: number) => {
+    setMaxDataPoints(value)
+    console.log(`Max data points changed to: ${value}`)
+  }, [])
+
+  const handleSettingsToggle = useCallback(() => {
+    setShowAdvancedSettings(prev => !prev)
+  }, [])
+
   // Downsampling utility for client-side optimization
   const downsampleData = useCallback((points: ChartPoint[], maxPoints: number): ChartPoint[] => {
     if (points.length <= maxPoints) return points
@@ -287,20 +302,17 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setLoading(true)
       setError(null)
       
-      // Estimate appropriate downsampling based on session duration and device count
-      // For large datasets, use backend downsampling for better performance
-      const estimatedMaxPoints = useDownsampling ? maxDataPoints : null
+      // Always load full data initially, apply downsampling in chart processing
+      console.log(`🚀 Loading session data for ${sessionId}`)
       
-      console.log(`🚀 Loading session with downsampling: ${estimatedMaxPoints ? `${estimatedMaxPoints} points max` : 'disabled'}`)
-      
-      // Use optimized Rust backend
+      // Use optimized Rust backend - load all data, we'll filter on client side
       const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
         sessionId,
         selectedDevices: [], // Load all devices (empty array = all devices)
         selectedDataTypes: [], // Load all data types (empty array = all data types)
         startTime: null,
         endTime: null,
-        maxPointsPerDataset: estimatedMaxPoints // Use backend downsampling for performance
+        maxPointsPerDataset: null // Load full data, apply downsampling in chartData memoization
       })
       
       setOptimizedData(data)
@@ -325,13 +337,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         .reduce((sum, points) => sum + points.length, 0)
       
       console.log(`📊 Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`)
-      
-      // Auto-enable downsampling for very large datasets
-      if (totalPoints > 50000 && !useDownsampling) {
-        setUseDownsampling(true)
-        showInfo('Performance Optimization', 
-          `Large dataset detected (${totalPoints.toLocaleString()} points). Enabling downsampling for better performance.`)
-      }
       
       // Generate device colors for all detected devices
       if (devices.length > 0) {
@@ -371,7 +376,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     } finally {
       setLoading(false)
     }
-  }, [sessionId, showError, useDownsampling, maxDataPoints, showInfo])
+  }, [sessionId, showError]) // Only essential dependencies to prevent unnecessary reloads
 
   useEffect(() => {
     loadSessionData()
@@ -511,6 +516,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   // Prepare chart data
   const chartData = useMemo(() => {
+    console.log('🔄 Chart data recalculation triggered') // Debug log to track re-renders
+    
     // Don't render chart until device colors are initialized
     if (!optimizedData || deviceColors.size === 0) return null
 
@@ -910,7 +917,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 
                 <button 
                   className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
-                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  onClick={handleSettingsToggle}
                   title={showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'}
                   aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
                 >
@@ -951,7 +958,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           type="checkbox"
                           className="setting-checkbox"
                           checked={useDownsampling}
-                          onChange={(e) => setUseDownsampling(e.target.checked)}
+                          onChange={(e) => handleDownsamplingChange(e.target.checked)}
                           aria-describedby="downsampling-help"
                         />
                         <span className="checkbox-custom"></span>
@@ -980,7 +987,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           max="50000"
                           step="1000"
                           value={maxDataPoints}
-                          onChange={(e) => setMaxDataPoints(parseInt(e.target.value))}
+                          onChange={(e) => handleMaxDataPointsChange(parseInt(e.target.value))}
                           className="range-input"
                           aria-describedby="max-points-help"
                         />
