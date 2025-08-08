@@ -37,6 +37,7 @@ body, html, #root {
   font-family: var(--font-base);
   background: var(--color-bg);
   color: var(--color-text);
+  overflow-x: hidden; /* Prevent horizontal scroll on small screens */
 }
 
 /* Screen reader only content - hidden visually but accessible to assistive technology */
@@ -59,8 +60,10 @@ body, html, #root {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  flex-direction: row; /* Desktop: sidebar + content */
 }
 
+/* Desktop sidebar (default) */
 .sidebar {
   width: 240px;
   background: var(--color-primary);
@@ -68,6 +71,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   padding-top: var(--spacing);
+  flex-shrink: 0;
 }
 
 .sidebar button {
@@ -96,9 +100,12 @@ body, html, #root {
   flex: 1;
   padding: var(--spacing);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--spacing);
   overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /*────────────────────────────────────────────────────────

@@ -288,3 +288,191 @@
     max-height: 250px;
   }
 }
+
+/*────────────────────────────────────────────────────────
+  Mobile-First Responsive Sidebar
+────────────────────────────────────────────────────────*/
+
+/* Tablet: Narrow sidebar (768px and below) */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px; /* Narrower sidebar for tablets */
+  }
+  
+  .sidebar-header h1 {
+    font-size: 1.3rem; /* Smaller title */
+  }
+  
+  .tab-label {
+    font-size: 0.9rem; /* Smaller labels */
+  }
+  
+  .tab-shortcut {
+    display: none; /* Hide shortcuts on tablet */
+  }
+}
+
+/* Mobile: Bottom tab bar (800px and below) - Beautiful responsive design */
+@media screen and (max-width: 800px) {
+  /* Force mobile layout */
+  .app {
+    flex-direction: column !important; 
+    height: 100vh !important;
+    width: 100vw !important;
+  }
+  
+  .sidebar {
+    order: 2 !important; /* Move sidebar to bottom */
+    width: 100% !important;
+    height: 70px !important;
+    min-height: 70px !important;
+    max-height: 70px !important;
+    flex-direction: row !important; /* Horizontal layout */
+    padding: 0 !important;
+    margin: 0 !important;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #1e3a8a 100%) !important;
+    border-top: 1px solid rgba(255,255,255,0.15) !important;
+    border-bottom: none !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.1) !important;
+  }
+  
+  .sidebar-header {
+    display: none !important; /* Hide header on mobile */
+  }
+  
+  .sidebar button {
+    flex: 1 !important; /* Equal width buttons */
+    flex-direction: column !important;
+    padding: 8px 4px !important;
+    gap: 4px !important;
+    text-align: center !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 70px !important;
+    max-height: 70px !important;
+    border: none !important;
+    margin: 0 !important;
+    width: auto !important;
+    background: transparent !important;
+    color: rgba(255,255,255,0.8) !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  .sidebar button:hover {
+    background: rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.95) !important;
+    transform: translateY(-1px) !important;
+  }
+  
+  .sidebar button.active {
+    background: rgba(255,255,255,0.15) !important;
+    color: #ffffff !important;
+  }
+  
+  .sidebar button.active::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 30px !important;
+    height: 3px !important;
+    background: linear-gradient(90deg, var(--accent-color), var(--color-primary-light)) !important;
+    border-radius: 0 0 3px 3px !important;
+  }
+  
+  .tab-icon {
+    font-size: clamp(1.1rem, 4vw, 1.4rem) !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+  }
+  
+  .tab-label {
+    font-size: clamp(0.65rem, 2.5vw, 0.75rem) !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.1 !important;
+  }
+  
+  .tab-shortcut {
+    display: none !important; /* Hide shortcuts on mobile */
+  }
+  
+  .content {
+    order: 1 !important; /* Content goes above bottom tabs */
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 80px !important; /* Space for bottom tabs + extra */
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Very small screens: Optimized mobile experience (400px and below) */
+@media (max-width: 400px) {
+  .sidebar button {
+    padding: 6px 2px !important;
+    min-height: 65px !important;
+    max-height: 65px !important;
+  }
+  
+  .tab-label {
+    font-size: clamp(0.6rem, 2vw, 0.65rem) !important;
+    line-height: 1 !important;
+  }
+  
+  .tab-icon {
+    font-size: clamp(1rem, 3.5vw, 1.2rem) !important;
+  }
+  
+  .content {
+    padding-bottom: 75px !important; /* Adjust for slightly smaller bottom bar */
+  }
+}
+
+/* Dark mode support for mobile sidebar */
+@media screen and (max-width: 800px) {
+  .dark .sidebar {
+    background: linear-gradient(135deg, var(--color-dark-card) 0%, #0f172a 100%) !important;
+    border-top: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.3) !important;
+  }
+  
+  .dark .sidebar button {
+    color: rgba(255,255,255,0.9) !important;
+  }
+  
+  .dark .sidebar button:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+  }
+  
+  .dark .sidebar button.active {
+    background: rgba(255,255,255,0.12) !important;
+    color: #ffffff !important;
+  }
+  
+  .dark .sidebar button.active::before {
+    background: linear-gradient(90deg, var(--accent-color), var(--color-primary-light)) !important;
+  }
+}
