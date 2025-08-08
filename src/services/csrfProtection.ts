@@ -133,23 +133,26 @@ export class CSRFProtectionService {
       } catch (error) {
         lastError = error as Error;
         
+        // Safely get error message with fallback
+        const errorMessage = lastError?.message || String(lastError) || 'Unknown error';
+        
         // Re-throw specific backend errors immediately
-        if (lastError.message.includes('Rate limit exceeded for file operations')) {
+        if (errorMessage.includes('Rate limit exceeded for file operations')) {
           throw lastError;
         }
-        if (lastError.message.includes('Network')) {
+        if (errorMessage.includes('Network')) {
           throw lastError;
         }
         
         // If it's a CSRF error and we have retries left, refresh token and try again
-        if (lastError.message.includes('CSRF') && attempt < maxRetries) {
+        if (errorMessage.includes('CSRF') && attempt < maxRetries) {
           console.warn(`CSRF error on attempt ${attempt + 1}, refreshing token...`);
           await this.refreshToken();
           continue;
         }
         
         // If it's a rate limit error, don't retry
-        if (lastError.message.includes('rate limit')) {
+        if (errorMessage.includes('rate limit')) {
           break;
         }
         

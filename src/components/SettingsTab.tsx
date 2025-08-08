@@ -172,7 +172,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
   const handleChooseStoragePath = async () => {
     try {
-      const result = await invoke<string | null>('choose_storage_directory')
+      const result = await protectedOperations.chooseStorageDirectory() as string | null
       if (result) {
         handleSettingChange('defaultStoragePath', result)
         setStoragePathInputValue(result)
