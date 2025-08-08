@@ -345,7 +345,7 @@
   background: var(--color-bg, #f8fafc);
   border-color: var(--color-border-hover, #cbd5e1);
   transform: translateY(-1px);
-  box-shadow: var(--dv-shadow-md);
+  box-shadow: var(--dv-shadow-sm);
 }
 
 .btn-action:focus {
@@ -1125,6 +1125,9 @@
   margin-bottom: 16px !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
 }
 
 /* Time Markers - Start and End */
@@ -1152,6 +1155,7 @@
   overflow: hidden !important;
   cursor: pointer !important;
   min-width: 200px !important;
+  box-sizing: content-box !important;
 }
 
 /* Timeline Background Track */
@@ -1197,6 +1201,11 @@
   appearance: none !important;
   border: none !important;
   outline: none !important;
+}
+
+/* Focus ring when the hidden slider receives focus */
+.timeline-container:focus-within .timeline-visible-range {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
 }
 
 /* Hide all slider visual elements */
@@ -2247,7 +2256,7 @@
 .btn-group {
   display: flex;
   gap: 0.25rem;
-}
+  border-radius: 8px;
 
 .btn-group .btn-small {
   border-radius: 0.25rem;
@@ -3021,9 +3030,9 @@
   .btn-icon,
   .metadata-icon,
   .session-icon {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
+  /* Edge/Chromium fallback first, then standard */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: pixelated;
   }
 }
 

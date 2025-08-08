@@ -12,6 +12,112 @@ import { protectedOperations } from '../services/csrfProtection'
 // Register Chart.js components
 registerChartComponents()
 
+// Inline SVG icons for consistent visuals
+const Icons = {
+  chart: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M10 19V9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M16 19V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M22 19H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  timer: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 13V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M9 3h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  antenna: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+      <path d="M5 12a7 7 0 0 1 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M19 12a7 7 0 0 0-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M3 12a9 9 0 0 1 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  device: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
+      <circle cx="12" cy="19" r="1" fill="currentColor"/>
+    </svg>
+  ),
+  close: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  refresh: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  error: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2l10 18H2L12 2z" stroke="currentColor" strokeWidth="2" fill="none"/>
+      <path d="M12 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="12" cy="17" r="1" fill="currentColor"/>
+    </svg>
+  ),
+  export: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  zoom: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  settings: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.11a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.11a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.11a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c0 .66.39 1.26 1 1.51.16.07.34.11.51.11H21a2 2 0 110 4h-.11a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
+  chevronDown: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  fit: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 9V5a2 2 0 012-2h4M15 3h4a2 2 0 012 2v4M21 15v4a2 2 0 01-2 2h-4M9 21H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  home: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 11l9-7 9 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 10v10h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  stepBack: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  stepForward: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  statusGood: (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#10b981"/></svg>
+  ),
+  statusWarning: (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#f59e0b"/></svg>
+  ),
+  statusDanger: (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#ef4444"/></svg>
+  ),
+}
+
 interface DataViewerProps {
   sessionId: string
   sessionName: string
@@ -668,15 +774,15 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         <div className="data-viewer-modal">
           <div className="data-viewer-header">
             <h2>Error Loading Data</h2>
-            <button className="btn-close" onClick={onClose}>✕</button>
+            <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
           </div>
           <div className="data-viewer-content">
             <div className="data-viewer-error">
-              <h3>❌ No Data Available</h3>
+              <h3><span aria-hidden="true">{Icons.error}</span> No Data Available</h3>
               <p>Session data could not be loaded.</p>
               <p className="error-details">{error}</p>
               <div className="button-group">
-                <button onClick={reloadData} className="btn-primary">🔄 Retry</button>
+                <button onClick={reloadData} className="btn-primary"><span aria-hidden="true">{Icons.refresh}</span> Retry</button>
                 <button onClick={onClose} className="btn-secondary">Close</button>
               </div>
             </div>
@@ -691,7 +797,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       <div className="data-viewer-overlay">
         <div className="data-viewer-modal">
           <div className="data-viewer-error">
-            <h3>❌ No Data Available</h3>
+            <h3><span aria-hidden="true">{Icons.error}</span> No Data Available</h3>
             <p>Session data could not be loaded.</p>
             <button className="btn-secondary" onClick={onClose}>Close</button>
           </div>
@@ -708,34 +814,27 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           <div className="header-content">
             <div className="session-info">
               <h1 className="session-title">
-                <span className="session-icon">📊</span>
+                <span className="session-icon" aria-hidden="true">{Icons.chart}</span>
                 {sessionName}
               </h1>
               <div className="session-metadata">
                 <span className="metadata-item">
-                  <span className="metadata-icon">⏱️</span>
+                  <span className="metadata-icon" aria-hidden="true">{Icons.timer}</span>
                   {Math.round(optimizedData.metadata.duration)}s
                 </span>
                 <span className="metadata-separator">•</span>
                 <span className="metadata-item">
-                  <span className="metadata-icon">📡</span>
+                  <span className="metadata-icon" aria-hidden="true">{Icons.antenna}</span>
                   {Math.round(optimizedData.metadata.sample_rate * 10) / 10}Hz
                 </span>
                 <span className="metadata-separator">•</span>
                 <span className="metadata-item">
-                  <span className="metadata-icon">📱</span>
+                  <span className="metadata-icon" aria-hidden="true">{Icons.device}</span>
                   {optimizedData.metadata.devices.length} device{optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
-            <button 
-              className="btn-close" 
-              onClick={onClose}
-              aria-label="Close data viewer"
-              title="Close data viewer"
-            >
-              ✕
-            </button>
+            <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
           </div>
         </header>
 
@@ -771,7 +870,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title="Fit all data to view"
                   aria-label="Fit all data"
                 >
-                  <span className="btn-icon">🎯</span>
+                  <span className="btn-icon" aria-hidden="true">{Icons.fit}</span>
                   <span className="btn-label">Fit All</span>
                 </button>
                 
@@ -789,7 +888,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     title="Zoom to selected area"
                     aria-label="Zoom to selection"
                   >
-                    <span className="btn-icon">🔍</span>
+                    <span className="btn-icon" aria-hidden="true">{Icons.chart}</span>
                     <span className="btn-label">Zoom to Selection</span>
                   </button>
                 )}
@@ -803,7 +902,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title="Export current data view to CSV"
                   aria-label="Export data"
                 >
-                  <span className="btn-icon">�</span>
+                  <span className="btn-icon" aria-hidden="true">{Icons.export}</span>
                   <span className="btn-label">Export Data</span>
                 </button>
                 
@@ -813,9 +912,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title={showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'}
                   aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
                 >
-                  <span className="btn-icon">⚙️</span>
+                  <span className="btn-icon" aria-hidden="true">{Icons.settings}</span>
                   <span className="btn-label">Settings</span>
-                  <span className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}>▼</span>
+                  <span className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`} aria-hidden="true">{Icons.chevronDown}</span>
                 </button>
               </div>
             </div>
@@ -829,7 +928,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               {/* Performance Settings */}
               <div className="settings-card">
                 <h3 className="settings-title">
-                  <span className="settings-icon">⚡</span>
+                  <span className="settings-icon" aria-hidden="true">{Icons.chart}</span>
                   Performance & Rendering
                   <div className="performance-indicator">
                     <div className={`performance-status ${chartData && chartData.totalDataPoints > 5000 ? 'warning' : 'good'}`}>
@@ -900,7 +999,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               {/* Display Settings */}
               <div className="settings-card">
                 <h3 className="settings-title">
-                  <span className="settings-icon">🎨</span>
+                  <span className="settings-icon" aria-hidden="true">{Icons.settings}</span>
                   Display Options
                 </h3>
                 <div className="settings-grid">
@@ -951,7 +1050,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         </div>
                       </div>
                       <p id="time-window-help" className="setting-help">
-                        ⏱️ Default viewing window when zooming. Smaller values show more detail.
+                        <span aria-hidden="true">{Icons.timer}</span> Default viewing window when zooming. Smaller values show more detail.
                       </p>
                     </div>
                   </div>
@@ -1092,9 +1191,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       console.error('Chart rendering error:', error)
                       return (
                         <div className="chart-error">
-                          <p>❌ Error rendering chart. Please try refreshing the data.</p>
+                          <p><span aria-hidden="true">{Icons.error}</span> Error rendering chart. Please try refreshing the data.</p>
                           <button onClick={reloadData} className="btn-secondary">
-                            🔄 Reload Data
+                            <span aria-hidden="true">{Icons.refresh}</span> Reload Data
                           </button>
                         </div>
                       )
@@ -1106,7 +1205,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 {chartData && optimizedData && (
                   <div className="chart-controls">
                     {/* Timeline Slider - Redesigned for better functionality */}
-                    <div className="timeline-row">
+                    <div className="timeline-row" onWheel={(e) => {
+                      // Hold Shift to pan horizontally; or use horizontal wheel deltaX
+                      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0)
+                      if (!delta || !optimizedData) return
+                      e.preventDefault()
+                      const view = timeWindowSize / zoomLevel
+                      const step = Math.max(0.1, view * 0.02)
+                      const dir = delta > 0 ? 1 : -1
+                      const total = optimizedData.metadata.duration
+                      const maxPos = Math.max(0, total - view)
+                      setCurrentTimePosition(prev => Math.max(0, Math.min(maxPos, prev + dir * step)))
+                    }}>
                       <span className="time-marker start">0s</span>
                       <div className="timeline-container">
                         <div className="timeline-background" />
@@ -1127,6 +1237,19 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           }}
                           className="timeline-slider"
                           aria-label="Timeline position"
+                          onKeyDown={(e) => {
+                            if (!optimizedData) return
+                            const view = timeWindowSize / zoomLevel
+                            const step = Math.max(0.1, view * 0.02)
+                            if (e.key === 'ArrowLeft') {
+                              e.preventDefault()
+                              setCurrentTimePosition(prev => Math.max(0, prev - step))
+                            } else if (e.key === 'ArrowRight') {
+                              e.preventDefault()
+                              const maxPos = Math.max(0, optimizedData.metadata.duration - view)
+                              setCurrentTimePosition(prev => Math.min(maxPos, prev + step))
+                            }
+                          }}
                         />
                       </div>
                       <span className="time-marker end">{optimizedData?.metadata.duration.toFixed(1) || '0.0'}s</span>
@@ -1142,28 +1265,31 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     <div className="controls-row">
                       {/* Enhanced Zoom Controls with Presets */}
                       <div className="zoom-group">
-                        <span className="control-label">🔍 Zoom:</span>
+                        <span className="control-label" aria-hidden="true">{Icons.zoom}</span>
                         
                         {/* Time Span Presets */}
                         <div className="zoom-presets">
-                          {[
-                            { span: null, label: 'All', isAll: true },
-                            { span: 30, label: '30s' },
-                            { span: 10, label: '10s' },
-                            { span: 5, label: '5s' },
-                            { span: 2, label: '2s' }
+                          { [
+                            { span: null as number | null, label: 'All', isAll: true },
+                            { span: 30 as number | null, label: '30s' },
+                            { span: 10 as number | null, label: '10s' },
+                            { span: 5 as number | null, label: '5s' },
+                            { span: 2 as number | null, label: '2s' }
                           ].map(preset => {
                             const totalDuration = optimizedData?.metadata.duration || 30
-                            
-                            let isActive, requiredZoom
+                            let isActive: boolean
+                            let requiredZoom: number
                             if (preset.isAll) {
                               isActive = Math.abs(zoomLevel - 1) < 0.1
                               requiredZoom = 1
-                            } else {
+                            } else if (preset.span != null) {
                               requiredZoom = totalDuration / preset.span
                               isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                            } else {
+                              requiredZoom = 1
+                              isActive = Math.abs(zoomLevel - 1) < 0.1
                             }
-                            
+                            const spanValue = preset.span ?? undefined
                             return (
                               <button
                                 key={preset.label}
@@ -1171,16 +1297,16 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   if (preset.isAll) {
                                     setZoomLevel(1)
                                     setCurrentTimePosition(0)
-                                  } else {
-                                    const newZoom = Math.min(10, Math.max(1, requiredZoom))
+                                  } else if (spanValue) {
+                                    const newZoom = Math.min(10, Math.max(1, totalDuration / spanValue))
                                     setZoomLevel(newZoom)
                                     setCurrentTimePosition(0)
                                   }
                                 }}
                                 className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
-                                disabled={!preset.isAll && preset.span > totalDuration}
-                                title={preset.isAll ? 'View all data' : `View ${preset.span} second window`}
-                                aria-label={preset.isAll ? 'Fit all data' : `Set view to ${preset.span} seconds`}
+                                disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
+                                title={preset.isAll ? 'View all data' : spanValue ? `View ${spanValue} second window` : 'View all data'}
+                                aria-label={preset.isAll ? 'Fit all data' : spanValue ? `Set view to ${spanValue} seconds` : 'Fit all data'}
                               >
                                 {preset.label}
                               </button>
@@ -1194,7 +1320,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             onClick={() => handleZoomChange('out')}
                             className="btn-zoom btn-zoom-out"
                             disabled={zoomLevel <= 1.0}
-                            title="Zoom out (0.5x)"
+                            title="Zoom out (-)"
                             aria-label="Zoom out"
                           >
                             <span className="zoom-icon">−</span>
@@ -1212,7 +1338,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             onClick={() => handleZoomChange('in')}
                             className="btn-zoom btn-zoom-in"
                             disabled={zoomLevel >= 10.0}
-                            title="Zoom in (2x)"
+                            title="Zoom in (+)"
                             aria-label="Zoom in"
                           >
                             <span className="zoom-icon">+</span>
@@ -1223,7 +1349,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             title="Reset view (Fit all data)"
                             aria-label="Reset zoom and position"
                           >
-                            <span className="reset-icon">⌂</span>
+                            <span className="reset-icon" aria-hidden="true">{Icons.home}</span>
                           </button>
                         </div>
                       </div>
@@ -1240,7 +1366,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             disabled={currentTimePosition <= 0}
                             title="Jump backward"
                           >
-                            ⏪
+                            <span aria-hidden="true">{Icons.stepBack}</span>
                           </button>
                           <button
                             onClick={() => {
@@ -1255,12 +1381,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             })()}
                             title="Jump forward"
                           >
-                            ⏩
+                            <span aria-hidden="true">{Icons.stepForward}</span>
                           </button>
                         </div>
                         
                         <div className="time-display">
-                          <span className="info-label">📊 Viewing:</span>
+                          <span className="info-label" aria-hidden="true">{Icons.chart}</span>
                           <span className="info-value">{(() => {
                             const effectiveWindow = getEffectiveTimeWindow()
                             const viewingDuration = effectiveWindow.end - effectiveWindow.start
