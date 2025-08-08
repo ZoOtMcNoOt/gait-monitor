@@ -68,6 +68,7 @@
   flex-direction: column;
   overflow: hidden;
   animation: slideIn 0.3s ease-out;
+  position: relative; /* Add for absolute positioning context */
 }
 
 @keyframes slideIn {
@@ -94,6 +95,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--dv-spacing-lg);
+  position: relative;
+}
+
+/* Position close button in top right of modal */
+.data-viewer-modal .btn-close {
+  position: absolute;
+  top: var(--dv-spacing-lg);
+  right: var(--dv-spacing-lg);
+  z-index: 10; /* Ensure it's above all content */
 }
 
 .session-info {
@@ -794,7 +804,7 @@
   padding: var(--dv-spacing-lg);
   box-shadow: var(--dv-shadow-sm);
   overflow: hidden;
-  min-height: 400px;
+  min-height: 0; /* Allow container to shrink */
 }
 
 .chart-container canvas {
@@ -813,7 +823,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--dv-spacing-md);
-  min-height: 100px; /* Increased to accommodate always-visible timeline */
 }
 
 /* Ensure timeline aligns with chart content area */
@@ -832,16 +841,15 @@
 .chart-controls {
   width: 100%;
   box-sizing: border-box;
-  /* Remove padding from timeline track area to match chart */
   padding: var(--dv-spacing-md);
-  padding-top: 0; /* Connect directly to chart */
+  padding-top: var(--dv-spacing-sm);
 }
 
 /* Main Controls Row - Simplified Grid */
 .controls-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--dv-spacing-lg);
 }
 
@@ -1115,19 +1123,12 @@
 
 /* Timeline Row Container - Simple Flexbox Layout */
 .timeline-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  padding: 16px !important;
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 8px !important;
-  margin-bottom: 16px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 5 !important;
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-md);
+  padding: var(--dv-spacing-sm) 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Time Markers - Start and End */
@@ -3154,6 +3155,72 @@
   
   .chart-section {
     padding: 12px !important;
+  }
+}
+
+/*────────────────────────────────────────────────────────
+  Simple Chart Controls Overrides - Clean and Minimal
+────────────────────────────────────────────────────────*/
+
+/* Clean card background for chart controls */
+.chart-wrapper .chart-controls {
+  background: var(--color-card-bg, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-top: none;
+  border-radius: 0 0 var(--dv-radius-lg, 12px) var(--dv-radius-lg, 12px);
+  padding: var(--dv-spacing-md, 12px);
+}
+
+/* Timeline row: simple white surface */
+.chart-wrapper .chart-controls .timeline-row {
+  background: var(--color-card-bg, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  margin-bottom: var(--dv-spacing-md, 12px);
+}
+
+/* Controls row: simple layout */
+.chart-wrapper .chart-controls .controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dv-spacing-lg, 16px);
+}
+
+/* Zoom group: subtle card look */
+.chart-wrapper .chart-controls .zoom-group {
+  background: var(--color-card-bg, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--dv-radius-md, 8px);
+  padding: var(--dv-spacing-sm, 8px) var(--dv-spacing-md, 12px);
+}
+
+/* Time info block */
+.chart-wrapper .chart-controls .time-info-enhanced .time-display {
+  background: var(--color-card-bg, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--dv-radius-sm, 6px);
+  padding: 6px 10px;
+  color: var(--color-text, #1f2937);
+}
+
+/* Range info pill */
+.chart-wrapper .chart-controls .range-info {
+  background: var(--color-bg-secondary, #f1f5f9);
+  color: var(--color-text, #1f2937);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+/* Respect mobile: stack neatly */
+@media (max-width: 768px) {
+  .chart-wrapper .chart-controls .controls-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .chart-wrapper .chart-controls .zoom-group {
+    justify-content: center !important;
+  }
+  .chart-wrapper .chart-controls .timeline-row {
+    margin-bottom: var(--dv-spacing-sm, 8px) !important;
   }
 }
 

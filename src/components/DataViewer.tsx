@@ -809,7 +809,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   return (
     <div className="data-viewer-overlay">
       <div className="data-viewer-modal">
-        {/* Header Section - Session Info & Close */}
+        {/* Close button positioned at top right of modal */}
+        <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
+        
+        {/* Header Section - Session Info */}
         <header className="data-viewer-header">
           <div className="header-content">
             <div className="session-info">
@@ -834,7 +837,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 </span>
               </div>
             </div>
-            <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
           </div>
         </header>
 
@@ -1202,7 +1204,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 </div>
 
                 {/* Simplified Chart Controls */}
-                {chartData && optimizedData && (
+                {optimizedData && (
                   <div className="chart-controls">
                     {/* Timeline Slider - Redesigned for better functionality */}
                     <div className="timeline-row" onWheel={(e) => {
@@ -1265,30 +1267,34 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     <div className="controls-row">
                       {/* Enhanced Zoom Controls with Presets */}
                       <div className="zoom-group">
-                        <span className="control-label" aria-hidden="true">{Icons.zoom}</span>
+                        <span className="control-label"><span aria-hidden="true">{Icons.zoom}</span> Zoom</span>
                         
                         {/* Time Span Presets */}
                         <div className="zoom-presets">
                           { [
-                            { span: null as number | null, label: 'All', isAll: true },
-                            { span: 30 as number | null, label: '30s' },
-                            { span: 10 as number | null, label: '10s' },
-                            { span: 5 as number | null, label: '5s' },
-                            { span: 2 as number | null, label: '2s' }
+                            { span: null, label: 'All', isAll: true },
+                            { span: 30, label: '30s' },
+                            { span: 10, label: '10s' },
+                            { span: 5, label: '5s' },
+                            { span: 2, label: '2s' }
                           ].map(preset => {
                             const totalDuration = optimizedData?.metadata.duration || 30
                             let isActive: boolean
                             let requiredZoom: number
+
                             if (preset.isAll) {
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
+                              // 'All' corresponds to a zoom level of 1, showing the base `timeWindowSize`
                               requiredZoom = 1
+                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
                             } else if (preset.span != null) {
-                              requiredZoom = totalDuration / preset.span
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                              // The required zoom to achieve the target span
+                              requiredZoom = timeWindowSize / preset.span
+                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
                             } else {
                               requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
+                              isActive = Math.abs(zoomLevel - 1) < 0.01
                             }
+                            
                             const spanValue = preset.span ?? undefined
                             return (
                               <button
@@ -1298,8 +1304,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                     setZoomLevel(1)
                                     setCurrentTimePosition(0)
                                   } else if (spanValue) {
-                                    const newZoom = Math.min(10, Math.max(1, totalDuration / spanValue))
-                                    setZoomLevel(newZoom)
+                                    // Calculate zoom based on the desired span vs the base window size
+                                    const newZoom = timeWindowSize / spanValue
+                                    setZoomLevel(Math.min(10, Math.max(1, newZoom)))
                                     setCurrentTimePosition(0)
                                   }
                                 }}
@@ -1412,11 +1419,220 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 )}
               </div>
             ) : (
-              <div className="empty-chart-state">
-                <div className="empty-state-icon">📊</div>
-                <h3 className="empty-state-title">No Chart Data Available</h3>
-                <p className="empty-state-message">Unable to display chart visualization for this session.</p>
-              </div>
+              <>
+                <div className="empty-chart-state">
+                  <div className="empty-state-icon">📊</div>
+                  <h3 className="empty-state-title">No Chart Data Available</h3>
+                  <p className="empty-state-message">Unable to display chart visualization for this session.</p>
+                </div>
+                
+                {/* Show controls even when chart data isn't ready */}
+                {optimizedData && (
+                  <div className="chart-controls">
+                  {/* Timeline Slider - Redesigned for better functionality */}
+                  <div className="timeline-row" onWheel={(e) => {
+                    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0)
+                    if (!delta || !optimizedData) return
+                    e.preventDefault()
+                    const view = timeWindowSize / zoomLevel
+                    const step = Math.max(0.1, view * 0.02)
+                    const dir = delta > 0 ? 1 : -1
+                    const total = optimizedData.metadata.duration
+                    const maxPos = Math.max(0, total - view)
+                    setCurrentTimePosition(prev => Math.max(0, Math.min(maxPos, prev + dir * step)))
+                  }}>
+                    <span className="time-marker start">0s</span>
+                    <div className="timeline-container">
+                      <div className="timeline-background" />
+                      <div className="timeline-visible-range" />
+                      <input
+                        type="range"
+                        min="0"
+                        max={optimizedData?.metadata.duration || 100}
+                        step="0.01"
+                        value={currentTimePosition}
+                        onChange={(e) => {
+                          const newValue = parseFloat(e.target.value)
+                          handleTimePositionDrag(newValue)
+                        }}
+                        onInput={(e) => {
+                          const newValue = parseFloat((e.target as HTMLInputElement).value)
+                          handleTimePositionDrag(newValue)
+                        }}
+                        className="timeline-slider"
+                        aria-label="Timeline position"
+                        onKeyDown={(e) => {
+                          if (!optimizedData) return
+                          const view = timeWindowSize / zoomLevel
+                          const step = Math.max(0.1, view * 0.02)
+                          if (e.key === 'ArrowLeft') {
+                            e.preventDefault()
+                            setCurrentTimePosition(prev => Math.max(0, prev - step))
+                          } else if (e.key === 'ArrowRight') {
+                            e.preventDefault()
+                            const maxPos = Math.max(0, optimizedData.metadata.duration - view)
+                            setCurrentTimePosition(prev => Math.min(maxPos, prev + step))
+                          }
+                        }}
+                      />
+                    </div>
+                    <span className="time-marker end">{optimizedData?.metadata.duration.toFixed(1) || '0.0'}s</span>
+                    <div className="range-info">
+                      {(() => {
+                        const effectiveWindow = getEffectiveTimeWindow()
+                        return `${effectiveWindow.start.toFixed(1)}s - ${effectiveWindow.end.toFixed(1)}s`
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Enhanced Main Controls */}
+                  <div className="controls-row">
+                    {/* Enhanced Zoom Controls with Presets */}
+                    <div className="zoom-group">
+                      <span className="control-label"><span aria-hidden="true">{Icons.zoom}</span> Zoom</span>
+                      <div className="zoom-presets">
+                        { [
+                          { span: null, label: 'All', isAll: true },
+                          { span: 30, label: '30s' },
+                          { span: 10, label: '10s' },
+                          { span: 5, label: '5s' },
+                          { span: 2, label: '2s' }
+                        ].map(preset => {
+                          const totalDuration = optimizedData?.metadata.duration || 30
+                          let isActive: boolean
+                          let requiredZoom: number
+                          if (preset.isAll) {
+                            isActive = Math.abs(zoomLevel - 1) < 0.1
+                            requiredZoom = 1
+                          } else if (preset.span != null) {
+                            requiredZoom = totalDuration / preset.span
+                            isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                          } else {
+                            requiredZoom = 1
+                            isActive = Math.abs(zoomLevel - 1) < 0.1
+                          }
+                          const spanValue = preset.span ?? undefined
+                          return (
+                            <button
+                              key={preset.label}
+                              onClick={() => {
+                                if (preset.isAll) {
+                                  setZoomLevel(1)
+                                  setCurrentTimePosition(0)
+                                } else if (spanValue) {
+                                  const newZoom = Math.min(10, Math.max(1, totalDuration / spanValue))
+                                  setZoomLevel(newZoom)
+                                  setCurrentTimePosition(0)
+                                }
+                              }}
+                              className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
+                              disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
+                              title={preset.isAll ? 'View all data' : spanValue ? `View ${spanValue} second window` : 'View all data'}
+                              aria-label={preset.isAll ? 'Fit all data' : spanValue ? `Set view to ${spanValue} seconds` : 'Fit all data'}
+                            >
+                              {preset.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Fine Zoom Controls */}
+                      <div className="zoom-fine-controls">
+                        <button 
+                          onClick={() => handleZoomChange('out')}
+                          className="btn-zoom btn-zoom-out"
+                          disabled={zoomLevel <= 1.0}
+                          title="Zoom out (-)"
+                          aria-label="Zoom out"
+                        >
+                          <span className="zoom-icon">−</span>
+                        </button>
+                        <div className="zoom-display-enhanced">
+                          <span className="zoom-current">{(zoomLevel).toFixed(1)}×</span>
+                          <div className="zoom-indicator">
+                            <div 
+                              className="zoom-level-bar" 
+                              data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
+                            />
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleZoomChange('in')}
+                          className="btn-zoom btn-zoom-in"
+                          disabled={zoomLevel >= 10.0}
+                          title="Zoom in (+)"
+                          aria-label="Zoom in"
+                        >
+                          <span className="zoom-icon">+</span>
+                        </button>
+                        <button 
+                          onClick={() => handleZoomChange('reset')}
+                          className="btn-zoom btn-reset"
+                          title="Reset view (Fit all data)"
+                          aria-label="Reset zoom and position"
+                        >
+                          <span className="reset-icon" aria-hidden="true">{Icons.home}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Time Info with Navigation */}
+                    <div className="time-info-enhanced">
+                      <div className="time-navigation">
+                        <button
+                          onClick={() => {
+                            const step = (timeWindowSize / zoomLevel) * 0.1
+                            setCurrentTimePosition(Math.max(0, currentTimePosition - step))
+                          }}
+                          className="btn-time-nav"
+                          disabled={currentTimePosition <= 0}
+                          title="Jump backward"
+                        >
+                          <span aria-hidden="true">{Icons.stepBack}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const step = (timeWindowSize / zoomLevel) * 0.1
+                            const maxPos = Math.max(0, (optimizedData?.metadata.duration || 0) - (timeWindowSize / zoomLevel))
+                            setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
+                          }}
+                          className="btn-time-nav"
+                          disabled={(() => {
+                            const maxPos = Math.max(0, (optimizedData?.metadata.duration || 0) - (timeWindowSize / zoomLevel))
+                            return currentTimePosition >= maxPos
+                          })()}
+                          title="Jump forward"
+                        >
+                          <span aria-hidden="true">{Icons.stepForward}</span>
+                        </button>
+                      </div>
+                      
+                      <div className="time-display">
+                        <span className="info-label" aria-hidden="true">{Icons.chart}</span>
+                        <span className="info-value">{(() => {
+                          const effectiveWindow = getEffectiveTimeWindow()
+                          const viewingDuration = effectiveWindow.end - effectiveWindow.start
+                          const percentage = ((viewingDuration / optimizedData.metadata.duration) * 100).toFixed(1)
+                          return `${viewingDuration.toFixed(1)}s (${percentage}%)`
+                        })()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selection Info */}
+                  {selectionBox && (
+                    <div className="selection-info">
+                      <span className="selection-text">
+                        Selection: {selectionBox.start.toFixed(2)}s - {selectionBox.end.toFixed(2)}s
+                      </span>
+                      <button onClick={clearSelection} className="btn-clear-selection">
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>
