@@ -62,7 +62,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   
   // Color management for multi-device support
   const [deviceColors, setDeviceColors] = useState<Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>>(new Map())
-  
+
   const { getChartTimestamp } = useTimestampManager({
     useRelativeTime: true, // Match LiveChart configuration
   })
@@ -83,18 +83,19 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
   }, [currentTimePosition, timeWindowSize, zoomLevel, optimizedData])
 
-  // Check if we're zoomed in enough to show the time slider
-  const isZoomedIn = useCallback(() => {
-    if (!optimizedData) return false
-    const totalDuration = optimizedData.metadata.duration
-    const currentViewDuration = timeWindowSize / zoomLevel
-    return currentViewDuration < totalDuration * 0.9 // Show slider when viewing less than 90% of total data
-  }, [optimizedData, timeWindowSize, zoomLevel])
-
-  // Enhanced time slider with smooth dragging
+  // Enhanced time slider with proper bounds checking
   const handleTimePositionDrag = useCallback((value: number) => {
-    setCurrentTimePosition(value)
-  }, [])
+    if (!optimizedData) return
+    
+    const totalDuration = optimizedData.metadata.duration
+    const viewingDuration = timeWindowSize / zoomLevel
+    
+    // Constrain the position so the viewing window doesn't exceed the total duration
+    const maxPosition = Math.max(0, totalDuration - viewingDuration)
+    const constrainedPosition = Math.max(0, Math.min(maxPosition, value))
+    
+    setCurrentTimePosition(constrainedPosition)
+  }, [optimizedData, timeWindowSize, zoomLevel])
 
   const handleZoomChange = useCallback((direction: 'in' | 'out' | 'reset') => {
     if (direction === 'reset') {
@@ -281,6 +282,35 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
   }, [zoomLevel, currentTimePosition, optimizedData, getEffectiveTimeWindow])
 
+  // Update timeline slider visual range - always show what's visible in chart
+  useEffect(() => {
+    if (optimizedData) {
+      const effectiveWindow = getEffectiveTimeWindow()
+      const viewingDuration = effectiveWindow.end - effectiveWindow.start
+      const totalDuration = optimizedData.metadata.duration
+      
+      // Calculate position and width percentages for the visible range
+      const positionPercent = (effectiveWindow.start / totalDuration) * 100
+      const widthPercent = Math.min(100, (viewingDuration / totalDuration) * 100) // Cap at 100%
+      
+      // Update CSS custom properties on timeline container
+      const timelineContainer = document.querySelector('.timeline-container') as HTMLElement
+      if (timelineContainer) {
+        timelineContainer.style.setProperty('--timeline-position', `${positionPercent}%`)
+        timelineContainer.style.setProperty('--timeline-width', `${widthPercent}%`)
+      }
+      
+      // Debug logging
+      console.log('Timeline range update:', {
+        effectiveWindow,
+        positionPercent: positionPercent.toFixed(1),
+        widthPercent: widthPercent.toFixed(1),
+        zoomLevel,
+        currentTimePosition
+      })
+    }
+  }, [currentTimePosition, zoomLevel, optimizedData, getEffectiveTimeWindow])
+
   // Simple cleanup on component unmount only
   useEffect(() => {
     return () => {
@@ -464,7 +494,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     loadSessionData()
   }
 
-  const exportFilteredData = async () => {
+  const exportFilteredData = useCallback(async () => {
     try {
       const csvContent = [
         ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
@@ -503,7 +533,116 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       console.error('Failed to export filtered data:', err)
       showError('Export Failed', `Failed to export filtered data: ${err}`)
     }
-  }
+  }, [filteredData, sessionName, showSuccess, showError, showInfo])
+
+  // Enhanced keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when DataViewer is open and not in input fields
+      if (event.target && (event.target as HTMLElement).tagName === 'INPUT') return
+
+      const step = (timeWindowSize / zoomLevel) * 0.1
+      const totalDuration = optimizedData?.metadata.duration || 30
+
+      switch (event.key) {
+        case 'Escape':
+          onClose()
+          break
+        case 'ArrowLeft':
+          event.preventDefault()
+          setCurrentTimePosition(prev => Math.max(0, prev - step))
+          break
+        case 'ArrowRight': {
+          event.preventDefault()
+          const maxPos = Math.max(0, totalDuration - (timeWindowSize / zoomLevel))
+          setCurrentTimePosition(prev => Math.min(maxPos, prev + step))
+          break
+        }
+        case '+':
+        case '=':
+          event.preventDefault()
+          setZoomLevel(prev => Math.min(10, prev * 1.5))
+          break
+        case '-':
+          event.preventDefault()
+          setZoomLevel(prev => Math.max(1, prev / 1.5))
+          break
+        case '0':
+          event.preventDefault()
+          setZoomLevel(1)
+          setCurrentTimePosition(0)
+          break
+        case '1':
+          event.preventDefault()
+          // View all data
+          setZoomLevel(1)
+          setCurrentTimePosition(0)
+          break
+        case '2':
+          event.preventDefault()
+          // 30 second view
+          if (totalDuration >= 30) {
+            setZoomLevel(totalDuration / 30)
+            setCurrentTimePosition(0)
+          }
+          break
+        case '3':
+          event.preventDefault()
+          // 10 second view
+          if (totalDuration >= 10) {
+            setZoomLevel(totalDuration / 10)
+            setCurrentTimePosition(0)
+          }
+          break
+        case '4':
+          event.preventDefault()
+          // 5 second view
+          if (totalDuration >= 5) {
+            setZoomLevel(totalDuration / 5)
+            setCurrentTimePosition(0)
+          }
+          break
+        case '5':
+          event.preventDefault()
+          // 2 second view
+          if (totalDuration >= 2) {
+            setZoomLevel(totalDuration / 2)
+            setCurrentTimePosition(0)
+          }
+          break
+        case 's':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault()
+            exportFilteredData()
+          }
+          break
+        case 'f':
+          event.preventDefault()
+          setZoomLevel(1)
+          setCurrentTimePosition(0)
+          setTimeRange(null)
+          break
+        case '?':
+          event.preventDefault()
+          showInfo('Keyboard Shortcuts:\n\n' +
+            '1: View all data\n' +
+            '2: 30 second view\n' +
+            '3: 10 second view\n' +
+            '4: 5 second view\n' +
+            '5: 2 second view\n' +
+            '← → Arrow keys: Navigate timeline\n' +
+            '+ - : Zoom in/out\n' +
+            '0 : Reset view\n' +
+            'F : Fit all data\n' +
+            'Ctrl+S : Export data\n' +
+            'Esc : Close viewer')
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose, optimizedData, timeWindowSize, zoomLevel, exportFilteredData, showInfo])
 
   if (loading) {
     return (
@@ -600,309 +739,560 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           </div>
         </header>
 
-        {/* Toolbar Section - View Mode & Actions */}
+        {/* Toolbar Section - Actions & Controls */}
         <nav className="data-viewer-toolbar">
-  
+          <div className="toolbar-left">
+            {/* Data Summary */}
+            <div className="data-summary">
+              <span className="summary-item">
+                <span className="summary-label">Data Points:</span>
+                <span className="summary-value">{chartData ? chartData.totalDataPoints.toLocaleString() : '0'}</span>
+              </span>
+              <span className="summary-separator">•</span>
+              <span className="summary-item">
+                <span className="summary-label">Data Types:</span>
+                <span className="summary-value">{optimizedData ? optimizedData.metadata.data_types.length : 0}</span>
+              </span>
+            </div>
+          </div>
 
           <div className="toolbar-right">
-            {/* Action Buttons */}
+            {/* Enhanced Action Buttons */}
             <div className="action-buttons">
-              <button 
-                className="btn-action btn-export" 
-                onClick={exportFilteredData}
-                title="Export current data view"
-                aria-label="Export data"
-              >
-                <span className="btn-icon">📥</span>
-                <span className="btn-label">Export</span>
-              </button>
-              <button 
-                className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                title="Toggle advanced settings"
-                aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
-              >
-                <span className="btn-icon">⚙️</span>
-                <span className="btn-label">Settings</span>
-              </button>
+              {/* Quick Actions */}
+              <div className="quick-actions">
+                <button 
+                  className="btn-action btn-fit" 
+                  onClick={() => {
+                    setZoomLevel(1)
+                    setCurrentTimePosition(0)
+                    setTimeRange(null)
+                  }}
+                  title="Fit all data to view"
+                  aria-label="Fit all data"
+                >
+                  <span className="btn-icon">🎯</span>
+                  <span className="btn-label">Fit All</span>
+                </button>
+                
+                {selectionBox && (
+                  <button 
+                    className="btn-action btn-zoom-selection" 
+                    onClick={() => {
+                      if (selectionBox) {
+                        const duration = selectionBox.end - selectionBox.start
+                        const newZoom = Math.min(10, Math.max(1, (optimizedData?.metadata.duration || 10) / duration))
+                        setZoomLevel(newZoom)
+                        setCurrentTimePosition(selectionBox.start)
+                      }
+                    }}
+                    title="Zoom to selected area"
+                    aria-label="Zoom to selection"
+                  >
+                    <span className="btn-icon">🔍</span>
+                    <span className="btn-label">Zoom to Selection</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Primary Actions */}
+              <div className="primary-actions">
+                <button 
+                  className="btn-action btn-export" 
+                  onClick={exportFilteredData}
+                  title="Export current data view to CSV"
+                  aria-label="Export data"
+                >
+                  <span className="btn-icon">�</span>
+                  <span className="btn-label">Export Data</span>
+                </button>
+                
+                <button 
+                  className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  title={showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'}
+                  aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
+                >
+                  <span className="btn-icon">⚙️</span>
+                  <span className="btn-label">Settings</span>
+                  <span className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}>▼</span>
+                </button>
+              </div>
             </div>
           </div>
         </nav>
 
-        {/* Advanced Settings Panel */}
+        {/* Enhanced Advanced Settings Panel */}
         {showAdvancedSettings && (
-          <div className="settings-panel" role="region" aria-label="Advanced settings">
-            <div className="settings-card">
-              <h3 className="settings-title">Performance Options</h3>
-              <div className="settings-grid">
-                <div className="setting-item">
-                  <label className="setting-label">
-                    <input
-                      type="checkbox"
-                      className="setting-checkbox"
-                      checked={useDownsampling}
-                      onChange={(e) => setUseDownsampling(e.target.checked)}
-                      aria-describedby="downsampling-help"
-                    />
-                    <span className="checkbox-custom"></span>
-                    <span className="setting-text">Enable Data Downsampling</span>
-                  </label>
-                  <p id="downsampling-help" className="setting-help">
-                    Reduces data points for better performance with large datasets
-                  </p>
-                </div>
-                <div className="setting-item">
-                  <label htmlFor="maxDataPoints" className="setting-label-text">
-                    Maximum Data Points
-                  </label>
-                  <div className="number-input-group">
-                    <input
-                      id="maxDataPoints"
-                      type="number"
-                      min="100"
-                      max="50000"
-                      step="500"
-                      value={maxDataPoints}
-                      onChange={(e) => setMaxDataPoints(parseInt(e.target.value) || 5000)}
-                      className="number-input"
-                      aria-describedby="max-points-help"
-                    />
-                    <span className="input-unit">points</span>
+          <section className="settings-panel enhanced" role="region" aria-label="Advanced settings">
+            <div className="settings-container">
+              {/* Performance Settings */}
+              <div className="settings-card">
+                <h3 className="settings-title">
+                  <span className="settings-icon">⚡</span>
+                  Performance & Rendering
+                  <div className="performance-indicator">
+                    <div className={`performance-status ${chartData && chartData.totalDataPoints > 5000 ? 'warning' : 'good'}`}>
+                      {chartData && chartData.totalDataPoints > 10000 ? '🔴' : 
+                       chartData && chartData.totalDataPoints > 5000 ? '🟡' : '🟢'}
+                      <span className="performance-text">
+                        {chartData && chartData.totalDataPoints > 10000 ? 'High Load' : 
+                         chartData && chartData.totalDataPoints > 5000 ? 'Moderate Load' : 'Optimal'}
+                      </span>
+                    </div>
                   </div>
-                  <p id="max-points-help" className="setting-help">
-                    Higher values show more detail but may reduce performance
-                  </p>
+                </h3>
+                <div className="settings-grid">
+                  <div className="setting-group">
+                    <div className="setting-item">
+                      <label className="setting-label">
+                        <input
+                          type="checkbox"
+                          className="setting-checkbox"
+                          checked={useDownsampling}
+                          onChange={(e) => setUseDownsampling(e.target.checked)}
+                          aria-describedby="downsampling-help"
+                        />
+                        <span className="checkbox-custom"></span>
+                        <span className="setting-text">Smart Data Downsampling</span>
+                        <span className="setting-badge">Recommended</span>
+                      </label>
+                      <p id="downsampling-help" className="setting-help">
+                        📈 Automatically reduces data points for better performance while preserving important features
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="setting-group">
+                    <div className="setting-item">
+                      <label htmlFor="maxDataPoints" className="setting-label-text">
+                        Data Point Limit
+                        <span className="current-count">
+                          ({chartData ? chartData.totalDataPoints.toLocaleString() : '0'} current)
+                        </span>
+                      </label>
+                      <div className="range-input-group">
+                        <input
+                          id="maxDataPoints"
+                          type="range"
+                          min="1000"
+                          max="50000"
+                          step="1000"
+                          value={maxDataPoints}
+                          onChange={(e) => setMaxDataPoints(parseInt(e.target.value))}
+                          className="range-input"
+                          aria-describedby="max-points-help"
+                        />
+                        <div className="range-labels">
+                          <span>1K</span>
+                          <span className="range-current">{(maxDataPoints / 1000).toFixed(0)}K</span>
+                          <span>50K</span>
+                        </div>
+                      </div>
+                      <p id="max-points-help" className="setting-help">
+                        🎯 Balance between detail and performance. Higher values show more detail but may reduce responsiveness.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Display Settings */}
+              <div className="settings-card">
+                <h3 className="settings-title">
+                  <span className="settings-icon">🎨</span>
+                  Display Options
+                </h3>
+                <div className="settings-grid">
+                  <div className="setting-group">
+                    <div className="setting-item">
+                      <label className="setting-label">
+                        <input
+                          type="checkbox"
+                          className="setting-checkbox"
+                          checked={!enableAnimations}
+                          onChange={() => {
+                            // Note: enableAnimations is currently read-only, but we can show the UI
+                          }}
+                          disabled
+                          aria-describedby="animations-help"
+                        />
+                        <span className="checkbox-custom"></span>
+                        <span className="setting-text">Disable Animations</span>
+                        <span className="setting-badge disabled">Auto</span>
+                      </label>
+                      <p id="animations-help" className="setting-help">
+                        🚀 Animations are automatically disabled for better performance with large datasets
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="setting-group">
+                    <div className="setting-item">
+                      <label htmlFor="timeWindowSize" className="setting-label-text">
+                        Default Time Window
+                      </label>
+                      <div className="range-input-group">
+                        <input
+                          id="timeWindowSize"
+                          type="range"
+                          min="1"
+                          max="60"
+                          step="1"
+                          value={timeWindowSize}
+                          onChange={(e) => setTimeWindowSize(parseInt(e.target.value))}
+                          className="range-input"
+                          aria-describedby="time-window-help"
+                        />
+                        <div className="range-labels">
+                          <span>1s</span>
+                          <span className="range-current">{timeWindowSize}s</span>
+                          <span>60s</span>
+                        </div>
+                      </div>
+                      <p id="time-window-help" className="setting-help">
+                        ⏱️ Default viewing window when zooming. Smaller values show more detail.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         )}
 
         {/* Main Content Area */}
         <main className="data-viewer-content" role="main">
-          {chartData && (
-            <div id="chart-panel" role="tabpanel" aria-labelledby="chart-tab" className="chart-container">
-              {(() => {
-                try {
-                  return (
-                    <Line
-                      key={`data-chart-${timeRange ? 'filtered' : 'all'}`}
-                      data={{ datasets: chartData.datasets }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: enableAnimations ? {
-                          duration: 300,
-                          easing: 'easeInOutQuart'
-                        } : false,
-                        plugins: {
-                          legend: {
-                            position: 'top',
-                            labels: {
-                              boxWidth: 12,
-                              padding: 15,
-                              font: {
-                                size: 12
-                              },
-                              // Improve label formatting for better readability
-                              generateLabels: function(chart) {
-                                const original = Chart.defaults.plugins.legend.labels.generateLabels(chart)
-                                return original.map(item => {
-                                  // Shorten long labels by using abbreviated device names
-                                  if (item.text) {
-                                    const match = item.text.match(/^Device (\w+) - (.+)$/)
-                                    if (match) {
-                                      const [, deviceId, dataType] = match
-                                      // Use shorter device identifier
-                                      item.text = `${deviceId.slice(-4)} ${dataType.toUpperCase()}`
-                                    }
+          <div className="chart-section">
+            {chartData ? (
+              <div className="chart-wrapper">
+                <div id="chart-panel" role="tabpanel" aria-labelledby="chart-tab" className="chart-container">
+                  {(() => {
+                    try {
+                      return (
+                        <Line
+                          key={`data-chart-${timeRange ? 'filtered' : 'all'}`}
+                          data={{ datasets: chartData.datasets }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: enableAnimations ? {
+                              duration: 300,
+                              easing: 'easeInOutQuart'
+                            } : false,
+                            plugins: {
+                              legend: {
+                                position: 'top',
+                                labels: {
+                                  boxWidth: 12,
+                                  padding: 15,
+                                  font: {
+                                    size: 12
+                                  },
+                                  // Improve label formatting for better readability
+                                  generateLabels: function(chart) {
+                                    const original = Chart.defaults.plugins.legend.labels.generateLabels(chart)
+                                    return original.map(item => {
+                                      // Shorten long labels by using abbreviated device names
+                                      if (item.text) {
+                                        const match = item.text.match(/^Device (\w+) - (.+)$/)
+                                        if (match) {
+                                          const [, deviceId, dataType] = match
+                                          // Use shorter device identifier
+                                          item.text = `${deviceId.slice(-4)} ${dataType.toUpperCase()}`
+                                        }
+                                      }
+                                      return item
+                                    })
                                   }
-                                  return item
-                                })
-                              }
-                            }
-                          },
-                          title: {
-                            display: true,
-                            text: `${sessionName} - Data Visualization`
-                          },
-                          tooltip: {
-                            enabled: true,
-                            mode: 'index',
-                            intersect: false,
-                            filter: function(tooltipItem) {
-                              // Filter out null/undefined values from tooltips
-                              return tooltipItem && 
-                                     tooltipItem.parsed && 
-                                     typeof tooltipItem.parsed.x === 'number' && 
-                                     typeof tooltipItem.parsed.y === 'number' &&
-                                     !isNaN(tooltipItem.parsed.x) &&
-                                     !isNaN(tooltipItem.parsed.y)
-                            },
-                            callbacks: {
-                              title: function(context) {
-                                if (context && context[0] && context[0].parsed) {
-                                  return `Time: ${context[0].parsed.x.toFixed(2)}s`
                                 }
-                                return 'Data Point'
                               },
-                              label: function(context) {
-                                if (context && context.parsed && typeof context.parsed.y === 'number') {
-                                  return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`
+                              title: {
+                                display: true,
+                                text: `${sessionName} - Data Visualization`
+                              },
+                              tooltip: {
+                                enabled: true,
+                                mode: 'index',
+                                intersect: false,
+                                filter: function(tooltipItem) {
+                                  // Filter out null/undefined values from tooltips
+                                  return tooltipItem && 
+                                         tooltipItem.parsed && 
+                                         typeof tooltipItem.parsed.x === 'number' && 
+                                         typeof tooltipItem.parsed.y === 'number' &&
+                                         !isNaN(tooltipItem.parsed.x) &&
+                                         !isNaN(tooltipItem.parsed.y)
+                                },
+                                callbacks: {
+                                  title: function(context) {
+                                    if (context && context[0] && context[0].parsed) {
+                                      return `Time: ${context[0].parsed.x.toFixed(2)}s`
+                                    }
+                                    return 'Data Point'
+                                  },
+                                  label: function(context) {
+                                    if (context && context.parsed && typeof context.parsed.y === 'number') {
+                                      return `${context.dataset.label}: ${context.parsed.y.toFixed(3)}`
+                                    }
+                                    return `${context.dataset.label}: N/A`
+                                  }
                                 }
-                                return `${context.dataset.label}: N/A`
                               }
-                            }
-                          }
-                        },
-                        scales: {
-                          x: {
-                            type: 'linear',
-                            position: 'bottom',
-                            title: {
-                              display: true,
-                              text: 'Time (seconds)'
                             },
-                            min: timeRange?.start,
-                            max: timeRange?.end,
-                            ticks: {
-                              callback: function(value) {
-                                // Format relative time in seconds (matching LiveChart)
-                                if (typeof value === 'number' && !isNaN(value)) {
-                                  return `${value.toFixed(1)}s`
+                            scales: {
+                              x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                  display: true,
+                                  text: 'Time (seconds)'
+                                },
+                                min: timeRange?.start,
+                                max: timeRange?.end,
+                                ticks: {
+                                  callback: function(value) {
+                                    // Format relative time in seconds (matching LiveChart)
+                                    if (typeof value === 'number' && !isNaN(value)) {
+                                      return `${value.toFixed(1)}s`
+                                    }
+                                    return value
+                                  }
                                 }
-                                return value
+                              },
+                              y: {
+                                title: {
+                                  display: true,
+                                  text: 'Value'
+                                }
+                              }
+                            },
+                            interaction: {
+                              intersect: false,
+                              mode: 'index'
+                            },
+                            elements: {
+                              point: {
+                                radius: chartData.totalDataPoints > 2000 ? 0 : (chartData.totalDataPoints > 1000 ? 0.5 : 1),
+                                hoverRadius: 4,
+                                hitRadius: 6
+                              }
+                            },
+                            // Enhanced performance for large datasets
+                            datasets: {
+                              line: {
+                                pointRadius: chartData.totalDataPoints > 3000 ? 0 : (chartData.totalDataPoints > 1500 ? 0.5 : 1),
+                                borderWidth: chartData.totalDataPoints > 5000 ? 1 : 2
                               }
                             }
-                          },
-                          y: {
-                            title: {
-                              display: true,
-                              text: 'Value'
-                            }
-                          }
-                        },
-                        interaction: {
-                          intersect: false,
-                          mode: 'index'
-                        },
-                        elements: {
-                          point: {
-                            radius: chartData.totalDataPoints > 2000 ? 0 : (chartData.totalDataPoints > 1000 ? 0.5 : 1),
-                            hoverRadius: 4,
-                            hitRadius: 6
-                          }
-                        },
-                        // Enhanced performance for large datasets
-                        datasets: {
-                          line: {
-                            pointRadius: chartData.totalDataPoints > 3000 ? 0 : (chartData.totalDataPoints > 1500 ? 0.5 : 1),
-                            borderWidth: chartData.totalDataPoints > 5000 ? 1 : 2
-                          }
-                        }
-                      }}
-                    />
-                  )
-                } catch (error) {
-                  console.error('Chart rendering error:', error)
-                  return (
-                    <div className="chart-error">
-                      <p>❌ Error rendering chart. Please try refreshing the data.</p>
-                      <button onClick={reloadData} className="btn-secondary">
-                        🔄 Reload Data
-                      </button>
+                          }}
+                        />
+                      )
+                    } catch (error) {
+                      console.error('Chart rendering error:', error)
+                      return (
+                        <div className="chart-error">
+                          <p>❌ Error rendering chart. Please try refreshing the data.</p>
+                          <button onClick={reloadData} className="btn-secondary">
+                            🔄 Reload Data
+                          </button>
+                        </div>
+                      )
+                    }
+                  })()}
+                </div>
+
+                {/* Simplified Chart Controls */}
+                {chartData && optimizedData && (
+                  <div className="chart-controls">
+                    {/* Timeline Slider - Redesigned for better functionality */}
+                    <div className="timeline-row">
+                      <span className="time-marker start">0s</span>
+                      <div className="timeline-container">
+                        <div className="timeline-background" />
+                        <div className="timeline-visible-range" />
+                        <input
+                          type="range"
+                          min="0"
+                          max={optimizedData?.metadata.duration || 100}
+                          step="0.01"
+                          value={currentTimePosition}
+                          onChange={(e) => {
+                            const newValue = parseFloat(e.target.value)
+                            handleTimePositionDrag(newValue)
+                          }}
+                          onInput={(e) => {
+                            const newValue = parseFloat((e.target as HTMLInputElement).value)
+                            handleTimePositionDrag(newValue)
+                          }}
+                          className="timeline-slider"
+                          aria-label="Timeline position"
+                        />
+                      </div>
+                      <span className="time-marker end">{optimizedData?.metadata.duration.toFixed(1) || '0.0'}s</span>
+                      <div className="range-info">
+                        {(() => {
+                          const effectiveWindow = getEffectiveTimeWindow()
+                          return `${effectiveWindow.start.toFixed(1)}s - ${effectiveWindow.end.toFixed(1)}s`
+                        })()}
+                      </div>
                     </div>
-                  )
-                }
-              })()}
-            </div>
-          )}
 
-          {/* Time Navigation Controls - Compact and Responsive */}
-          {chartData && optimizedData && (
-            <div className="time-navigation-controls">
-              {/* Main Controls Row */}
-              <div className="navigation-main-row">
-                {/* Zoom Controls */}
-                <div className="zoom-section">
-                  <label>Zoom:</label>
-                  <div className="zoom-controls">
-                    <button 
-                      onClick={() => handleZoomChange('out')}
-                      className="btn-secondary btn-sm"
-                      disabled={zoomLevel <= 1.0}
-                      title="Zoom out"
-                    >
-                      🔍-
-                    </button>
-                    <span className="zoom-display">{(zoomLevel).toFixed(1)}x</span>
-                    <button 
-                      onClick={() => handleZoomChange('in')}
-                      className="btn-secondary btn-sm"
-                      disabled={zoomLevel >= 10.0}
-                      title="Zoom in"
-                    >
-                      🔍+
-                    </button>
-                    <button 
-                      onClick={() => handleZoomChange('reset')}
-                      className="btn-secondary btn-sm"
-                      title="Reset view"
-                    >
-                      📊
-                    </button>
+                    {/* Enhanced Main Controls */}
+                    <div className="controls-row">
+                      {/* Enhanced Zoom Controls with Presets */}
+                      <div className="zoom-group">
+                        <span className="control-label">🔍 Zoom:</span>
+                        
+                        {/* Time Span Presets */}
+                        <div className="zoom-presets">
+                          {[
+                            { span: null, label: 'All', isAll: true },
+                            { span: 30, label: '30s' },
+                            { span: 10, label: '10s' },
+                            { span: 5, label: '5s' },
+                            { span: 2, label: '2s' }
+                          ].map(preset => {
+                            const totalDuration = optimizedData?.metadata.duration || 30
+                            
+                            let isActive, requiredZoom
+                            if (preset.isAll) {
+                              isActive = Math.abs(zoomLevel - 1) < 0.1
+                              requiredZoom = 1
+                            } else {
+                              requiredZoom = totalDuration / preset.span
+                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                            }
+                            
+                            return (
+                              <button
+                                key={preset.label}
+                                onClick={() => {
+                                  if (preset.isAll) {
+                                    setZoomLevel(1)
+                                    setCurrentTimePosition(0)
+                                  } else {
+                                    const newZoom = Math.min(10, Math.max(1, requiredZoom))
+                                    setZoomLevel(newZoom)
+                                    setCurrentTimePosition(0)
+                                  }
+                                }}
+                                className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
+                                disabled={!preset.isAll && preset.span > totalDuration}
+                                title={preset.isAll ? 'View all data' : `View ${preset.span} second window`}
+                                aria-label={preset.isAll ? 'Fit all data' : `Set view to ${preset.span} seconds`}
+                              >
+                                {preset.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {/* Fine Zoom Controls */}
+                        <div className="zoom-fine-controls">
+                          <button 
+                            onClick={() => handleZoomChange('out')}
+                            className="btn-zoom btn-zoom-out"
+                            disabled={zoomLevel <= 1.0}
+                            title="Zoom out (0.5x)"
+                            aria-label="Zoom out"
+                          >
+                            <span className="zoom-icon">−</span>
+                          </button>
+                          <div className="zoom-display-enhanced">
+                            <span className="zoom-current">{(zoomLevel).toFixed(1)}×</span>
+                            <div className="zoom-indicator">
+                              <div 
+                                className="zoom-level-bar" 
+                                data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
+                              />
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => handleZoomChange('in')}
+                            className="btn-zoom btn-zoom-in"
+                            disabled={zoomLevel >= 10.0}
+                            title="Zoom in (2x)"
+                            aria-label="Zoom in"
+                          >
+                            <span className="zoom-icon">+</span>
+                          </button>
+                          <button 
+                            onClick={() => handleZoomChange('reset')}
+                            className="btn-zoom btn-reset"
+                            title="Reset view (Fit all data)"
+                            aria-label="Reset zoom and position"
+                          >
+                            <span className="reset-icon">⌂</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Enhanced Time Info with Navigation */}
+                      <div className="time-info-enhanced">
+                        <div className="time-navigation">
+                          <button
+                            onClick={() => {
+                              const step = (timeWindowSize / zoomLevel) * 0.1
+                              setCurrentTimePosition(Math.max(0, currentTimePosition - step))
+                            }}
+                            className="btn-time-nav"
+                            disabled={currentTimePosition <= 0}
+                            title="Jump backward"
+                          >
+                            ⏪
+                          </button>
+                          <button
+                            onClick={() => {
+                              const step = (timeWindowSize / zoomLevel) * 0.1
+                              const maxPos = Math.max(0, (optimizedData?.metadata.duration || 0) - (timeWindowSize / zoomLevel))
+                              setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
+                            }}
+                            className="btn-time-nav"
+                            disabled={(() => {
+                              const maxPos = Math.max(0, (optimizedData?.metadata.duration || 0) - (timeWindowSize / zoomLevel))
+                              return currentTimePosition >= maxPos
+                            })()}
+                            title="Jump forward"
+                          >
+                            ⏩
+                          </button>
+                        </div>
+                        
+                        <div className="time-display">
+                          <span className="info-label">📊 Viewing:</span>
+                          <span className="info-value">{(() => {
+                            const effectiveWindow = getEffectiveTimeWindow()
+                            const viewingDuration = effectiveWindow.end - effectiveWindow.start
+                            const percentage = ((viewingDuration / optimizedData.metadata.duration) * 100).toFixed(1)
+                            return `${viewingDuration.toFixed(1)}s (${percentage}%)`
+                          })()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selection Info */}
+                    {selectionBox && (
+                      <div className="selection-info">
+                        <span className="selection-text">
+                          Selection: {selectionBox.start.toFixed(2)}s - {selectionBox.end.toFixed(2)}s
+                        </span>
+                        <button onClick={clearSelection} className="btn-clear-selection">
+                          Clear
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Time Info */}
-                <div className="time-info">
-                  <span>Viewing: {(() => {
-                    const effectiveWindow = getEffectiveTimeWindow()
-                    const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                    return `${viewingDuration.toFixed(1)}s of ${optimizedData.metadata.duration.toFixed(1)}s`
-                  })()}</span>
-                </div>
+                )}
               </div>
-
-              {/* Timeline Slider - Only show when zoomed in */}
-              {isZoomedIn() && (
-                <div className="timeline-slider-row">
-                  <div className="slider-container">
-                    <span className="time-marker">0s</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max={(() => {
-                        const effectiveWindow = getEffectiveTimeWindow()
-                        const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                        return Math.max(0, optimizedData.metadata.duration - viewingDuration)
-                      })()}
-                      step="0.1"
-                      value={currentTimePosition}
-                      onChange={(e) => handleTimePositionDrag(parseFloat(e.target.value))}
-                      className="main-timeline-slider"
-                      title={`Position: ${currentTimePosition.toFixed(1)}s`}
-                      aria-label="Timeline position"
-                    />
-                    <span className="time-marker">{optimizedData.metadata.duration.toFixed(1)}s</span>
-                  </div>
-                  <div className="current-range">
-                    <span>📍 {(() => {
-                      const effectiveWindow = getEffectiveTimeWindow()
-                      return `${effectiveWindow.start.toFixed(1)}s - ${effectiveWindow.end.toFixed(1)}s`
-                    })()}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {selectionBox && (
-            <div className="selection-info">
-              <span>Selection: {selectionBox.start.toFixed(2)}s - {selectionBox.end.toFixed(2)}s</span>
-              <button onClick={clearSelection} className="btn-secondary btn-sm">Clear</button>
-            </div>
-          )}
+            ) : (
+              <div className="empty-chart-state">
+                <div className="empty-state-icon">📊</div>
+                <h3 className="empty-state-title">No Chart Data Available</h3>
+                <p className="empty-state-message">Unable to display chart visualization for this session.</p>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>
