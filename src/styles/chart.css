@@ -31,6 +31,42 @@
   --dv-line-height-tight: 1.25;
   --dv-line-height-normal: 1.5;
   --dv-line-height-relaxed: 1.75;
+  
+  /* Light mode color overrides for DataViewer */
+  --dv-overlay-bg: rgba(0, 0, 0, 0.75);
+  --dv-text-muted: #64748b;
+  --dv-border-hover: #cbd5e1;
+  --dv-primary-light: #dbeafe;
+  --dv-info: #06b6d4;
+  --dv-info-dark: #0891b2;
+  --dv-warning: #f59e0b;
+  --dv-warning-dark: #d97706;
+  --dv-warning-light: #fef3c7;
+  --dv-success: #10b981;
+  --dv-success-dark: #059669;
+  --dv-danger: #ef4444;
+  --dv-danger-light: #fecaca;
+}
+
+/* Dark mode overrides for DataViewer */
+.dark {
+  --dv-overlay-bg: rgba(0, 0, 0, 0.85);
+  --dv-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --dv-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --dv-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --dv-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+  --dv-text-muted: #9ca3af;
+  --dv-border-hover: #4b5563;
+  --dv-primary-light: #1e3a8a;
+  --dv-info: #22d3ee;
+  --dv-info-dark: #0891b2;
+  --dv-warning: #fbbf24;
+  --dv-warning-dark: #f59e0b;
+  --dv-warning-light: #451a03;
+  --dv-success: #34d399;
+  --dv-success-dark: #10b981;
+  --dv-danger: #f87171;
+  --dv-danger-light: #7f1d1d;
 }
 
 /* Data Viewer Overlay - Full Screen Modal */
@@ -40,7 +76,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: var(--dv-overlay-bg);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
@@ -82,12 +118,13 @@
   }
 }
 
-/* Header Section */
+/* Header Section - Enhanced visual hierarchy */
 .data-viewer-header {
-  background: linear-gradient(135deg, var(--color-card-bg, #ffffff) 0%, var(--color-bg, #f8fafc) 100%);
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-card-bg); /* Consistent card background */
+  border-bottom: 1px solid var(--color-border);
   padding: var(--dv-spacing-lg) var(--dv-spacing-xl);
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Subtle shadow for separation */
 }
 
 .header-content {
@@ -156,9 +193,9 @@
 
 /* Close Button */
 .btn-close {
-  background: var(--color-bg, #f8fafc);
-  color: var(--color-text-muted, #64748b);
-  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg);
+  color: var(--dv-text-muted);
+  border: 1px solid var(--color-border);
   border-radius: var(--dv-radius-md);
   width: 2.5rem;
   height: 2.5rem;
@@ -173,21 +210,21 @@
 }
 
 .btn-close:hover {
-  background: var(--color-danger, #ef4444);
+  background: var(--dv-danger);
   color: white;
-  border-color: var(--color-danger, #ef4444);
+  border-color: var(--dv-danger);
   transform: scale(1.05);
 }
 
 .btn-close:focus {
-  outline: 2px solid var(--color-primary, #3b82f6);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 /* Toolbar Section */
 .data-viewer-toolbar {
-  background: var(--color-bg, #f8fafc);
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
   padding: var(--dv-spacing-md) var(--dv-spacing-xl);
   display: flex;
   align-items: center;
@@ -768,23 +805,108 @@
   font-weight: 500;
 }
 
-/* Main Content Area - Enhanced Layout */
+/* Main Content Area - Enhanced Layout with Proper Background Hierarchy */
 .data-viewer-content {
   flex: 1;
   overflow: hidden;
-  background: var(--color-card-bg, #ffffff);
+  background: var(--color-bg); /* Use main background, not card background */
   display: flex;
   flex-direction: column;
 }
 
-/* Chart Section - Main Content Container */
+/* Loading State - Consistent with design system */
+.data-viewer-content .loading-spinner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dv-spacing-2xl);
+  text-align: center;
+  background: transparent; /* Inherit main background from data-viewer-content */
+}
+
+.data-viewer-content .loading-spinner .spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid var(--color-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: var(--dv-spacing-lg);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.data-viewer-content .loading-spinner p {
+  font-size: var(--dv-font-size-lg);
+  color: var(--color-text-muted);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Error State - Consistent with design system */
+.data-viewer-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dv-spacing-2xl);
+  text-align: center;
+  background: transparent; /* Inherit main background from data-viewer-content */
+}
+
+.data-viewer-error h3 {
+  font-size: var(--dv-font-size-xl);
+  font-weight: 600;
+  color: var(--dv-danger);
+  margin: 0 0 var(--dv-spacing-md) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-sm);
+  justify-content: center;
+}
+
+.data-viewer-error p {
+  font-size: var(--dv-font-size-base);
+  color: var(--color-text-muted);
+  line-height: var(--dv-line-height-relaxed);
+  margin: 0 0 var(--dv-spacing-sm) 0;
+  max-width: 400px;
+}
+
+.data-viewer-error .error-details {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--dv-font-size-sm);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--dv-radius-md);
+  padding: var(--dv-spacing-md);
+  margin: var(--dv-spacing-lg) 0;
+  color: var(--dv-danger);
+  word-break: break-word;
+}
+
+.data-viewer-error .button-group {
+  display: flex;
+  align-items: center;
+  gap: var(--dv-spacing-md);
+  margin-top: var(--dv-spacing-lg);
+}
+
+/* Chart Section - Main Content Container with proper spacing */
 .chart-section {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: var(--dv-spacing-lg);
-  gap: var(--dv-spacing-md);
+  gap: 0; /* Remove gap, let chart-wrapper handle spacing */
+  background: transparent; /* Inherit from parent */
 }
 
 .chart-wrapper {
@@ -792,17 +914,20 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: var(--dv-spacing-md);
+  background: var(--color-card-bg); /* Unified card background */
+  border-radius: var(--dv-radius-lg);
+  box-shadow: var(--dv-shadow-md); /* Enhanced shadow for better elevation */
+  border: 1px solid var(--color-border);
 }
 
 .chart-container {
   flex: 1;
   position: relative;
-  background: var(--color-card-bg, #ffffff);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--dv-radius-lg);
+  background: transparent; /* Inherit from chart-wrapper */
+  border: none; /* Remove redundant border */
+  border-radius: var(--dv-radius-lg) var(--dv-radius-lg) 0 0; /* Round only top corners */
   padding: var(--dv-spacing-lg);
-  box-shadow: var(--dv-shadow-sm);
+  box-shadow: none; /* Remove redundant shadow */
   overflow: hidden;
   min-height: 0; /* Allow container to shrink */
 }
@@ -813,36 +938,16 @@
   height: 100% !important;
 }
 
-/* Simplified Chart Controls - Timeline always visible and matches chart width */
+/* Chart Controls - Seamlessly connected to chart container */
 .chart-controls {
-  background: var(--color-bg, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-top: none;
-  border-radius: 0 0 var(--dv-radius-lg) var(--dv-radius-lg);
+  background: transparent; /* Inherit from chart-wrapper */
+  border: none; /* Remove redundant border */
+  border-top: 1px solid var(--color-border); /* Subtle separator */
+  border-radius: 0 0 var(--dv-radius-lg) var(--dv-radius-lg); /* Round only bottom corners */
   padding: var(--dv-spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--dv-spacing-md);
-}
-
-/* Ensure timeline aligns with chart content area */
-.chart-wrapper {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.chart-container {
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
-}
-
-.chart-controls {
-  width: 100%;
-  box-sizing: border-box;
-  padding: var(--dv-spacing-md);
-  padding-top: var(--dv-spacing-sm);
 }
 
 /* Main Controls Row - Simplified Grid */
@@ -1603,9 +1708,9 @@
   padding: var(--dv-spacing-2xl);
   text-align: center;
   color: var(--color-text-muted, #64748b);
-  background: var(--color-bg, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: var(--dv-radius-lg);
+  background: transparent; /* Inherit from chart-wrapper */
+  border: none; /* Remove redundant border */
+  border-radius: var(--dv-radius-lg) var(--dv-radius-lg) 0 0; /* Match chart-container */
 }
 
 .empty-state-icon {
@@ -1753,7 +1858,8 @@
   font-size: 1.25rem;
 }
 
-.chart-controls {
+/* Generic chart controls for non-DataViewer charts */
+.main-collection-area .chart-controls {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -1793,14 +1899,14 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Chart container */
-.chart-container {
+/* Data Viewer Chart container - Specific styling for DataViewer modal */
+.data-viewer-modal .chart-container {
   position: relative;
   height: 400px;
-  background: var(--color-card-bg);
-  border-radius: var(--radius);
-  padding: 1rem;
-  border: 1px solid var(--color-border);
+  background: transparent; /* Inherit from chart-wrapper for proper hierarchy */
+  border-radius: var(--dv-radius-lg) var(--dv-radius-lg) 0 0; /* Round only top corners to match wrapper */
+  padding: var(--dv-spacing-lg);
+  border: none; /* Remove redundant border, wrapper provides it */
 }
 
 .chart-container canvas {
@@ -3360,6 +3466,521 @@
     font-size: 0.65rem;
     padding: 2px 4px;
   }
+}
+
+/*────────────────────────────────────────────────────────
+  COMPREHENSIVE DARK MODE SUPPORT
+────────────────────────────────────────────────────────*/
+
+/* DataViewer Dark Mode Overlay and Modal */
+.dark .data-viewer-overlay {
+  background: var(--dv-overlay-bg);
+}
+
+.dark .data-viewer-modal {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--dv-shadow-xl);
+}
+
+/* Header and Navigation Dark Mode */
+.dark .data-viewer-header {
+  background: var(--color-card-bg); /* Consistent card background */
+  border-bottom-color: var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Enhanced shadow for dark mode */
+}
+
+.dark .session-title {
+  color: var(--color-text);
+}
+
+.dark .session-metadata {
+  color: var(--dv-text-muted);
+}
+
+.dark .metadata-separator {
+  color: var(--color-border);
+}
+
+.dark .btn-close {
+  background: var(--color-bg);
+  color: var(--dv-text-muted);
+  border-color: var(--color-border);
+}
+
+.dark .btn-close:hover {
+  background: var(--dv-danger);
+  border-color: var(--dv-danger);
+}
+
+/* Toolbar Dark Mode */
+.dark .data-viewer-toolbar {
+  background: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+.dark .data-summary {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .summary-label {
+  color: var(--dv-text-muted);
+}
+
+.dark .summary-value {
+  color: var(--color-text);
+}
+
+.dark .summary-separator {
+  color: var(--color-border);
+}
+
+/* Action Buttons Dark Mode */
+.dark .btn-action {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .btn-action:hover {
+  background: var(--color-bg);
+  border-color: var(--dv-border-hover);
+}
+
+.dark .btn-action.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark .btn-fit {
+  background: var(--dv-info);
+  border-color: var(--dv-info);
+}
+
+.dark .btn-fit:hover {
+  background: var(--dv-info-dark);
+  border-color: var(--dv-info-dark);
+}
+
+.dark .btn-zoom-selection {
+  background: var(--dv-warning);
+  border-color: var(--dv-warning);
+}
+
+.dark .btn-zoom-selection:hover {
+  background: var(--dv-warning-dark);
+  border-color: var(--dv-warning-dark);
+}
+
+.dark .btn-export {
+  background: var(--dv-success);
+  border-color: var(--dv-success);
+}
+
+.dark .btn-export:hover {
+  background: var(--dv-success-dark);
+  border-color: var(--dv-success-dark);
+}
+
+/* Settings Panel Dark Mode */
+.dark .settings-panel.enhanced {
+  background: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+.dark .settings-card {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .settings-title {
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+.dark .performance-indicator {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .setting-label,
+.dark .setting-label-text {
+  color: var(--color-text);
+}
+
+.dark .current-count {
+  color: var(--dv-text-muted);
+}
+
+.dark .setting-help {
+  color: var(--dv-text-muted);
+  border-left-color: var(--color-border);
+}
+
+.dark .range-input {
+  background: var(--color-border);
+}
+
+.dark .range-input::-webkit-slider-thumb {
+  background: var(--color-primary);
+}
+
+.dark .range-labels {
+  color: var(--dv-text-muted);
+}
+
+.dark .range-current {
+  color: var(--color-primary);
+  background: var(--dv-primary-light);
+}
+
+.dark .checkbox-custom {
+  border-color: var(--color-border);
+  background: var(--color-card-bg);
+}
+
+.dark .setting-checkbox:checked + .checkbox-custom {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark .number-input {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .input-unit {
+  color: var(--dv-text-muted);
+}
+
+/* Chart and Content Dark Mode */
+.dark .data-viewer-content {
+  background: var(--color-bg); /* Use main background for proper hierarchy */
+}
+
+/* Loading and Error States Dark Mode */
+.dark .data-viewer-content .loading-spinner {
+  background: transparent; /* Inherit main background from data-viewer-content */
+}
+
+.dark .data-viewer-content .loading-spinner .spinner {
+  border-color: var(--color-border);
+  border-top-color: var(--color-primary);
+}
+
+.dark .data-viewer-content .loading-spinner p {
+  color: var(--color-text-muted);
+}
+
+.dark .data-viewer-error {
+  background: transparent; /* Inherit main background from data-viewer-content */
+}
+
+.dark .data-viewer-error h3 {
+  color: var(--dv-danger);
+}
+
+.dark .data-viewer-error p {
+  color: var(--color-text-muted);
+}
+
+.dark .data-viewer-error .error-details {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--dv-danger);
+}
+
+.dark .chart-wrapper {
+  background: var(--color-card-bg); /* Unified card background */
+  border-color: var(--color-border);
+  box-shadow: var(--dv-shadow-md); /* Enhanced shadow for dark mode */
+}
+
+.dark .chart-container {
+  background: transparent; /* Inherit from chart-wrapper */
+  border: none; /* Remove redundant border */
+}
+
+.dark .chart-controls {
+  background: transparent; /* Inherit from chart-wrapper */
+  border-top-color: var(--color-border); /* Subtle separator */
+}
+
+/* Zoom Controls Dark Mode */
+.dark .zoom-group {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .zoom-group .control-label {
+  color: var(--color-text);
+}
+
+.dark .btn-zoom-preset {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .btn-zoom-preset:hover {
+  background: var(--dv-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dark .btn-zoom-preset.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark .btn-zoom-preset.all-data {
+  background: var(--dv-success);
+  border-color: var(--dv-success);
+}
+
+.dark .btn-zoom-preset.all-data:hover {
+  background: var(--dv-success-dark);
+  border-color: var(--dv-success-dark);
+}
+
+.dark .btn-zoom {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .btn-zoom:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.dark .btn-reset {
+  background: var(--color-bg);
+}
+
+.dark .btn-reset:hover:not(:disabled) {
+  background: var(--dv-success);
+}
+
+.dark .zoom-display-enhanced {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .zoom-current {
+  color: var(--color-text);
+}
+
+.dark .zoom-indicator {
+  background: var(--color-border);
+}
+
+/* Time Navigation Dark Mode */
+.dark .time-info-enhanced {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .btn-time-nav {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .btn-time-nav:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.dark .time-display {
+  border-left-color: var(--color-border);
+}
+
+.dark .info-label {
+  color: var(--dv-text-muted);
+}
+
+.dark .info-value {
+  color: var(--color-text);
+}
+
+/* Timeline Dark Mode */
+.dark .timeline-row .time-marker {
+  color: var(--dv-text-muted) !important;
+  background: var(--color-bg) !important;
+  border-color: var(--color-border) !important;
+}
+
+.dark .timeline-container {
+  background: var(--color-border) !important;
+}
+
+.dark .timeline-background {
+  background: linear-gradient(90deg, var(--color-border) 0%, var(--color-bg) 50%, var(--color-border) 100%) !important;
+}
+
+.dark .timeline-visible-range {
+  background: var(--color-primary) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 
+    0 1px 4px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .range-info {
+  background: var(--color-primary) !important;
+}
+
+.dark .time-marker {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--dv-text-muted);
+}
+
+.dark .time-marker:hover {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+.dark .timeline-track {
+  background: linear-gradient(to right, 
+    var(--color-border) 0%,
+    var(--color-bg) 50%,
+    var(--color-border) 100%
+  );
+  border-color: var(--color-border);
+}
+
+.dark .range-indicator {
+  color: var(--color-primary);
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.dark .range-indicator:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Selection and Empty States Dark Mode */
+.dark .selection-info {
+  background: var(--dv-warning-light);
+  border-color: var(--dv-warning);
+}
+
+.dark .selection-text {
+  color: var(--color-text);
+}
+
+.dark .btn-clear-selection {
+  background: var(--dv-warning);
+}
+
+.dark .empty-chart-state {
+  background: transparent; /* Inherit from chart-wrapper */
+  border: none; /* Remove redundant border */
+  color: var(--dv-text-muted);
+}
+
+.dark .empty-state-title {
+  color: var(--color-text);
+}
+
+.dark .chart-error {
+  background: var(--dv-danger-light);
+  border-color: var(--dv-danger);
+  color: var(--dv-danger);
+}
+
+.dark .no-data-message {
+  background: var(--color-bg);
+  color: var(--dv-text-muted);
+}
+
+/* Legacy Chart Components Dark Mode */
+.dark .chart-header h2 {
+  color: var(--color-text);
+}
+
+.dark .chart-mode-selector {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .mode-btn {
+  color: var(--color-text);
+}
+
+.dark .mode-btn:hover {
+  background: var(--color-card-bg);
+}
+
+.dark .mode-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.dark .chart-container {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+.dark .chart-info {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .data-info {
+  color: var(--color-text);
+}
+
+.dark .chart-description {
+  color: var(--dv-text-muted);
+}
+
+.dark .help-text {
+  background: var(--color-card-bg);
+  border-left-color: var(--color-primary);
+  color: var(--dv-text-muted);
+}
+
+.dark .data-table-container {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.dark .data-table-container h3 {
+  color: var(--color-text);
+}
+
+.dark .chart-data-table th,
+.dark .chart-data-table td {
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .chart-data-table th {
+  background: var(--color-bg);
+}
+
+.dark .chart-data-table td {
+  color: var(--dv-text-muted);
+}
+
+.dark .table-summary {
+  color: var(--dv-text-muted);
+}
+
+/* Focus and Interaction Dark Mode */
+.dark .mode-btn:focus {
+  outline-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.dark .number-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 /* Focus Management for Accessibility */

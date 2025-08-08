@@ -4,26 +4,27 @@
   1. Variables & Base
 ────────────────────────────────────────────────────────*/
 :root {
-  --color-primary:       #1e40af;
+  --color-primary:       #2563eb;
   --color-primary-light: #3b82f6;
-  --color-bg:            #f3f4f6;
+  --color-bg:            #f8fafc;
   --color-card-bg:       #ffffff;
-  --color-text:          #1f2937;
+  --color-text:          #0f172a;
   --color-text-light:    #ffffff;
-  --color-border:        #e5e7eb;
+  --color-border:        #e2e8f0;
   --radius:              0.5rem;
   --spacing:             1rem;
-  --font-base:           'Inter', sans-serif;
-  --accent-color:        #4caf50;
-  --accent-hover:        #45a049;
-  --success-color:      #10b981;
-  --success-bg:         #ecfdf5;
-  --error-color:        #dc2626;
-  --error-bg:           #fee2e2;
-  --text-color:         #111827;
-  --text-secondary:     #6b7280;
-  --bg-color:           #ffffff;
-  --border-color:       #e5e7eb;
+  --font-base:           -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Inter', sans-serif;
+  --font-mono:           'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  --accent-color:        #10b981;
+  --accent-hover:        #059669;
+  --success-color:       #10b981;
+  --success-bg:          #ecfdf5;
+  --error-color:         #dc2626;
+  --error-bg:            #fee2e2;
+  --text-color:          #0f172a;
+  --text-secondary:      #64748b;
+  --bg-color:            #ffffff;
+  --border-color:        #e2e8f0;
 }
 
 * {
@@ -797,25 +798,25 @@ tbody tr:hover {
 .dark {
   --color-primary:       #3b82f6;
   --color-primary-light: #60a5fa;
-  --color-bg:            #111827;
-  --color-card-bg:       #1f2937;
-  --color-text:          #f3f4f6;
+  --color-bg:            #0f172a;
+  --color-card-bg:       #1e293b;
+  --color-text:          #f1f5f9;
   --color-text-light:    #ffffff;
-  --color-border:        #374151;
-  --color-dark-bg:       #111827;
-  --color-dark-card:     #1f2937;
-  --color-dark-border:   #374151;
-  --color-dark-text:     #f3f4f6;
+  --color-border:        #334155;
+  --color-dark-bg:       #0f172a;
+  --color-dark-card:     #1e293b;
+  --color-dark-border:   #334155;
+  --color-dark-text:     #f1f5f9;
   --accent-color:        #10b981;
   --accent-hover:        #059669;
   --success-color:       #10b981;
   --success-bg:          #064e3b;
   --error-color:         #f87171;
   --error-bg:            #7f1d1d;
-  --text-color:          #f3f4f6;
-  --text-secondary:      #d1d5db;
-  --bg-color:            #1f2937;
-  --border-color:        #374151;
+  --text-color:          #f1f5f9;
+  --text-secondary:      #cbd5e1;
+  --bg-color:            #1e293b;
+  --border-color:        #334155;
 }
 
 /*────────────────────────────────────────────────────────
