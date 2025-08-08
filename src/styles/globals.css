@@ -2671,8 +2671,7 @@ tbody tr:hover {
 }
 
 .connected-devices-section h3::before {
-  content: "🔗";
-  font-size: 1.2rem;
+  content: "";
 }
 
 .connected-devices-section .device-card {

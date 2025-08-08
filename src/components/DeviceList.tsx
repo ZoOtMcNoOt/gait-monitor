@@ -232,7 +232,10 @@ export default function DeviceList() {
         {/* Connected Devices Section - Show first */}
         {connectedDevices.length > 0 && (
           <div className="connected-devices-section">
-            <h3>Connected Devices ({connectedDevices.length})</h3>
+            <h3>
+              <span aria-hidden="true" className="section-icon"><Icon.Link title="Connected" /></span>
+              Connected Devices ({connectedDevices.length})
+            </h3>
             <ul>
               {connectedDevices.map(deviceId => {
                 // Find device info from scanned devices

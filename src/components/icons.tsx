@@ -99,6 +99,33 @@ export const Icon = {
       <path d="M12 13V8M9 3h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
+  Refresh: ({ size = 16, className, title = 'Refresh', ...rest }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
+      <path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Eye: ({ size = 16, className, title = 'View', ...rest }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="2" fill="none"/>
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
+  Download: ({ size = 16, className, title = 'Download', ...rest }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
+      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8 11l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  Trash: ({ size = 16, className, title = 'Delete', ...rest }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
+      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14" stroke="currentColor" strokeWidth="2"/>
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
 }
 
 export type IconName = keyof typeof Icon

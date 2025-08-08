@@ -10,6 +10,7 @@ import ScrollableContainer from './ScrollableContainer'
 import { protectedOperations } from '../services/csrfProtection'
 import '../styles/tables.css'
 import '../styles/tabs.css'
+import { Icon } from './icons'
 
 interface LogEntry {
   id: string
@@ -227,7 +228,7 @@ function LogsTabContent() {
             className="btn-secondary logs-refresh-btn" 
             onClick={loadLogs}
           >
-            🔄 Refresh
+            <span aria-hidden="true" className="btn-icon"><Icon.Refresh title="Refresh" /></span> Refresh
           </button>
         </div>
         {logs.length === 0 ? (
@@ -271,22 +272,25 @@ function LogsTabContent() {
                         className="btn-small btn-primary"
                         onClick={() => handleViewLog(log)}
                         title="View data"
+                        aria-label={`View ${log.session_name}`}
                       >
-                        👁️
+                        <span aria-hidden="true" className="btn-icon"><Icon.Eye title="View" /></span>
                       </button>
                       <button 
                         className="btn-small btn-secondary"
                         onClick={() => handleDownloadLog(log)}
                         title="Download CSV"
+                        aria-label={`Download ${log.session_name}`}
                       >
-                        📥
+                        <span aria-hidden="true" className="btn-icon"><Icon.Download title="Download" /></span>
                       </button>
                       <button 
                         className="btn-small btn-danger"
                         onClick={() => handleDeleteLog(log.id)}
                         title="Delete log"
+                        aria-label={`Delete ${log.session_name}`}
                       >
-                        🗑️
+                        <span aria-hidden="true" className="btn-icon"><Icon.Trash title="Delete" /></span>
                       </button>
                     </td>
                   </tr>

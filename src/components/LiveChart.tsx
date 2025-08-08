@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import { Icon } from './icons'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
@@ -670,7 +671,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
         <div className="chart-controls">
           <div className="chart-status">
             <span className={`status-indicator ${isCollecting ? 'collecting' : 'idle'}`}>
-              {isCollecting ? '● Recording' : '○ Idle'}
+              <span aria-hidden="true" className="status-dot">
+                {isCollecting ? <Icon.Radio title="Recording" /> : <Icon.Pause title="Idle" />}
+              </span>
+              {isCollecting ? 'Recording' : 'Idle'}
             </span>
             {/* Device connection status */}
             {connectedDevices.length > 0 && (
@@ -683,12 +687,19 @@ export default function LiveChart({ isCollecting = false }: Props) {
                   return (
                     <div key={deviceId} className={`device-connection ${status}`}>
                       <span className="device-name">{deviceId.slice(-8)}</span>
-                      <span className={`connection-indicator ${status}`}>
-                        {status === 'connected' ? '🟢' : status === 'timeout' ? '🟡' : '🔴'}
+                      <span className={`connection-indicator ${status}`} aria-hidden="true">
+                        {status === 'connected' ? (
+                          <Icon.Success title="Connected" />
+                        ) : status === 'timeout' ? (
+                          <Icon.Warning title="Timeout" />
+                        ) : (
+                          <Icon.Error title="Disconnected" />
+                        )}
                       </span>
                       {lastGait && (
                         <span className="gait-info" title={`Last gait data: ${now - lastGait}ms ago`}>
-                          📊{Math.round((now - lastGait) / 1000)}s
+                          <span aria-hidden="true" className="gait-icon"><Icon.Chart title="Last data age" /></span>
+                          {Math.round((now - lastGait) / 1000)}s
                         </span>
                       )}
                     </div>
@@ -701,7 +712,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
               onClick={() => setChartMode('all')}
-              aria-pressed={chartMode === 'all'}
               aria-describedby="chart-mode-help"
             >
               All Channels (1)
@@ -709,7 +719,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
               onClick={() => setChartMode('resistance')}
-              aria-pressed={chartMode === 'resistance'}
               aria-describedby="chart-mode-help"
             >
               Resistance (2)
@@ -717,7 +726,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             <button 
               className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
               onClick={() => setChartMode('acceleration')}
-              aria-pressed={chartMode === 'acceleration'}
               aria-describedby="chart-mode-help"
             >
               Acceleration (3)
@@ -756,14 +764,14 @@ export default function LiveChart({ isCollecting = false }: Props) {
       <div className="chart-info">
         <div className="data-info">
           <span>Sample Rate: {getCurrentSampleRateDisplay()}</span>
-          <span>•</span>
+          <span className="dot-sep" aria-hidden="true">•</span>
           <span>Devices: {connectedDevices.length}</span>
-          <span>•</span>
+          <span className="dot-sep" aria-hidden="true">•</span>
           <span>Total Samples: {(() => {
             const stats = bufferManager.getBufferStats()
             return stats ? stats.totalDataPoints : 0
           })()}</span>
-          <span>•</span>
+          <span className="dot-sep" aria-hidden="true">•</span>
           <span>Channels: R1, R2, R3, X, Y, Z</span>
         </div>
       </div>

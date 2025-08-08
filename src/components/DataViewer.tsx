@@ -832,12 +832,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   <span className="metadata-icon" aria-hidden="true">{Icons.timer}</span>
                   {Math.round(optimizedData.metadata.duration)}s
                 </span>
-                <span className="metadata-separator">•</span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
                 <span className="metadata-item">
                   <span className="metadata-icon" aria-hidden="true">{Icons.antenna}</span>
                   {Math.round(optimizedData.metadata.sample_rate * 10) / 10}Hz
                 </span>
-                <span className="metadata-separator">•</span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
                 <span className="metadata-item">
                   <span className="metadata-icon" aria-hidden="true">{Icons.device}</span>
                   {optimizedData.metadata.devices.length} device{optimizedData.metadata.devices.length !== 1 ? 's' : ''}
@@ -939,10 +939,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 <h3 className="settings-title">
                   <span className="settings-icon" aria-hidden="true">{Icons.chart}</span>
                   Performance & Rendering
-                  <div className="performance-indicator">
+                    <div className="performance-indicator">
                     <div className={`performance-status ${chartData && chartData.totalDataPoints > 5000 ? 'warning' : 'good'}`}>
-                      {chartData && chartData.totalDataPoints > 10000 ? '🔴' : 
-                       chartData && chartData.totalDataPoints > 5000 ? '🟡' : '🟢'}
+                      {chartData && chartData.totalDataPoints > 10000 ? Icons.statusDanger : 
+                       chartData && chartData.totalDataPoints > 5000 ? Icons.statusWarning : Icons.statusGood}
                       <span className="performance-text">
                         {chartData && chartData.totalDataPoints > 10000 ? 'High Load' : 
                          chartData && chartData.totalDataPoints > 5000 ? 'Moderate Load' : 'Optimal'}
@@ -966,7 +966,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         <span className="setting-badge">Recommended</span>
                       </label>
                       <p id="downsampling-help" className="setting-help">
-                        📈 Automatically reduces data points for better performance while preserving important features
+                        <span aria-hidden="true" className="setting-help-icon">{Icons.chart}</span> Automatically reduces data points for better performance while preserving important features
                       </p>
                     </div>
                   </div>
@@ -998,7 +998,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         </div>
                       </div>
                       <p id="max-points-help" className="setting-help">
-                        🎯 Balance between detail and performance. Higher values show more detail but may reduce responsiveness.
+                        <span aria-hidden="true" className="setting-help-icon">{Icons.settings}</span> Balance between detail and performance. Higher values show more detail but may reduce responsiveness.
                       </p>
                     </div>
                   </div>
@@ -1030,7 +1030,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         <span className="setting-badge disabled">Auto</span>
                       </label>
                       <p id="animations-help" className="setting-help">
-                        🚀 Animations are automatically disabled for better performance with large datasets
+                        <span aria-hidden="true" className="setting-help-icon">{Icons.timer}</span> Animations are automatically disabled for better performance with large datasets
                       </p>
                     </div>
                   </div>
