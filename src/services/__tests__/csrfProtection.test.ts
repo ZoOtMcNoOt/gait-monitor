@@ -512,8 +512,8 @@ describe('CSRF Protection Service', () => {
       // Wait for monitoring cycle
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      expect(consoleWarnSpy).toHaveBeenCalledWith('🚨 CSRF Attack Detected!', expect.any(Object));
-      expect(consoleWarnSpy).toHaveBeenCalledWith('🚫 Rate Limit Exceeded:', expect.any(Object));
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[CSRF][ALERT] Attack Detected!', expect.any(Object));
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[RateLimit] Exceeded:', expect.any(Object));
       
       securityMonitor.stopMonitoring();
     });
@@ -526,7 +526,7 @@ describe('CSRF Protection Service', () => {
       securityMonitor.startMonitoring(100);
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      expect(consoleWarnSpy).toHaveBeenCalledWith('⚠️ Suspicious Activity:', expect.any(Object));
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[CSRF][Warn] Suspicious Activity:', expect.any(Object));
       
       securityMonitor.stopMonitoring();
     });

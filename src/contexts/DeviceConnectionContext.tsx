@@ -109,7 +109,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     setAvailableDevices(prev => {
       if (!prev.includes(deviceId)) {
         if (isDebugEnabled()) {
-          console.log('📱 Adding device to global state:', deviceId)
+          console.log('[Device] Adding device to global state:', deviceId)
         }
         return [...prev, deviceId]
       }
@@ -128,7 +128,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
 
   const removeDevice = (deviceId: string) => {
     if (isDebugEnabled()) {
-      console.log('🗑️ Removing device from global state:', deviceId)
+  console.log('[Device] Removing device from global state:', deviceId)
     }
     
     setAvailableDevices(prev => prev.filter(id => id !== deviceId))
@@ -156,7 +156,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   }
 
   const removeScannedDevice = useCallback((deviceId: string) => {
-    console.log('🗑️ Removing scanned device:', deviceId)
+  console.log('[Device] Removing scanned device:', deviceId)
     setScannedDevices(prev => prev.filter(device => device.id !== deviceId))
   }, [])
 
@@ -243,7 +243,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       // Show success message
       const device = scannedDevices.find(d => d.id === deviceId)
       const deviceName = device?.name || 'Unknown Device'
-      console.log(`✅ Successfully connected to ${deviceName}`)
+  console.log(`[BLE] Successfully connected to ${deviceName}`)
     } catch (error) {
       console.error('Connection failed:', error)
       
@@ -289,7 +289,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       setActiveCollectingDevices(prev => 
         prev.includes(deviceId) ? prev : [...prev, deviceId]
       )
-      console.log(`✅ Started collection for device: ${deviceId}`)
+  console.log(`[Collect] Started collection for device: ${deviceId}`)
     } catch (error) {
       console.error(`Failed to start collection for device ${deviceId}:`, error)
       throw error
@@ -300,7 +300,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
     try {
       await invoke('stop_gait_notifications', { deviceId })
       setActiveCollectingDevices(prev => prev.filter(id => id !== deviceId))
-      console.log(`⏹️ Stopped collection for device: ${deviceId}`)
+  console.log(`[Collect] Stopped collection for device: ${deviceId}`)
     } catch (error) {
       console.error(`Failed to stop collection for device ${deviceId}:`, error)
       throw error
@@ -337,7 +337,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
         // Connection status update listener
         unlistenConnectionStatus = await listen('connection-status-update', (event: { payload: string[] }) => {
           const connectedIds = event.payload as string[]
-          console.log('🔌 Connection status update received:', connectedIds)
+          console.log('[BLE] Connection status update received:', connectedIds)
           setConnectedDevices(connectedIds)
         })
 
@@ -367,9 +367,9 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
           })
         })
         
-        console.log('✅ Global event listeners setup complete')
+  console.log('[Init] Global event listeners setup complete')
       } catch (error) {
-        console.error('❌ Failed to setup global event listeners:', error)
+  console.error('[Init] Failed to setup global event listeners:', error)
       }
     }
 
@@ -416,7 +416,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
             // If not BLE connected, mark as disconnected
             deviceStatus = 'disconnected'
             if (prev.get(deviceId) !== 'disconnected') {
-              console.log(`🔌 Device ${deviceId}: Not BLE connected - marking as disconnected`)
+              console.log(`[BLE] Device ${deviceId}: Not BLE connected - marking as disconnected`)
             }
           } else {
             // Device is BLE connected, check if we're receiving data
@@ -426,11 +426,11 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
             } else if (lastGait && (now - lastGait) >= GAIT_DATA_TIMEOUT) {
               // No recent gait data but BLE connected - timeout
               deviceStatus = 'timeout'
-              console.warn(`⚠️ Device ${deviceId}: BLE connected but no gait data for ${Math.round((now - lastGait)/1000)}s`)
+              console.warn(`[BLE][Warn] Device ${deviceId}: BLE connected but no gait data for ${Math.round((now - lastGait)/1000)}s`)
             } else {
               // Device is BLE connected but no data yet - could be starting up
               deviceStatus = 'connected'
-              console.log(`🔗 Device ${deviceId}: BLE connected, waiting for first data`)
+              console.log(`[BLE] Device ${deviceId}: BLE connected, waiting for first data`)
             }
           }
           
@@ -453,7 +453,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       const dataTimeCount = lastGaitDataTime.size
       
       if (statusCount > 50 || dataTimeCount > 50) {
-        console.warn(`🚨 Memory warning - Large Maps detected:`, {
+  console.warn(`[Memory][Warn] Large Maps detected:`, {
           statuses: statusCount,
           dataTimes: dataTimeCount
         })
@@ -470,7 +470,7 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       })
       
       if (staleDevices.length > 0) {
-        console.log(`🧹 Cleaning up stale device data for ${staleDevices.length} devices`)
+  console.log(`[Cleanup] Cleaning up stale device data for ${staleDevices.length} devices`)
         
         setConnectionStatus(prev => {
           const newMap = new Map(prev)

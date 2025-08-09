@@ -86,7 +86,7 @@ describe('MultiDeviceSelector', () => {
     
     expect(selector).toBeTruthy();
     expect(header).toBeTruthy();
-    expect(title?.textContent).toBe('📊 Collection Control');
+  expect(title?.textContent).toContain('Collection Control');
   });
 
   test('should display connected devices', async () => {
@@ -287,17 +287,17 @@ describe('MultiDeviceSelector', () => {
     document.body.appendChild(emptyContainer);
     const emptyRoot = createRoot(emptyContainer);
 
-    // Create a wrapper that simulates the empty devices state
+  // Create a wrapper that simulates the empty devices state (no emojis in title or icon)
     const EmptyDeviceWrapper = () => {
       // Simulate the component's empty state by directly rendering the no-devices UI
       return React.createElement('div', {
         className: 'multi-device-selector sidebar-style'
       }, [
         React.createElement('div', { key: 'header', className: 'selector-header' }, 
-          React.createElement('h3', null, '📊 Collection Control')
+          React.createElement('h3', null, 'Collection Control')
         ),
         React.createElement('div', { key: 'no-devices', className: 'no-devices' }, [
-          React.createElement('div', { key: 'icon', className: 'no-devices-icon' }, '🔌'),
+          React.createElement('div', { key: 'icon', className: 'no-devices-icon' }),
           React.createElement('p', { key: 'message' }, 'No connected devices'),
           React.createElement('small', { key: 'help' }, 'Connect devices in the Connect tab')
         ])
@@ -353,10 +353,10 @@ describe('MultiDeviceSelector', () => {
         className: 'multi-device-selector sidebar-style'
       }, [
         React.createElement('div', { key: 'header', className: 'selector-header' }, 
-          React.createElement('h3', null, '📊 Collection Control')
+          React.createElement('h3', null, 'Collection Control')
         ),
         React.createElement('div', { key: 'loading', className: 'loading' }, [
-          React.createElement('div', { key: 'spinner', className: 'loading-spinner' }, '🔄'),
+          React.createElement('div', { key: 'spinner', className: 'loading-spinner' }),
           React.createElement('p', { key: 'message' }, 'Loading devices...')
         ])
       ]);

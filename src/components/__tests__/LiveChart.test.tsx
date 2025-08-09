@@ -892,7 +892,7 @@ describe('LiveChart', () => {
       
       const gaitInfo = container.querySelector('.gait-info')
       expect(gaitInfo).toBeTruthy()
-      expect(gaitInfo?.textContent).toContain('📊2s') // Last gait data 2 seconds ago
+    expect(gaitInfo?.textContent).toContain('2s') // Last gait data 2 seconds ago
     })
   })
 

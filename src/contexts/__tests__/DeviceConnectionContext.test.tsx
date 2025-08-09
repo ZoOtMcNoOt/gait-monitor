@@ -798,7 +798,7 @@ describe('DeviceConnectionContext', () => {
         expect(contextRef.connectionStatus.has('test-device-1')).toBe(false)
         expect(contextRef.lastGaitDataTime.has('test-device-1')).toBe(false)
         
-        expect(consoleLogSpy).toHaveBeenCalledWith('🗑️ Removing device from global state:', 'test-device-1')
+  expect(consoleLogSpy).toHaveBeenCalledWith('[Device] Removing device from global state:', 'test-device-1')
       }
       
       consoleLogSpy.mockRestore()
@@ -1085,7 +1085,7 @@ describe('DeviceConnectionContext', () => {
 
       await renderWithProvider(React.createElement(TestComponent))
       
-      expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to setup global event listeners:', expect.any(Error))
+  expect(consoleErrorSpy).toHaveBeenCalledWith('[Init] Failed to setup global event listeners:', expect.any(Error))
       
       consoleErrorSpy.mockRestore()
     })
@@ -1125,7 +1125,7 @@ describe('DeviceConnectionContext', () => {
         jest.advanceTimersByTime(60000)
         
         expect(consoleWarnSpy).toHaveBeenCalledWith(
-          '🚨 Memory warning - Large Maps detected:',
+          '[Memory][Warn] Large Maps detected:',
           expect.objectContaining({
             heartbeats: expect.any(Number),
             statuses: expect.any(Number),
@@ -1166,7 +1166,7 @@ describe('DeviceConnectionContext', () => {
           jest.runOnlyPendingTimers()
         })
         
-        expect(consoleLogSpy).toHaveBeenCalledWith('🧹 Cleaning up stale device data for 1 devices')
+  expect(consoleLogSpy).toHaveBeenCalledWith('[Cleanup] Cleaning up stale device data for 1 devices')
         expect(contextRef.lastGaitDataTime.has('stale-device')).toBe(false)
       }
       

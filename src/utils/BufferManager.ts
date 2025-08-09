@@ -177,7 +177,7 @@ class CircularBuffer {
     
     // Debug logging for significant cleanups
     if (removedCount > 0) {
-      console.debug(`🧹 CircularBuffer: Cleaned ${removedCount} old data points`)
+      console.debug(`[Buffer][Cleanup] Cleaned ${removedCount} old data points`)
     }
   }
 
@@ -269,7 +269,7 @@ export class BufferManager {
         this.config.slidingWindowSeconds
       )
       this.deviceBuffers.set(deviceId, buffer)
-      console.log(`📊 BufferManager: Created new buffer for device ${deviceId}`)
+  console.log(`[Buffer] Created new buffer for device ${deviceId}`)
     }
 
     const buffer = this.deviceBuffers.get(deviceId)!
@@ -280,7 +280,7 @@ export class BufferManager {
 
     // Check for overflow protection
     if (this.memoryUsage > this.config.memoryThresholdMB) {
-      console.warn(`⚠️ BufferManager: Memory threshold exceeded (${this.memoryUsage.toFixed(1)}MB), triggering cleanup`)
+  console.warn(`[Buffer][Warn] Memory threshold exceeded (${this.memoryUsage.toFixed(1)}MB), triggering cleanup`)
       this.performEmergencyCleanup()
     }
   }
@@ -360,7 +360,7 @@ export class BufferManager {
       buffer.clear()
       this.deviceBuffers.delete(deviceId)
       this.updateMemoryUsage()
-      console.log(`📊 BufferManager: Removed buffer for device ${deviceId}`)
+  console.log(`[Buffer] Removed buffer for device ${deviceId}`)
     }
   }
 
@@ -373,7 +373,7 @@ export class BufferManager {
     }
     this.deviceBuffers.clear()
     this.memoryUsage = 0
-    console.log('📊 BufferManager: Cleared all buffers')
+  console.log('[Buffer] Cleared all buffers')
   }
 
   /**
@@ -395,7 +395,7 @@ export class BufferManager {
     }
     this.startPeriodicCleanup()
     
-    console.log('📊 BufferManager: Configuration updated')
+  console.log('[Buffer] Configuration updated')
   }
 
   /**
@@ -431,7 +431,7 @@ export class BufferManager {
     this.lastCleanupTime = now
 
     if (cleanedPoints > 0) {
-      console.log(`🧹 BufferManager: Cleaned ${cleanedPoints} points from ${cleanedDevices} devices`)
+  console.log(`[Buffer] Cleaned ${cleanedPoints} points from ${cleanedDevices} devices`)
     }
   }
 
@@ -439,7 +439,7 @@ export class BufferManager {
    * Emergency cleanup when memory threshold is exceeded
    */
   private performEmergencyCleanup(): void {
-    console.warn('🚨 BufferManager: Performing emergency cleanup')
+  console.warn('[Buffer][Emergency] Performing emergency cleanup')
     
     // Reduce buffer sizes to 50% of maximum
     const emergencyLimit = Math.floor(this.config.maxDeviceBufferPoints * 0.5)
@@ -454,11 +454,11 @@ export class BufferManager {
         buffer.push(point)
       }
       
-      console.log(`🚨 Emergency cleanup for device ${deviceId}: reduced to ${recentData.length} points`)
+  console.log(`[Buffer][Emergency] Cleanup for device ${deviceId}: reduced to ${recentData.length} points`)
     }
     
     this.updateMemoryUsage()
-    console.warn(`🚨 BufferManager: Emergency cleanup complete, memory usage: ${this.memoryUsage.toFixed(1)}MB`)
+  console.warn(`[Buffer][Emergency] Cleanup complete, memory usage: ${this.memoryUsage.toFixed(1)}MB`)
   }
 
   /**

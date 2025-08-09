@@ -35,12 +35,12 @@ export class CSRFProtectionService {
       this.currentToken = await invoke<string>('get_csrf_token');
       this.isInitialized = true;
       this.initializationAttempts = 0; // Reset counter on success
-      console.log('✅ CSRF Protection Service initialized successfully');
+  console.log('[CSRF] Protection Service initialized successfully');
     } catch (error) {
-      console.warn(`⚠️ CSRF protection initialization attempt ${this.initializationAttempts}/${this.maxInitializationAttempts} failed:`, error);
+  console.warn(`[CSRF][Warn] Initialization attempt ${this.initializationAttempts}/${this.maxInitializationAttempts} failed:`, error);
       
       if (this.initializationAttempts >= this.maxInitializationAttempts) {
-        console.warn('🔒 CSRF protection will run in fallback mode (reduced security)');
+    console.warn('[CSRF] Protection will run in fallback mode (reduced security)');
         // Set initialized to true to prevent infinite retry loops
         this.isInitialized = true;
         this.currentToken = null;
@@ -334,13 +334,13 @@ export class SecurityMonitor {
   private handleSecurityEvent(event: SecurityEvent): void {
     // Handle different types of security events
     if ('CSRFAttackDetected' in event) {
-      console.warn('🚨 CSRF Attack Detected!', event);
+    console.warn('[CSRF][ALERT] Attack Detected!', event);
       this.showSecurityAlert('CSRF attack detected', 'critical');
     } else if ('SuspiciousActivity' in event) {
-      console.warn('⚠️ Suspicious Activity:', event);
+    console.warn('[CSRF][Warn] Suspicious Activity:', event);
       this.showSecurityAlert('Suspicious activity detected', 'warning');
     } else if ('RateLimitExceeded' in event) {
-      console.warn('🚫 Rate Limit Exceeded:', event);
+      console.warn('[RateLimit] Exceeded:', event);
       this.showSecurityAlert('Rate limit exceeded', 'info');
     }
   }

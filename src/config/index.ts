@@ -261,12 +261,12 @@ export const validateConfig = (cfg: AppConfig): string[] => {
 
 // Log configuration on startup (development only)
 if (isDevelopment()) {
-  console.log('🔧 Gait Monitor Configuration:', config)
+  console.log('[Config] Gait Monitor Configuration:', config)
   
   const configErrors = validateConfig(config)
   if (configErrors.length > 0) {
-    console.error('❌ Configuration errors:', configErrors)
+  console.error('[Config][Error] Configuration errors:', configErrors)
   } else {
-    console.log('✅ Configuration is valid')
+  console.log('[Config] Configuration is valid')
   }
 }

@@ -2364,6 +2364,7 @@
   display: flex;
   gap: 0.25rem;
   border-radius: 8px;
+}
 
 .btn-group .btn-small {
   border-radius: 0.25rem;

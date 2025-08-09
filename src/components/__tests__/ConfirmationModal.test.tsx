@@ -232,8 +232,10 @@ describe('ConfirmationModal', () => {
     });
 
     const title = container.querySelector('#modal-title');
-    expect(title?.textContent).toContain('⚠️');
     expect(title?.textContent).toContain('Warning');
+    // Icon is rendered as an inline SVG with aria-label
+    const icon = title?.querySelector('svg[aria-label="Warning"]');
+    expect(icon).toBeTruthy();
   });
 
   test('should display danger type with correct styling and icon', () => {
@@ -250,8 +252,9 @@ describe('ConfirmationModal', () => {
 
     const title = container.querySelector('#modal-title');
     const confirmButton = container.querySelectorAll('button')[1];
-    
-    expect(title?.textContent).toContain('🗑️');
+    // Icon is rendered as an inline SVG with aria-label
+    const icon = title?.querySelector('svg[aria-label="Danger"]');
+    expect(icon).toBeTruthy();
     expect(title?.textContent).toContain('Delete');
     expect(confirmButton.className).toContain('btn-danger');
   });
@@ -270,8 +273,9 @@ describe('ConfirmationModal', () => {
 
     const title = container.querySelector('#modal-title');
     const confirmButton = container.querySelectorAll('button')[1];
-    
-    expect(title?.textContent).toContain('ℹ️');
+    // Icon is rendered as an inline SVG with aria-label
+    const icon = title?.querySelector('svg[aria-label="Information"]');
+    expect(icon).toBeTruthy();
     expect(title?.textContent).toContain('Information');
     expect(confirmButton.className).toContain('btn-primary');
   });
@@ -289,8 +293,9 @@ describe('ConfirmationModal', () => {
 
     const title = container.querySelector('#modal-title');
     const confirmButton = container.querySelectorAll('button')[1];
-    
-    expect(title?.textContent).toContain('⚠️');
+    // Default type is warning, check for the warning icon SVG
+    const icon = title?.querySelector('svg[aria-label="Warning"]');
+    expect(icon).toBeTruthy();
     expect(confirmButton.className).toContain('btn-primary');
   });
 

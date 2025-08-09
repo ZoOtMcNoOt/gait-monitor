@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { registerChartComponents } from '../utils/chartSetup'
+import { Icon } from './icons'
 import { config } from '../config'
 import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
 import { useTimestampManager } from '../hooks/useTimestampManager'
@@ -12,111 +13,7 @@ import { protectedOperations } from '../services/csrfProtection'
 // Register Chart.js components
 registerChartComponents()
 
-// Inline SVG icons for consistent visuals
-const Icons = {
-  chart: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M10 19V9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M16 19V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M22 19H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  timer: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="2"/>
-      <path d="M12 13V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M9 3h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  antenna: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="2" fill="currentColor"/>
-      <path d="M5 12a7 7 0 0 1 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M19 12a7 7 0 0 0-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M3 12a9 9 0 0 1 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  device: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
-      <circle cx="12" cy="19" r="1" fill="currentColor"/>
-    </svg>
-  ),
-  close: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  refresh: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  error: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 2l10 18H2L12 2z" stroke="currentColor" strokeWidth="2" fill="none"/>
-      <path d="M12 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="17" r="1" fill="currentColor"/>
-    </svg>
-  ),
-  export: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  zoom: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
-      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  settings: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2"/>
-      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.11a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.11a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.11a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c0 .66.39 1.26 1 1.51.16.07.34.11.51.11H21a2 2 0 110 4h-.11a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2"/>
-    </svg>
-  ),
-  chevronDown: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  fit: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 9V5a2 2 0 012-2h4M15 3h4a2 2 0 012 2v4M21 15v4a2 2 0 01-2 2h-4M9 21H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  home: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 11l9-7 9 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5 10v10h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  stepBack: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  stepForward: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  statusGood: (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#10b981"/></svg>
-  ),
-  statusWarning: (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#f59e0b"/></svg>
-  ),
-  statusDanger: (
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#ef4444"/></svg>
-  ),
-}
+// Icons are now imported from shared Icon module
 
 interface DataViewerProps {
   sessionId: string
@@ -303,7 +200,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setError(null)
       
       // Always load full data initially, apply downsampling in chart processing
-      console.log(`🚀 Loading session data for ${sessionId}`)
+  console.log(`[DataViewer] Loading session data for ${sessionId}`)
       
       // Use optimized Rust backend - load all data, we'll filter on client side
       const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
@@ -336,7 +233,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         .flatMap(deviceData => Object.values(deviceData))
         .reduce((sum, points) => sum + points.length, 0)
       
-      console.log(`📊 Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`)
+  console.log(`[DataViewer] Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`)
       
       // Generate device colors for all detected devices
       if (devices.length > 0) {
@@ -506,9 +403,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     
     // Debug logging for zoom filtering
     if (timeRange) {
-      console.log(`🔍 Time filtering: range=[${timeRange.start.toFixed(2)}s, ${timeRange.end.toFixed(2)}s], filtered=${filtered.length} points`)
+      console.log(`[Filter] Time filtering: range=[${timeRange.start.toFixed(2)}s, ${timeRange.end.toFixed(2)}s], filtered=${filtered.length} points`)
     } else {
-      console.log(`📊 No time filtering: showing all ${filtered.length} points`)
+      console.log(`[Filter] No time filtering: showing all ${filtered.length} points`)
     }
     
     return filtered
@@ -516,7 +413,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   // Prepare chart data
   const chartData = useMemo(() => {
-    console.log('🔄 Chart data recalculation triggered') // Debug log to track re-renders
+  console.log('[Chart] Data recalculation triggered') // Debug log to track re-renders
     
     // Don't render chart until device colors are initialized
     if (!optimizedData || deviceColors.size === 0) return null
@@ -781,15 +678,15 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         <div className="data-viewer-modal">
           <div className="data-viewer-header">
             <h2>Error Loading Data</h2>
-            <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
+            <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close"><Icon.Close /></button>
           </div>
           <div className="data-viewer-content">
             <div className="data-viewer-error">
-              <h3><span aria-hidden="true">{Icons.error}</span> No Data Available</h3>
+              <h3><span aria-hidden="true"><Icon.Warning /></span> No Data Available</h3>
               <p>Session data could not be loaded.</p>
               <p className="error-details">{error}</p>
               <div className="button-group">
-                <button onClick={reloadData} className="btn-primary"><span aria-hidden="true">{Icons.refresh}</span> Retry</button>
+                <button onClick={reloadData} className="btn-primary"><span aria-hidden="true"><Icon.Refresh /></span> Retry</button>
                 <button onClick={onClose} className="btn-secondary">Close</button>
               </div>
             </div>
@@ -804,7 +701,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       <div className="data-viewer-overlay">
         <div className="data-viewer-modal">
           <div className="data-viewer-error">
-            <h3><span aria-hidden="true">{Icons.error}</span> No Data Available</h3>
+            <h3><span aria-hidden="true"><Icon.Warning /></span> No Data Available</h3>
             <p>Session data could not be loaded.</p>
             <button className="btn-secondary" onClick={onClose}>Close</button>
           </div>
@@ -817,29 +714,29 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     <div className="data-viewer-overlay">
       <div className="data-viewer-modal">
         {/* Close button positioned at top right of modal */}
-        <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close">{Icons.close}</button>
+  <button className="btn-close" onClick={onClose} aria-label="Close data viewer" title="Close"><Icon.Close /></button>
         
         {/* Header Section - Session Info */}
         <header className="data-viewer-header">
           <div className="header-content">
             <div className="session-info">
               <h1 className="session-title">
-                <span className="session-icon" aria-hidden="true">{Icons.chart}</span>
+                <span className="session-icon" aria-hidden="true"><Icon.Chart /></span>
                 {sessionName}
               </h1>
               <div className="session-metadata">
                 <span className="metadata-item">
-                  <span className="metadata-icon" aria-hidden="true">{Icons.timer}</span>
+                  <span className="metadata-icon" aria-hidden="true"><Icon.Clock /></span>
                   {Math.round(optimizedData.metadata.duration)}s
                 </span>
                 <span className="metadata-separator" aria-hidden="true">•</span>
                 <span className="metadata-item">
-                  <span className="metadata-icon" aria-hidden="true">{Icons.antenna}</span>
+                  <span className="metadata-icon" aria-hidden="true"><Icon.Antenna /></span>
                   {Math.round(optimizedData.metadata.sample_rate * 10) / 10}Hz
                 </span>
                 <span className="metadata-separator" aria-hidden="true">•</span>
                 <span className="metadata-item">
-                  <span className="metadata-icon" aria-hidden="true">{Icons.device}</span>
+                  <span className="metadata-icon" aria-hidden="true"><Icon.Device /></span>
                   {optimizedData.metadata.devices.length} device{optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -879,7 +776,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title="Fit all data to view"
                   aria-label="Fit all data"
                 >
-                  <span className="btn-icon" aria-hidden="true">{Icons.fit}</span>
+                  <span className="btn-icon" aria-hidden="true"><Icon.Fit /></span>
                   <span className="btn-label">Fit All</span>
                 </button>
                 
@@ -897,7 +794,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     title="Zoom to selected area"
                     aria-label="Zoom to selection"
                   >
-                    <span className="btn-icon" aria-hidden="true">{Icons.chart}</span>
+                    <span className="btn-icon" aria-hidden="true"><Icon.Chart /></span>
                     <span className="btn-label">Zoom to Selection</span>
                   </button>
                 )}
@@ -911,7 +808,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title="Export current data view to CSV"
                   aria-label="Export data"
                 >
-                  <span className="btn-icon" aria-hidden="true">{Icons.export}</span>
+                  <span className="btn-icon" aria-hidden="true"><Icon.Export /></span>
                   <span className="btn-label">Export Data</span>
                 </button>
                 
@@ -921,9 +818,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   title={showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'}
                   aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
                 >
-                  <span className="btn-icon" aria-hidden="true">{Icons.settings}</span>
+                  <span className="btn-icon" aria-hidden="true"><Icon.Gear /></span>
                   <span className="btn-label">Settings</span>
-                  <span className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`} aria-hidden="true">{Icons.chevronDown}</span>
+                  <span className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`} aria-hidden="true"><Icon.ChevronDown /></span>
                 </button>
               </div>
             </div>
@@ -937,12 +834,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               {/* Performance Settings */}
               <div className="settings-card">
                 <h3 className="settings-title">
-                  <span className="settings-icon" aria-hidden="true">{Icons.chart}</span>
+                  <span className="settings-icon" aria-hidden="true"><Icon.Chart /></span>
                   Performance & Rendering
                     <div className="performance-indicator">
                     <div className={`performance-status ${chartData && chartData.totalDataPoints > 5000 ? 'warning' : 'good'}`}>
-                      {chartData && chartData.totalDataPoints > 10000 ? Icons.statusDanger : 
-                       chartData && chartData.totalDataPoints > 5000 ? Icons.statusWarning : Icons.statusGood}
+                      {chartData && chartData.totalDataPoints > 10000 ? <Icon.StatusDanger /> : 
+                       chartData && chartData.totalDataPoints > 5000 ? <Icon.StatusWarning /> : <Icon.StatusGood />}
                       <span className="performance-text">
                         {chartData && chartData.totalDataPoints > 10000 ? 'High Load' : 
                          chartData && chartData.totalDataPoints > 5000 ? 'Moderate Load' : 'Optimal'}
@@ -966,7 +863,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         <span className="setting-badge">Recommended</span>
                       </label>
                       <p id="downsampling-help" className="setting-help">
-                        <span aria-hidden="true" className="setting-help-icon">{Icons.chart}</span> Automatically reduces data points for better performance while preserving important features
+                        <span aria-hidden="true" className="setting-help-icon"><Icon.Chart /></span> Automatically reduces data points for better performance while preserving important features
                       </p>
                     </div>
                   </div>
@@ -998,7 +895,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         </div>
                       </div>
                       <p id="max-points-help" className="setting-help">
-                        <span aria-hidden="true" className="setting-help-icon">{Icons.settings}</span> Balance between detail and performance. Higher values show more detail but may reduce responsiveness.
+                        <span aria-hidden="true" className="setting-help-icon"><Icon.Gear /></span> Balance between detail and performance. Higher values show more detail but may reduce responsiveness.
                       </p>
                     </div>
                   </div>
@@ -1008,7 +905,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               {/* Display Settings */}
               <div className="settings-card">
                 <h3 className="settings-title">
-                  <span className="settings-icon" aria-hidden="true">{Icons.settings}</span>
+                  <span className="settings-icon" aria-hidden="true"><Icon.Gear /></span>
                   Display Options
                 </h3>
                 <div className="settings-grid">
@@ -1030,7 +927,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         <span className="setting-badge disabled">Auto</span>
                       </label>
                       <p id="animations-help" className="setting-help">
-                        <span aria-hidden="true" className="setting-help-icon">{Icons.timer}</span> Animations are automatically disabled for better performance with large datasets
+                        <span aria-hidden="true" className="setting-help-icon"><Icon.Clock /></span> Animations are automatically disabled for better performance with large datasets
                       </p>
                     </div>
                   </div>
@@ -1059,7 +956,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                         </div>
                       </div>
                       <p id="time-window-help" className="setting-help">
-                        <span aria-hidden="true">{Icons.timer}</span> Default viewing window when zooming. Smaller values show more detail.
+                        <span aria-hidden="true"><Icon.Clock /></span> Default viewing window when zooming. Smaller values show more detail.
                       </p>
                     </div>
                   </div>
@@ -1200,9 +1097,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       console.error('Chart rendering error:', error)
                       return (
                         <div className="chart-error">
-                          <p><span aria-hidden="true">{Icons.error}</span> Error rendering chart. Please try refreshing the data.</p>
+                          <p><span aria-hidden="true"><Icon.Warning /></span> Error rendering chart. Please try refreshing the data.</p>
                           <button onClick={reloadData} className="btn-secondary">
-                            <span aria-hidden="true">{Icons.refresh}</span> Reload Data
+                            <span aria-hidden="true"><Icon.Refresh /></span> Reload Data
                           </button>
                         </div>
                       )
@@ -1274,7 +1171,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     <div className="controls-row">
                       {/* Enhanced Zoom Controls with Presets */}
                       <div className="zoom-group">
-                        <span className="control-label"><span aria-hidden="true">{Icons.zoom}</span> Zoom</span>
+                          <span className="control-label"><span aria-hidden="true"><Icon.Zoom /></span> Zoom</span>
                         
                         {/* Time Span Presets */}
                         <div className="zoom-presets">
@@ -1363,7 +1260,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             title="Reset view (Fit all data)"
                             aria-label="Reset zoom and position"
                           >
-                            <span className="reset-icon" aria-hidden="true">{Icons.home}</span>
+                            <span className="reset-icon" aria-hidden="true"><Icon.Home /></span>
                           </button>
                         </div>
                       </div>
@@ -1380,7 +1277,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             disabled={currentTimePosition <= 0}
                             title="Jump backward"
                           >
-                            <span aria-hidden="true">{Icons.stepBack}</span>
+                            <span aria-hidden="true"><Icon.StepBack /></span>
                           </button>
                           <button
                             onClick={() => {
@@ -1395,12 +1292,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                             })()}
                             title="Jump forward"
                           >
-                            <span aria-hidden="true">{Icons.stepForward}</span>
+                            <span aria-hidden="true"><Icon.StepForward /></span>
                           </button>
                         </div>
                         
                         <div className="time-display">
-                          <span className="info-label" aria-hidden="true">{Icons.chart}</span>
+                          <span className="info-label" aria-hidden="true"><Icon.Chart /></span>
                           <span className="info-value">{(() => {
                             const effectiveWindow = getEffectiveTimeWindow()
                             const viewingDuration = effectiveWindow.end - effectiveWindow.start
@@ -1428,7 +1325,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             ) : (
               <>
                 <div className="empty-chart-state">
-                  <div className="empty-state-icon" aria-hidden="true">{Icons.chart}</div>
+                  <div className="empty-state-icon" aria-hidden="true"><Icon.Chart /></div>
                   <h3 className="empty-state-title">No Chart Data Available</h3>
                   <p className="empty-state-message">Unable to display chart visualization for this session.</p>
                 </div>
@@ -1496,7 +1393,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   <div className="controls-row">
                     {/* Enhanced Zoom Controls with Presets */}
                     <div className="zoom-group">
-                      <span className="control-label"><span aria-hidden="true">{Icons.zoom}</span> Zoom</span>
+                      <span className="control-label"><span aria-hidden="true"><Icon.Zoom /></span> Zoom</span>
                       <div className="zoom-presets">
                         { [
                           { span: null, label: 'All', isAll: true },
@@ -1578,7 +1475,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           title="Reset view (Fit all data)"
                           aria-label="Reset zoom and position"
                         >
-                          <span className="reset-icon" aria-hidden="true">{Icons.home}</span>
+                          <span className="reset-icon" aria-hidden="true"><Icon.Home /></span>
                         </button>
                       </div>
                     </div>
@@ -1595,7 +1492,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           disabled={currentTimePosition <= 0}
                           title="Jump backward"
                         >
-                          <span aria-hidden="true">{Icons.stepBack}</span>
+                          <span aria-hidden="true"><Icon.StepBack /></span>
                         </button>
                         <button
                           onClick={() => {
@@ -1610,12 +1507,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           })()}
                           title="Jump forward"
                         >
-                          <span aria-hidden="true">{Icons.stepForward}</span>
+                          <span aria-hidden="true"><Icon.StepForward /></span>
                         </button>
                       </div>
                       
                       <div className="time-display">
-                        <span className="info-label" aria-hidden="true">{Icons.chart}</span>
+                        <span className="info-label" aria-hidden="true"><Icon.Chart /></span>
                         <span className="info-value">{(() => {
                           const effectiveWindow = getEffectiveTimeWindow()
                           const viewingDuration = effectiveWindow.end - effectiveWindow.start

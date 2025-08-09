@@ -269,7 +269,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
       // Get buffer stats for debugging
       const bufferStats = bufferManager.getBufferStats()
       if (bufferStats && bufferStats.totalDataPoints % 100 === 0) { // Log every 100 points
-        console.log(`📈 BufferManager: ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
+      console.log(`[Buffer] ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
       }
     }
   }, [updateChartForDevice, bufferManager, getChartTimestamp])
@@ -280,7 +280,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     if (!chartRef.current) return
     
     const chart = chartRef.current
-    console.log(`🔄 Chart mode changed to: ${chartMode}`)
+  console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
     
     // Performance optimization: only rebuild if we have data to avoid empty rebuilds
     if (allDataPoints.size === 0) {
@@ -357,7 +357,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                          'Sensor Values'
     }
     
-    console.log(`📊 Created ${chart.data.datasets.length} datasets for ${allDataPoints.size} devices`)
+  console.log(`[LiveChart] Created ${chart.data.datasets.length} datasets for ${allDataPoints.size} devices`)
     chart.update('none')
   }, [chartMode, allDataPoints, deviceColors])
 
@@ -440,13 +440,13 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
   // Subscribe to gait data from context and handle simulation
   useEffect(() => {
-    console.log(`🎯 Collection effect triggered. isCollecting: ${isCollecting}`)
+  console.log(`[LiveChart] Collection effect triggered. isCollecting: ${isCollecting}`)
     
     if (!isCollecting) return
 
     let simulationInterval: ReturnType<typeof setInterval> | null = null
     
-    console.log('🧹 Clearing buffers and chart data for new collection session')
+  console.log('[LiveChart] Clearing buffers and chart data for new collection session')
     
     // Clear buffers when starting collection (TimestampManager handles base timestamp)
     bufferManager.clearAll()
@@ -454,19 +454,19 @@ export default function LiveChart({ isCollecting = false }: Props) {
     // Clear our single data storage
     setAllDataPoints(new Map())
     
-    console.log('🔄 Starting new data collection session')
+  console.log('[LiveChart] Starting new data collection session')
     
     // Subscribe to real BLE data
     const unsubscribeGait = subscribeToGaitData((payload: GaitDataPayload) => {
       const gaitData = convertPayloadToGaitData(payload)
-      console.log('📡 Received real BLE data from device:', payload.device_id, 'at timestamp:', payload.timestamp)
+  console.log('[LiveChart] Received BLE data:', payload.device_id, 'at timestamp:', payload.timestamp)
       addBLEDataToChart(gaitData)
     })
     
     // Start simulation if no active collecting devices after 2 seconds
     const fallbackTimeout = setTimeout(() => {
       if (activeCollectingDevices.length === 0) {
-        console.log('🔄 Starting simulation mode')
+  console.log('[LiveChart] Starting simulation mode')
         const simStartTime = Date.now()
         
         simulationInterval = setInterval(() => {

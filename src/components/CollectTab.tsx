@@ -110,11 +110,11 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
 
   // Initialize security monitoring
   useEffect(() => {
-    console.log('🛡️ Starting security monitoring for file operations')
+  console.log('[Security] Starting monitoring for file operations')
     securityMonitor.startMonitoring(30000) // Check every 30 seconds
     
     return () => {
-      console.log('🛡️ Stopping security monitoring')
+  console.log('[Security] Stopping monitoring')
       securityMonitor.stopMonitoring()
     }
   }, [])
@@ -130,7 +130,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   // Subscribe to gait data during collection
   useEffect(() => {
     if (isCollecting) {
-      console.log('🔔 Setting up gait data subscription')
+  console.log('[Collect] Setting up gait data subscription')
       const lastReceiveTimes = new Map<string, number>() // Track frontend receive times
       const packetCounts = new Map<string, number>() // Track packet counts per device
       
@@ -149,11 +149,11 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
         if (count % 100 === 0) {
           const avgInterval = interval > 0 ? interval : 0
           const estimatedHz = avgInterval > 0 ? 1000 / avgInterval : 0
-          console.log(`📊 Frontend timing [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`)
+          console.log(`[Collect][Timing] [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`)
         }
         
         // Add data to buffer
-        console.log('📦 Received gait data:', data.device_id, data.timestamp)
+  console.log('[Collect] Received gait data:', data.device_id, data.timestamp)
         dataBuffer.current.push({
           device_id: data.device_id,
           r1: data.r1,
@@ -167,7 +167,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       })
 
       return () => {
-        console.log('🔕 Cleaning up gait data subscription')
+  console.log('[Collect] Cleaning up gait data subscription')
         unsubscribe()
       }
     }
@@ -193,7 +193,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
 
   const handleStartCollection = async () => {
     try {
-      console.log('🚀 Starting synchronized collection for all connected devices')
+  console.log('[Collect] Starting synchronized collection for all connected devices')
       console.log('Connected devices:', connectedDevices)
       
       if (connectedDevices.length === 0) {
@@ -203,17 +203,17 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
 
       // Clear any previous data before starting new collection
       dataBuffer.current = []
-      console.log('🧹 Cleared data buffer for new collection')
+  console.log('[Collect] Cleared data buffer for new collection')
 
       // Start collection on ALL connected devices simultaneously
       const startPromises = connectedDevices.map(async (deviceId) => {
         try {
-          console.log(`📡 Starting collection for device: ${deviceId}`)
+          console.log(`[Collect] Starting collection for device: ${deviceId}`)
           await startDeviceCollection(deviceId)
-          console.log(`✅ Successfully started collection for device: ${deviceId}`)
+          console.log(`[Collect] Successfully started collection for device: ${deviceId}`)
           return { deviceId, success: true }
         } catch (error) {
-          console.error(`❌ Failed to start collection for device ${deviceId}:`, error)
+          console.error(`[Collect][Error] Failed to start collection for device ${deviceId}:`, error)
           return { deviceId, success: false, error }
         }
       })
@@ -227,10 +227,10 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       const failedDevices = results
         .filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success))
         
-      console.log(`📊 Collection start results: ${successfulDevices.length} successful, ${failedDevices.length} failed`)
+  console.log(`[Collect] Start results: ${successfulDevices.length} successful, ${failedDevices.length} failed`)
       
       if (successfulDevices.length > 0) {
-        console.log('✅ Successfully started synchronized data collection')
+  console.log('[Collect] Successfully started synchronized data collection')
         setIsUsingRealData(true)
         setIsCollecting(true)
         
@@ -238,7 +238,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
           showWarning('Partial Success', `Started collection on ${successfulDevices.length} devices, but ${failedDevices.length} devices failed to start. Collection will continue with available devices.`)
         }
       } else {
-        console.error('❌ Failed to start collection on any devices')
+  console.error('[Collect][Error] Failed to start collection on any devices')
         showError('Collection Failed', 'Failed to start collection on any connected devices. Please check device connections and try again.')
       }
     } catch (error) {
@@ -250,7 +250,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   const handleStopCollectionRequest = async () => {
     // Prevent multiple stop requests
     if (isStopping) {
-      console.log('⚠️ Stop collection already in progress, ignoring request')
+  console.log('[Collect][Warn] Stop collection already in progress, ignoring request')
       return
     }
 
@@ -261,7 +261,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
 
     const warningText = dataBuffer.current.length > 0 
       ? "Your collected data will be saved and you can review it in the next step."
-      : "⚠️ No data has been collected yet. You may want to continue collecting before stopping."
+  : "No data has been collected yet. You may want to continue collecting before stopping."
 
     const confirmed = await showConfirmation({
       title: 'Stop Data Collection?',
@@ -285,15 +285,15 @@ ${warningText}`,
   const handleConfirmStopCollection = async () => {
     // Prevent multiple stop calls
     if (isStopping) {
-      console.log('⚠️ Stop collection already in progress, ignoring confirmation')
+  console.log('[Collect][Warn] Stop collection already in progress, ignoring confirmation')
       return
     }
     
-    console.log('🛑 User confirmed stop collection')
+  console.log('[Collect] User confirmed stop collection')
     setIsStopping(true)
     
     try {
-      console.log('🛑 Stopping data collection...')
+  console.log('[Collect] Stopping data collection...')
       console.log('Current state:', { 
         isCollecting, 
         isUsingRealData, 
@@ -303,21 +303,21 @@ ${warningText}`,
       
       // Capture data BEFORE stopping to avoid race conditions
       const finalDataPoints = [...dataBuffer.current]
-      console.log(`📊 Captured ${finalDataPoints.length} data points before stopping`)
+  console.log(`[Collect] Captured ${finalDataPoints.length} data points before stopping`)
       
       // Stop BLE notifications on ALL connected devices if using real data
       if (isUsingRealData && connectedDevices.length > 0) {
-        console.log('🔄 Stopping BLE notifications for all connected devices')
+  console.log('[Collect] Stopping BLE notifications for all connected devices')
         
         // Stop collection on ALL connected devices simultaneously
         const stopPromises = connectedDevices.map(async (deviceId) => {
           try {
             console.log(`� Stopping collection for device: ${deviceId}`)
             await stopDeviceCollection(deviceId)
-            console.log(`✅ Successfully stopped collection for device: ${deviceId}`)
+            console.log(`[Collect] Successfully stopped collection for device: ${deviceId}`)
             return { deviceId, success: true }
           } catch (error) {
-            console.error(`❌ Failed to stop collection for device ${deviceId}:`, error)
+            console.error(`[Collect][Error] Failed to stop collection for device ${deviceId}:`, error)
             return { deviceId, success: false, error }
           }
         })
@@ -327,19 +327,19 @@ ${warningText}`,
         const successfulStops = results.filter(result => result.status === 'fulfilled' && result.value.success).length
         const failedStops = results.filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)).length
         
-        console.log(`📊 Collection stop results: ${successfulStops} successful, ${failedStops} failed`)
+  console.log(`[Collect] Stop results: ${successfulStops} successful, ${failedStops} failed`)
         
         if (failedStops > 0) {
-          console.warn(`⚠️ Failed to stop collection on ${failedStops} devices`)
+          console.warn(`[Collect][Warn] Failed to stop collection on ${failedStops} devices`)
         }
         
-        console.log('✅ Successfully stopped synchronized data collection')
+  console.log('[Collect] Successfully stopped synchronized data collection')
         setIsUsingRealData(false)
       }
       
       // Update UI state
       setIsCollecting(false)
-      console.log('✅ Set isCollecting to false')
+  console.log('[Collect] Set isCollecting to false')
       
       // Update collected data with captured points
       if (collectedData) {
@@ -348,20 +348,20 @@ ${warningText}`,
           dataPoints: finalDataPoints
         }
         setCollectedData(updatedData)
-        console.log('💾 Updated collected data:', {
+  console.log('[Collect] Updated collected data:', {
           sessionName: updatedData.sessionName,
           dataPointsLength: updatedData.dataPoints.length,
           sampleDataPoints: updatedData.dataPoints.slice(0, 2)
         })
       } else {
-        console.warn('⚠️ No collectedData state found')
+  console.warn('[Collect][Warn] No collectedData state found')
       }
       
-      console.log('🔄 Moving to review step')
+  console.log('[Collect] Moving to review step')
       setCurrentStep('review')
       
     } catch (error) {
-      console.error('❌ Failed to stop collection:', error)
+  console.error('[Collect][Error] Failed to stop collection:', error)
       
       // Show detailed error to user
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -378,7 +378,7 @@ ${warningText}`,
           ...collectedData,
           dataPoints: finalDataPoints
         })
-        console.log('💾 Force-saved data points despite error:', finalDataPoints.length)
+  console.log('[Collect] Force-saved data points despite error:', finalDataPoints.length)
       }
       
       setCurrentStep('review')
@@ -390,18 +390,18 @@ ${warningText}`,
 
   const handleSaveData = async () => {
     if (!collectedData) {
-      console.error('❌ No collected data to save')
+  console.error('[Collect][Error] No collected data to save')
       alert('No data to save!')
       return
     }
 
     if (collectedData.dataPoints.length === 0) {
-      console.error('❌ No data points to save')
+  console.error('[Collect][Error] No data points to save')
       alert('No data points collected. Please collect some data before saving.')
       return
     }
 
-    console.log('💾 Starting to save session...')
+  console.log('[Collect] Starting to save session...')
     console.log('Session data to save:', {
       sessionName: collectedData.sessionName,
       subjectId: collectedData.subjectId,
@@ -412,7 +412,7 @@ ${warningText}`,
     setIsSaving(true)
     
     try {
-      console.log('🔐 Saving session with enhanced CSRF protection...')
+  console.log('[Collect] Saving session with enhanced CSRF protection...')
 
       // Use enhanced CSRF protection with automatic retry
       const filePath = await protectedOperations.saveSessionData(
@@ -422,7 +422,7 @@ ${warningText}`,
         collectedData.dataPoints
       )
 
-      console.log('✅ Session saved successfully to:', filePath)
+  console.log('[Collect] Session saved successfully to:', filePath)
       showSuccess('Session Saved', `File: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
       
       // Reset workflow using persistent workflow hook
@@ -433,7 +433,7 @@ ${warningText}`,
       metadataFormClearRef.current?.()
       
     } catch (error) {
-      console.error('❌ Failed to save session:', error)
+  console.error('[Collect][Error] Failed to save session:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       
       // Enhanced error handling for CSRF-related errors

@@ -1406,11 +1406,11 @@ async fn check_connection_status(
           actually_connected.push(device_id.clone());
         }
         Ok(false) => {
-          println!("🔌 Device {} is no longer connected", device_id);
+          println!("[BLE] Device {} is no longer connected", device_id);
           devices_to_remove.push(device_id.clone());
         }
         Err(e) => {
-          println!("❌ Error checking connection status for {}: {}", device_id, e);
+          println!("[BLE][Error] Error checking connection status for {}: {}", device_id, e);
           devices_to_remove.push(device_id.clone());
         }
       }
@@ -2193,8 +2193,8 @@ async fn save_filtered_data(
   // Use sessions subdirectory within app data directory for consistency
   let sessions_dir = config.app_data_dir.join("sessions");
 
-  println!("🔍 Sessions directory: {:?}", sessions_dir);
-  println!("🔍 Allowed base dirs: {:?}", config.allowed_base_dirs);
+  println!("[CSRF] Sessions directory: {:?}", sessions_dir);
+  println!("[CSRF] Allowed base dirs: {:?}", config.allowed_base_dirs);
 
   // Ensure the sessions directory exists
   if !sessions_dir.exists() {
@@ -2203,7 +2203,7 @@ async fn save_filtered_data(
   }
 
   let file_path = sessions_dir.join(&file_name);
-  println!("🔍 Full file path: {:?}", file_path);
+  println!("[CSRF] Full file path: {:?}", file_path);
   
   // Validate the file path
   if !config.is_path_allowed(&file_path) {
@@ -2214,7 +2214,7 @@ async fn save_filtered_data(
   tokio::fs::write(&file_path, content).await
     .map_err(|e| format!("Failed to save file: {}", e))?;
 
-  println!("✅ Successfully saved filtered data to: {:?}", file_path);
+  println!("[CSRF] Successfully saved filtered data to: {:?}", file_path);
   Ok(file_path.to_string_lossy().to_string())
 }
 

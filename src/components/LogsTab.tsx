@@ -63,7 +63,7 @@ function LogsTabContent() {
       // Load real sessions from backend
       const sessions: SessionMetadata[] = await invoke('get_sessions')
       
-      console.log('📊 Loaded sessions from backend:', sessions.length)
+  console.log('[Logs] Loaded sessions from backend:', sessions.length)
 
       // Convert to LogEntry format
       const logEntries: LogEntry[] = sessions.map(session => ({

@@ -12,7 +12,7 @@ export function useBufferManager() {
   useEffect(() => {
     if (!bufferManagerRef.current) {
       bufferManagerRef.current = new BufferManager(config.bufferConfig)
-      console.log('🏗️ BufferManager initialized with config:', config.bufferConfig)
+  console.log('[Buffer] Initialized with config:', config.bufferConfig)
     }
 
     // Cleanup on unmount
