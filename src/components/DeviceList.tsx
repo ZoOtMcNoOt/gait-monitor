@@ -246,8 +246,8 @@ export default function DeviceList() {
                   <li key={deviceId} className={`device-card connected gaitble-device`}>
                     <div className="device-header">
                       <div className="device-name-section">
-                        <h4 className="device-name">{deviceInfo?.name || 'Unknown Device'}</h4>
-                        <div className="device-id">{deviceId}</div>
+                        <h4 className="device-name" title={deviceInfo?.name || 'Unknown Device'}>{deviceInfo?.name || 'Unknown Device'}</h4>
+                        <div className="device-id" title={deviceId}>{deviceId}</div>
                       </div>
                     </div>
 
@@ -360,8 +360,8 @@ export default function DeviceList() {
                 <li key={d.id} className={`device-card ${isConnected(d.id) ? 'connected' : ''} ${(d.name || '').toLowerCase().startsWith('gaitble') ? 'gaitble-device' : ''}`}>
                   <div className="device-header">
                     <div className="device-name-section">
-                      <h4 className="device-name">{d.name || 'Unknown Device'}</h4>
-                      <div className="device-id">{d.id}</div>
+                      <h4 className="device-name" title={d.name || 'Unknown Device'}>{d.name || 'Unknown Device'}</h4>
+                      <div className="device-id" title={d.id}>{d.id}</div>
                     </div>
                   </div>
 
@@ -400,7 +400,7 @@ export default function DeviceList() {
                           {d.manufacturer_data.length > 0 && (
                             <div className="info-row">
                               <span className="info-label">Manufacturer:</span>
-                              <span className="info-value device-manufacturer">{d.manufacturer_data[0]}</span>
+                              <span className="info-value device-manufacturer" title={d.manufacturer_data[0]}>{d.manufacturer_data[0]}</span>
                             </div>
                           )}
                         </div>
