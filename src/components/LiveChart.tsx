@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import '../styles/chart.css'
+import '../styles/collect.css'
 import { 
   Chart, 
   LineController, 
@@ -57,7 +58,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
-  const [showDataTable, setShowDataTable] = useState(false)
   const [announcementText, setAnnouncementText] = useState('')
   
   // Single data storage for all channels - will be filtered for display
@@ -91,9 +91,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const { 
     connectedDevices, 
     activeCollectingDevices,
-    connectionStatus, 
     subscribeToGaitData,
-    lastGaitDataTime,
     getCurrentSampleRate
   } = useDeviceConnection()
   
@@ -552,14 +550,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
         setChartMode('acceleration')
         setAnnouncementText('Switched to acceleration channels view')
         break
-      case 't':
-      case 'T':
-        setShowDataTable(prev => {
-          const newState = !prev
-          setAnnouncementText(newState ? 'Data table opened' : 'Data table closed')
-          return newState
-        })
-        break
       case 's':
       case 'S':
         setAnnouncementText(getChartSummary())
@@ -571,79 +561,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [getChartSummary, getLatestDataSummary])
 
-  // Data table component for accessibility
-  const DataTable = () => {
-    const chart = chartRef.current
-    if (!chart || !chart.data.datasets.length) {
-      return (
-        <div className="data-table-container">
-          <p>No chart data available to display in table format.</p>
-        </div>
-      )
-    }
-
-    // Get recent data points (last 10 for performance)
-    const recentData: { timestamp: number; [key: string]: number }[] = []
-    const timestamps = new Set<number>()
-
-    chart.data.datasets.forEach(dataset => {
-      const data = dataset.data as { x: number; y: number }[]
-      data.slice(-10).forEach(point => {
-        timestamps.add(point.x)
-      })
-    })
-
-    const sortedTimestamps = Array.from(timestamps).sort((a, b) => b - a)
-
-    sortedTimestamps.forEach(timestamp => {
-      const dataPoint: { timestamp: number; [key: string]: number } = { timestamp }
-      chart.data.datasets.forEach(dataset => {
-        const data = dataset.data as { x: number; y: number }[]
-        const point = data.find(p => p.x === timestamp)
-        if (point) {
-          dataPoint[dataset.label || 'Unknown'] = point.y
-        }
-      })
-      recentData.push(dataPoint)
-    })
-
-    return (
-      <div className="data-table-container">
-        <h3>Recent Chart Data</h3>
-        <table 
-          className="chart-data-table" 
-          aria-label="Recent gait monitoring data in table format"
-        >
-          <thead>
-            <tr>
-              <th scope="col">Time</th>
-              {chart.data.datasets.map((dataset, index) => (
-                <th key={index} scope="col">{dataset.label || 'Unknown'}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentData.map((row, index) => (
-              <tr key={index}>
-                <th scope="row">
-                  {new Date(row.timestamp).toLocaleTimeString()}
-                </th>
-                {chart.data.datasets.map((dataset, dataIndex) => (
-                  <td key={dataIndex}>
-                    {row[dataset.label || 'Unknown']?.toFixed(2) || 'N/A'}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="table-summary">
-          Showing the most recent 10 data points. Use keyboard shortcuts to navigate: 
-          Press 'T' to toggle this table, '1-3' to change chart view, 'S' for summary, 'D' for latest data.
-        </p>
-      </div>
-    )
-  }
+  // Data table component for accessibility - REMOVED
 
   return (
     <section 
@@ -651,7 +569,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
       role="region"
       aria-labelledby="chart-title"
       onKeyDown={handleKeyboardNavigation}
-      tabIndex={0}
     >
       {/* Screen reader announcements */}
       <div 
@@ -663,86 +580,71 @@ export default function LiveChart({ isCollecting = false }: Props) {
         {announcementText}
       </div>
 
-      <div className="chart-header">
-        <h2 id="chart-title">Live Gait Data</h2>
+      <header className="chart-header">
+        <div className="chart-header-row">
+          <div className="chart-title-area">
+            <h2 id="chart-title">Live Gait Data</h2>
+            <div className="chart-meta">
+              <span className="data-count">
+                {(() => {
+                  const stats = bufferManager.getBufferStats()
+                  return stats ? `${stats.totalDataPoints.toLocaleString()} samples` : '0 samples'
+                })()}
+              </span>
+              <span className="sample-rate">{getCurrentSampleRateDisplay()}</span>
+            </div>
+          </div>
+          
+          <div className="chart-controls-area">
+            <div className="view-controls">
+              <div className="button-group" role="group" aria-label="Chart view modes">
+                <button 
+                  type="button"
+                  className={`view-btn ${chartMode === 'all' ? 'active' : ''}`}
+                  onClick={() => setChartMode('all')}
+                  aria-pressed={chartMode === 'all'}
+                  title="Show all channels (keyboard: 1)"
+                >
+                  All
+                </button>
+                <button 
+                  type="button"
+                  className={`view-btn ${chartMode === 'resistance' ? 'active' : ''}`}
+                  onClick={() => setChartMode('resistance')}
+                  aria-pressed={chartMode === 'resistance'}
+                  title="Show resistance channels only (keyboard: 2)"
+                >
+                  Resistance
+                </button>
+                <button 
+                  type="button"
+                  className={`view-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
+                  onClick={() => setChartMode('acceleration')}
+                  aria-pressed={chartMode === 'acceleration'}
+                  title="Show acceleration channels only (keyboard: 3)"
+                >
+                  Acceleration
+                </button>
+              </div>
+            </div>
+            
+            <div className="chart-status-area">
+              <div className={`recording-badge ${isCollecting ? 'recording' : 'idle'}`}>
+                <div className="status-indicator">
+                  {isCollecting ? <Icon.Radio title="Recording" /> : <Icon.Pause title="Idle" />}
+                </div>
+                <span className="status-label">
+                  {isCollecting ? 'Recording' : 'Ready'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <p className="chart-description sr-only">
           {getChartSummary()}
         </p>
-        <div className="chart-controls">
-          <div className="chart-status">
-            <span className={`status-indicator ${isCollecting ? 'collecting' : 'idle'}`}>
-              <span aria-hidden="true" className="status-dot">
-                {isCollecting ? <Icon.Radio title="Recording" /> : <Icon.Pause title="Idle" />}
-              </span>
-              {isCollecting ? 'Recording' : 'Idle'}
-            </span>
-            {/* Device connection status */}
-            {connectedDevices.length > 0 && (
-              <div className="device-status">
-                {connectedDevices.map(deviceId => {
-                  const status = connectionStatus.get(deviceId) || 'disconnected'
-                  const lastGait = lastGaitDataTime.get(deviceId)
-                  const now = Date.now()
-                  
-                  return (
-                    <div key={deviceId} className={`device-connection ${status}`}>
-                      <span className="device-name">{deviceId.slice(-8)}</span>
-                      <span className={`connection-indicator ${status}`} aria-hidden="true">
-                        {status === 'connected' ? (
-                          <Icon.Success title="Connected" />
-                        ) : status === 'timeout' ? (
-                          <Icon.Warning title="Timeout" />
-                        ) : (
-                          <Icon.Error title="Disconnected" />
-                        )}
-                      </span>
-                      {lastGait && (
-                        <span className="gait-info" title={`Last gait data: ${now - lastGait}ms ago`}>
-                          <span aria-hidden="true" className="gait-icon"><Icon.Chart title="Last data age" /></span>
-                          {Math.round((now - lastGait) / 1000)}s
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          <div className="chart-mode-selector" role="group" aria-label="Chart view options">
-            <button 
-              className={`mode-btn ${chartMode === 'all' ? 'active' : ''}`}
-              onClick={() => setChartMode('all')}
-              aria-describedby="chart-mode-help"
-            >
-              All Channels (1)
-            </button>
-            <button 
-              className={`mode-btn ${chartMode === 'resistance' ? 'active' : ''}`}
-              onClick={() => setChartMode('resistance')}
-              aria-describedby="chart-mode-help"
-            >
-              Resistance (2)
-            </button>
-            <button 
-              className={`mode-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
-              onClick={() => setChartMode('acceleration')}
-              aria-describedby="chart-mode-help"
-            >
-              Acceleration (3)
-            </button>
-          </div>
-          <div className="accessibility-controls">
-            <button
-              onClick={() => setShowDataTable(!showDataTable)}
-              className="btn-secondary"
-              aria-label={`${showDataTable ? 'Hide' : 'Show'} data table for screen readers`}
-              aria-describedby="data-table-help"
-            >
-              {showDataTable ? 'Hide' : 'Show'} Data Table (T)
-            </button>
-          </div>
-        </div>
-      </div>
+      </header>
       <div className="chart-container">
         <canvas 
           ref={canvasRef} 
@@ -756,30 +658,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
         </div>
       </div>
       
-      {/* Accessible data table */}
-      {showDataTable && <DataTable />}
-      <div className="chart-info">
-        <div className="data-info">
-          <span>Sample Rate: {getCurrentSampleRateDisplay()}</span>
-          <span className="dot-sep" aria-hidden="true">•</span>
-          <span>Devices: {connectedDevices.length}</span>
-          <span className="dot-sep" aria-hidden="true">•</span>
-          <span>Total Samples: {(() => {
-            const stats = bufferManager.getBufferStats()
-            return stats ? stats.totalDataPoints : 0
-          })()}</span>
-          <span className="dot-sep" aria-hidden="true">•</span>
-          <span>Channels: R1, R2, R3, X, Y, Z</span>
-        </div>
-      </div>
-      
       {/* Buffer Statistics Panel (Debug Mode) */}
       {/* Removed buffer stats panel to simplify UI */}
-
-      {/* Data Table for Accessibility */}
-      {showDataTable && (
-        <DataTable />
-      )}
     </section>
   )
 }

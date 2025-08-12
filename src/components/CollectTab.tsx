@@ -474,7 +474,7 @@ ${warningText}`,
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           
           /* Default hidden state */
-          opacity: 0;
+          opacity: 0;pacity: 0;
           max-height: 0;
           padding: 0 0.75rem;
           margin-bottom: 0;

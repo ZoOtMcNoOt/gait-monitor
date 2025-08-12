@@ -1,0 +1,765 @@
+/* LiveChart Component Styling - Match Collection Step Design */
+
+/* Chart container to match collection controls styling */
+.main-collection-area .chart-container {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);/* Chart canvas area */
+.main-collection-area .chart-container canvas {
+  background: transparent;
+  border-radius: 0;
+  flex: 1;
+}
+
+/* Chart info panel to match collection controls styling */
+.main-collection-area .chart-info {
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 1rem 1.5rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Dark mode chart info */
+.dark .main-collection-area .chart-info {
+  background: var(--color-bg);
+  border-top-color: var(--color-border);
+}
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 400px);
+  min-height: 400px;
+  max-height: 700px;
+  flex: 1;
+}
+
+/* Dark mode chart container */
+.dark .main-collection-area .chart-container {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ===== CLEAN CHART HEADER DESIGN ===== */
+
+/* Main chart container styling */
+.main-collection-area .chart-container {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: none;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 400px);
+  min-height: 400px;
+  max-height: 700px;
+  flex: 1;
+}
+
+/* Header container - clean single-row layout */
+.main-collection-area .chart-header {
+  background: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Dark mode header */
+.dark .main-collection-area .chart-header {
+  background: var(--color-card-bg);
+  border-bottom-color: var(--color-border);
+}
+
+/* Single row: Title + Controls + Status */
+.main-collection-area .chart-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  gap: 1rem;
+}
+
+.main-collection-area .chart-title-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.main-collection-area .chart-title-area h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.main-collection-area .chart-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.main-collection-area .data-count {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Chart controls area - new container for controls + status */
+.main-collection-area .chart-controls-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Chart status area */
+.main-collection-area .chart-status-area {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.main-collection-area .status-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Recording status badge */
+.main-collection-area .recording-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.main-collection-area .recording-badge.recording {
+  background: #ef4444;
+  color: white;
+  animation: recording-pulse 2s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.main-collection-area .recording-badge.idle {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  animation: ready-pulse 3s ease-in-out infinite;
+}
+
+/* Dark mode recording badge */
+.dark .main-collection-area .recording-badge {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.dark .main-collection-area .recording-badge.recording {
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+.dark .main-collection-area .recording-badge.idle {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+@keyframes recording-pulse {
+  0%, 100% { 
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3), 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% { 
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3), 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes ready-pulse {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+}
+
+.main-collection-area .status-indicator {
+  display: flex;
+  align-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+/* View controls */
+.main-collection-area .view-controls {
+  display: flex;
+  align-items: center;
+}
+
+.main-collection-area .button-group {
+  display: flex;
+  gap: 0.125rem;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode button group */
+.dark .main-collection-area .button-group {
+  background: var(--color-card-bg);
+  border-color: var(--color-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.main-collection-area .view-btn {
+  padding: 0.625rem 1.125rem;
+  background: transparent;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-right: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.main-collection-area .view-btn:last-child {
+  border-right: none;
+}
+
+.main-collection-area .view-btn:hover {
+  background: var(--color-bg);
+}
+
+.main-collection-area .view-btn.active {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
+
+.main-collection-area .view-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  z-index: 1;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.main-collection-area .view-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode view buttons */
+.dark .main-collection-area .view-btn {
+  color: var(--color-text);
+  background: transparent;
+}
+
+.dark .main-collection-area .view-btn:hover {
+  background: var(--color-bg);
+}
+
+.dark .main-collection-area .view-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.dark .main-collection-area .view-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.dark .main-collection-area .view-btn:active {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Chart canvas area */
+.main-collection-area .chart-container canvas {
+  background: transparent;
+  border-radius: 0;
+  flex: 1;
+}
+
+/* Chart info panel - keep existing bottom info panel */
+.main-collection-area .chart-info {
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 1rem 1.5rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.main-collection-area .data-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.8;
+  flex-wrap: wrap;
+}
+
+.main-collection-area .data-info span:not(:last-child):not(:nth-child(even)) {
+  font-weight: 500;
+}
+
+.main-collection-area .dot-sep {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .main-collection-area .chart-header-top,
+  .main-collection-area .chart-header-bottom {
+    padding: 1rem 1.25rem;
+  }
+  
+  .main-collection-area .chart-meta {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-collection-area .chart-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .main-collection-area .chart-controls-area {
+    justify-content: space-between;
+  }
+  
+  .main-collection-area .chart-meta {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+  
+  .main-collection-area .device-list {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .main-collection-area .device-indicators {
+    width: 100%;
+  }
+  
+  .main-collection-area .view-controls {
+    align-self: stretch;
+  }
+  
+  .main-collection-area .control-group {
+    justify-content: space-between;
+  }
+  
+  .main-collection-area .button-group {
+    flex: 1;
+    max-width: 300px;
+  }
+  
+  .main-collection-area .view-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+/* End of chart header styles */
+
+/* Chart mode selector to match existing button styling */
+.main-collection-area .chart-mode-selector {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--color-bg);
+  padding: 0.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.main-collection-area .mode-btn {
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 0.125rem);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text);
+  min-width: auto;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.main-collection-area .mode-btn:hover {
+  background: var(--color-card-bg);
+}
+
+.main-collection-area .mode-btn.active {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.main-collection-area .keyboard-hint {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+/* Chart canvas area */
+.main-collection-area .chart-container canvas {
+  background: transparent;
+  border-radius: 0;
+}
+
+/* Chart info panel to match collection controls styling */
+.main-collection-area .chart-info {
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 1rem 1.5rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.main-collection-area .data-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.8;
+  flex-wrap: wrap;
+}
+
+.main-collection-area .data-info span:not(:last-child):not(:nth-child(even)) {
+  font-weight: 500;
+}
+
+.main-collection-area .dot-sep {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* Device status improvements to match sidebar styling */
+.device-status {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 1rem 1.5rem;
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.device-status:last-child {
+  border-bottom: none;
+}
+
+.device-status .device-name {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.device-status .signal-strength,
+.device-status .gait-info {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+/* Accessibility controls styling */
+.main-collection-area .accessibility-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.main-collection-area .accessibility-controls .btn-secondary {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+}
+
+/* ===== COLLECTION SIDEBAR CONSISTENCY ===== */
+
+/* Override device-status-viewer to match collection layout */
+.collection-sidebar .device-status-viewer {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+/* Dark mode device status viewer */
+.dark .collection-sidebar .device-status-viewer {
+  background: var(--color-card-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Header consistency */
+.collection-sidebar .device-status-viewer .status-header {
+  background: var(--color-card-bg);
+  padding: 1.5rem;
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Dark mode status header */
+.dark .collection-sidebar .device-status-viewer .status-header {
+  background: var(--color-card-bg);
+  border-bottom-color: var(--color-border);
+}
+
+.collection-sidebar .device-status-viewer .status-header h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Status summary consistency */
+.collection-sidebar .device-status-viewer .status-summary {
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 1rem 1.5rem;
+  margin: 0;
+}
+
+/* Dark mode status summary */
+.dark .collection-sidebar .device-status-viewer .status-summary {
+  background: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+/* Device items consistency */
+.collection-sidebar .device-status-viewer .device-status-item {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 1rem 1.5rem;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+.collection-sidebar .device-status-viewer .device-status-item:last-child {
+  border-bottom: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.collection-sidebar .device-status-viewer .device-status-item:hover {
+  background: var(--color-bg);
+}
+
+/* Dark mode device status items */
+.dark .collection-sidebar .device-status-viewer .device-status-item {
+  border-bottom-color: var(--color-border);
+}
+
+.dark .collection-sidebar .device-status-viewer .device-status-item:hover {
+  background: var(--color-bg);
+}
+
+/* No devices state consistency */
+.collection-sidebar .device-status-viewer .no-devices {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: transparent;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* ===== ERROR BOUNDARY CONSISTENCY ===== */
+
+/* Chart error fallback styling */
+.chart-error-fallback,
+.device-selector-error-fallback {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid var(--color-border);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--color-text-muted);
+}
+
+/* Dark mode error fallback */
+.dark .chart-error-fallback,
+.dark .device-selector-error-fallback {
+  background: var(--color-card-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.chart-error-fallback h3,
+.device-selector-error-fallback h3 {
+  color: var(--color-danger, #ef4444);
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.chart-error-fallback p,
+.device-selector-error-fallback p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* Collection sidebar error fallback */
+.collection-sidebar .device-selector-error-fallback {
+  height: 100%;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ===== COLLECTION CONTROLS CONSISTENCY CHECK ===== */
+
+/* Ensure collection controls match the design system */
+.collection-controls {
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: none;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 100px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Dark mode collection controls */
+.dark .collection-controls {
+  background: var(--color-card-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.collection-info {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.collection-info p {
+  margin: 0.5rem 0;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.collection-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .main-collection-area .chart-header {
+    padding: 1rem 1.5rem;
+  }
+  
+  .main-collection-area .chart-info {
+    padding: 0.75rem 1rem;
+  }
+  
+  .collection-sidebar .device-status-viewer .status-header {
+    padding: 1rem 1.5rem;
+  }
+  
+  .collection-sidebar .device-status-viewer .status-summary {
+    padding: 0.75rem 1rem;
+  }
+  
+  .collection-sidebar .device-status-viewer .device-status-item {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-collection-area .chart-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .main-collection-area .chart-mode-selector {
+    justify-self: stretch;
+  }
+  
+  .main-collection-area .data-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .main-collection-area .chart-info {
+    padding: 0.75rem 1rem;
+  }
+  
+  .collection-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .collection-info {
+    margin-right: 0;
+  }
+  
+  .collection-buttons {
+    justify-content: stretch;
+    align-items: stretch;
+  }
+  
+  .collection-buttons button {
+    flex: 1;
+  }
+}
