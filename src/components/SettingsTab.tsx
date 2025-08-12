@@ -35,38 +35,31 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const [isModified, setIsModified] = useState(false)
   const [highContrastMode, setHighContrastMode] = useState(false)
 
-  // Separate input values for validation
   const [retentionInputValue, setRetentionInputValue] = useState('90')
   const [storagePathInputValue, setStoragePathInputValue] = useState('./gait_data')
 
-  // Add hooks for proper error handling
   const { showSuccess, showError, showInfo, showSettingsSaved } = useToast()
   const { confirmationState, typedConfirmationState, showConfirmation, showTypedConfirmation } =
     useConfirmation()
 
-  // Load settings from localStorage
   useEffect(() => {
     const savedSettings = localStorage.getItem('appSettings')
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings)
         setSettings(parsed)
-        // Initialize input values
         setRetentionInputValue(parsed.dataRetentionDays?.toString() || '90')
         setStoragePathInputValue(parsed.defaultStoragePath || './gait_data')
       } catch (e) {
         console.error('Failed to parse saved settings:', e)
-        // Set default input values
         setRetentionInputValue('90')
         setStoragePathInputValue('./gait_data')
       }
     } else {
-      // Set default input values
       setRetentionInputValue('90')
       setStoragePathInputValue('./gait_data')
     }
 
-    // Load high contrast mode preference
     const savedHighContrast = localStorage.getItem('highContrastMode')
     if (savedHighContrast === 'true') {
       setHighContrastMode(true)
@@ -74,7 +67,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     }
   }, [])
 
-  // Apply high contrast mode changes
   useEffect(() => {
     if (highContrastMode) {
       document.documentElement.classList.add('high-contrast')
@@ -101,17 +93,14 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     setIsModified(true)
   }
 
-  // Controlled input handlers with validation
   const handleRetentionDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     const numValue = Number(value)
 
-    // Validate and either accept or reject the change
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 365) {
       setRetentionInputValue(value)
       handleSettingChange('dataRetentionDays', numValue)
     } else {
-      // For invalid values, revert to the current valid value
       setRetentionInputValue(retentionInputValue)
     }
   }
@@ -119,12 +108,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const handleStoragePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
 
-    // Validate and either accept or reject the change
     if (value.trim()) {
       setStoragePathInputValue(value)
       handleSettingChange('defaultStoragePath', value)
     } else {
-      // For empty values, revert to the current valid value
       setStoragePathInputValue(storagePathInputValue)
     }
   }

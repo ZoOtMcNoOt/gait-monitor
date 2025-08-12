@@ -74,10 +74,8 @@ mod sample_rate_calculator {
         }
 
         fn record_sample(&mut self, timestamp: Instant) -> Option<f64> {
-            // Add new timestamp
             self.timestamps.push_back(timestamp);
             
-            // Remove old timestamps outside the window
             let cutoff = timestamp - self.window_duration;
             while let Some(&front) = self.timestamps.front() {
                 if front < cutoff {
@@ -87,7 +85,6 @@ mod sample_rate_calculator {
                 }
             }
 
-            // Calculate rate if enough time has passed since last calculation
             if timestamp.duration_since(self.last_calculation) >= self.calculation_interval {
                 self.last_calculation = timestamp;
                 
@@ -102,7 +99,6 @@ mod sample_rate_calculator {
                 }
             }
             
-            // Return current rate even if not recalculated
             if self.last_rate > 0.0 {
                 Some(self.last_rate)
             } else {

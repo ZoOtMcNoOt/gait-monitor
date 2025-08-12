@@ -8,18 +8,14 @@ import ConfirmationModal from './ConfirmationModal'
 import { Icon } from './icons'
 
 export default function DeviceList() {
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [devicesPerPage, setDevicesPerPage] = useState(5)
 
-  // Refs for keyboard navigation
   const deviceButtonRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // Add hooks for proper error handling
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
 
-  // Use global device connection context exclusively
   const {
     scannedDevices,
     connectedDevices,
@@ -33,26 +29,22 @@ export default function DeviceList() {
     removeScannedDevice, // Add manual device removal
   } = useDeviceConnection()
 
-  // Sort devices function - filter out connected devices from available list
   const getSortedDevices = useCallback(() => {
     return scannedDevices
-      .filter((device) => !connectedDevices.includes(device.id)) // Remove connected devices from available list
+      .filter((device) => !connectedDevices.includes(device.id))
       .sort((a, b) => {
-        // Sort GaitBLE devices to the top
         const aIsGaitBLE = (a.name || '').toLowerCase().startsWith('gaitble')
         const bIsGaitBLE = (b.name || '').toLowerCase().startsWith('gaitble')
 
         if (aIsGaitBLE && !bIsGaitBLE) return -1
         if (!aIsGaitBLE && bIsGaitBLE) return 1
 
-        // If both are GaitBLE or both are not, sort alphabetically by name
         const aName = a.name || 'Unknown Device'
         const bName = b.name || 'Unknown Device'
         return aName.localeCompare(bName)
       })
   }, [scannedDevices, connectedDevices])
 
-  // Keyboard navigation functions
   const focusDevice = useCallback(
     (index: number) => {
       const sortedDevices = getSortedDevices()
@@ -63,19 +55,16 @@ export default function DeviceList() {
     [getSortedDevices],
   )
 
-  // Load connected devices on component mount
   useEffect(() => {
     refreshConnectedDevices()
   }, [refreshConnectedDevices])
 
-  // Pagination calculations
   const sortedDevices = getSortedDevices()
   const totalPages = Math.ceil(sortedDevices.length / devicesPerPage)
   const startIndex = (currentPage - 1) * devicesPerPage
   const endIndex = startIndex + devicesPerPage
   const currentDevices = sortedDevices.slice(startIndex, endIndex)
 
-  // Reset to first page when devices change
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1)
@@ -105,11 +94,9 @@ export default function DeviceList() {
 
     if (confirmed) {
       try {
-        // First disconnect if connected
         if (isConnected(deviceId)) {
           await disconnectDevice(deviceId)
         }
-        // Then remove from scanned device list
         removeScannedDevice(deviceId)
         showSuccess('Device Removed', 'The device has been removed from the list.')
       } catch (error) {
@@ -123,7 +110,6 @@ export default function DeviceList() {
     async (deviceId: string) => {
       try {
         await connectDevice(deviceId)
-        // Show success message
         const device = scannedDevices.find((d) => d.id === deviceId)
         const deviceName = device?.name || 'Unknown Device'
         showSuccess('Device Connected', `Successfully connected to ${deviceName}!`)
@@ -209,7 +195,6 @@ export default function DeviceList() {
     [focusDevice, connectedDevices, handleConnect, handleDisconnect, getSortedDevices],
   )
 
-  // Device list keyboard shortcuts
   const deviceShortcuts: KeyboardShortcut[] = [
     {
       key: 's',
@@ -225,9 +210,8 @@ export default function DeviceList() {
       category: 'Device Management',
       action: () => refreshConnectedDevices(),
     },
-  ].filter((shortcut) => shortcut && shortcut.key) // Ensure all shortcuts are valid
+  ].filter((shortcut) => shortcut && shortcut.key)
 
-  // Enable keyboard shortcuts for device list
   useKeyboardShortcuts({
     shortcuts: deviceShortcuts,
     enabled: true,
@@ -251,7 +235,6 @@ export default function DeviceList() {
             </h3>
             <ul>
               {connectedDevices.map((deviceId) => {
-                // Find device info from scanned devices
                 const deviceInfo = scannedDevices.find((d) => d.id === deviceId)
                 const status = connectionStatus.get(deviceId)
 
