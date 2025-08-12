@@ -4,7 +4,19 @@
 .main-collection-area .chart-container {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);/* Chart canvas area */
+  border: none;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 400px);
+  min-height: 400px;
+  max-height: 700px;
+  flex: 1;
+}
+
+/* Chart canvas area */
 .main-collection-area .chart-container canvas {
   background: transparent;
   border-radius: 0;
@@ -37,18 +49,12 @@
   flex: 1;
 }
 
-/* Dark mode chart container */
-.dark .main-collection-area .chart-container {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
 /* ===== CLEAN CHART HEADER DESIGN ===== */
 
 /* Main chart container styling */
 .main-collection-area .chart-container {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   border: none;
   padding: 0;
   margin: 0;
