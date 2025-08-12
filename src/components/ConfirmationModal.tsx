@@ -26,14 +26,11 @@ export const ConfirmationModal = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Focus management for accessibility
   useEffect(() => {
     if (isOpen && cancelButtonRef.current) {
       cancelButtonRef.current.focus()
     }
   }, [isOpen])
-
-  // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -45,7 +42,6 @@ export const ConfirmationModal = ({
     return () => document.removeEventListener('keydown', handleEscape)
   }, [isOpen, onCancel])
 
-  // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === modalRef.current) {
       onCancel()

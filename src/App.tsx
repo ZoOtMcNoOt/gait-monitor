@@ -19,23 +19,19 @@ function AppContent() {
   const [darkMode, setDarkMode] = useState(false)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
 
-  // Use declarative scroll reset when page changes
   useTabScrollReset([page])
 
-  // Create keyboard shortcuts
   const shortcuts = createCommonShortcuts(
     setPage,
     () => setDarkMode(!darkMode),
     () => setShowKeyboardHelp(true),
   )
 
-  // Enable keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts,
     enabled: !showKeyboardHelp, // Disable when help dialog is open to avoid conflicts
   })
 
-  // Add keyboard navigation indicator
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Tab') {
@@ -56,7 +52,6 @@ function AppContent() {
     }
   }, [])
 
-  // Load dark mode setting from localStorage on app start
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode')
     if (savedDarkMode !== null) {
@@ -64,7 +59,6 @@ function AppContent() {
     }
   }, [])
 
-  // Apply dark mode class to document
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark')
@@ -81,7 +75,6 @@ function AppContent() {
 
   return (
     <div className="app">
-      {/* Skip link for keyboard navigation */}
       <Sidebar page={page} onChange={setPage} />
       <ScrollableContainer id="main-content" className="content">
         {page === 'connect' && <ConnectTab />}
@@ -92,7 +85,6 @@ function AppContent() {
         )}
       </ScrollableContainer>
 
-      {/* Keyboard Help Dialog */}
       <KeyboardHelpDialog
         isOpen={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}

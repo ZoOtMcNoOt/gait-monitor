@@ -240,9 +240,7 @@ export default function DeviceList() {
         {isScanning ? 'Scanning...' : 'Scan for Devices'}
       </button>
 
-      {/* Device list area - always present to prevent layout shift */}
       <div className="device-list-container">
-        {/* Connected Devices Section - Show first */}
         {connectedDevices.length > 0 && (
           <div className="connected-devices-section">
             <h3>
@@ -290,7 +288,6 @@ export default function DeviceList() {
                         </div>
                       </div>
 
-                      {/* Connection status */}
                       {status && (
                         <div className={`data-status ${status || 'unknown'}`}>
                           <span className={`data-icon ${status || 'unknown'}`} aria-hidden="true">
@@ -459,7 +456,6 @@ export default function DeviceList() {
                       )}
                     </div>
 
-                    {/* Connection status for all devices */}
                     {(() => {
                       const status = connectionStatus.get(d.id)
                       const isConnectedDevice = isConnected(d.id)
@@ -633,7 +629,6 @@ export default function DeviceList() {
         )}
       </div>
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}

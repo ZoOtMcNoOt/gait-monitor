@@ -234,7 +234,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       </div>
 
       <div className="settings-grid">
-        {/* Appearance Settings */}
         <div className="card">
           <h2>Appearance</h2>
           <div className="setting-group">
@@ -276,7 +275,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Data Collection Settings */}
         <div className="card">
           <h2>Data Collection</h2>
           <div className="setting-group">
@@ -324,7 +322,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Storage Settings */}
         <div className="card">
           <h2>Storage</h2>
           <div className="setting-group">
@@ -391,13 +388,11 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Storage Information */}
         <div className="card">
           <h2>Storage Information</h2>
           <StorageInfo />
         </div>
 
-        {/* Advanced Settings */}
         <div className="card">
           <h2>Advanced</h2>
           <div className="setting-group">
@@ -424,7 +419,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         </div>
       </div>
 
-      {/* Save Settings */}
       {isModified && (
         <div className="settings-actions">
           <div className="unsaved-indicator">
@@ -442,7 +436,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         </div>
       )}
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}
@@ -454,7 +447,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         type={confirmationState.type}
       />
 
-      {/* Typed Confirmation Modal */}
       <TypedConfirmationModal
         isOpen={typedConfirmationState.isOpen}
         title={typedConfirmationState.title}
@@ -482,7 +474,6 @@ function StorageInfo() {
       try {
         setLoading(true)
 
-        // Get storage path
         const path = await invoke<string>('get_storage_path')
         setStoragePath(path)
 

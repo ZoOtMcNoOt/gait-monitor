@@ -494,7 +494,6 @@ ${warningText}`,
           overflow: hidden;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           
-          /* Default hidden state */
           opacity: 0;
           max-height: 0;
           padding: 0 0.75rem;
@@ -536,8 +535,7 @@ ${warningText}`,
         <h1>Data Collection</h1>
         <p>Follow the 3-step process to collect and save gait data.</p>
       </div>
-
-      {/* Step Progress Indicator */}
+ 
       <div className="wizard-progress">
         {steps.map((step, index) => {
           const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
@@ -557,7 +555,7 @@ ${warningText}`,
         })}
       </div>
 
-      {/* Step Content */}
+ 
       <div className="wizard-content">
         {currentStep === 'metadata' && (
           <div className="wizard-step-content">
@@ -603,7 +601,7 @@ ${warningText}`,
               </div>
             </div>
 
-            {/* Two-column layout for live collection */}
+            
             <div className="collection-layout">
               <div className="main-collection-area">
                 <ErrorBoundary
@@ -690,7 +688,7 @@ ${warningText}`,
         )}
       </div>
 
-      {/* Confirmation Modal */}
+      
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}

@@ -1,4 +1,3 @@
-// Sidebar Component
 import '../styles/sidebar.css'
 import { Icon } from './icons'
 

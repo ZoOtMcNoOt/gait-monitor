@@ -185,7 +185,6 @@ function LogsTabContent() {
         <p>View, download, and manage your saved gait data sessions.</p>
       </div>
 
-      {/* Statistics */}
       <div className="stats-grid">
         <div className="stat-card">
           <h3>Total Sessions</h3>
@@ -207,7 +206,6 @@ function LogsTabContent() {
         </div>
       </div>
 
-      {/* Logs Table */}
       <div className="card">
         <div className="logs-header">
           <h2>Session Logs</h2>
@@ -294,7 +292,6 @@ function LogsTabContent() {
         )}
       </div>
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}
@@ -306,7 +303,6 @@ function LogsTabContent() {
         type={confirmationState.type}
       />
 
-      {/* Data Viewer Modal */}
       {viewingSession && (
         <DataViewer
           sessionId={viewingSession.id}

@@ -164,7 +164,6 @@ jest.mock('../contexts/ScrollContext', () => ({
     React.createElement('div', { 'data-testid': 'scroll-provider' }, children),
 }))
 
-// Mock hooks
 jest.mock('../hooks/useTabScrollReset', () => ({
   useTabScrollReset: jest.fn(),
 }))

@@ -391,17 +391,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     const filtered: FilteredDataPoint[] = []
 
     for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      // Show all devices - no device filtering
-
       for (const [dataType, points] of Object.entries(deviceData)) {
-        // Show all data types - no data type filtering
-
         for (const point of points) {
-          // Convert timestamp to relative seconds for consistent gait analysis
           const convertedTimestamp = getChartTimestamp(point.x)
-
-          // Apply time range filtering on converted timestamps if timeRange exists
-          // timeRange.start and timeRange.end are already in chart timestamp format (relative seconds)
           const timeMatch =
             !timeRange ||
             (convertedTimestamp >= timeRange.start && convertedTimestamp <= timeRange.end)
@@ -410,16 +402,14 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             filtered.push({
               device_id: device,
               data_type: dataType,
-              timestamp: convertedTimestamp, // Store relative seconds for gait analysis
+              timestamp: convertedTimestamp,
               value: point.y,
-              unit: '', // Unit info not included in optimized format
+              unit: '',
             })
           }
         }
       }
     }
-
-    // Debug logging for zoom filtering
     if (timeRange) {
       console.log(
         `[Filter] Time filtering: range=[${timeRange.start.toFixed(2)}s, ${timeRange.end.toFixed(2)}s], filtered=${filtered.length} points`,
@@ -432,9 +422,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   }, [optimizedData, timeRange, getChartTimestamp])
 
   const chartData = useMemo(() => {
-    console.log('[Chart] Data recalculation triggered') // Debug log to track re-renders
+    console.log('[Chart] Data recalculation triggered')
 
-    // Don't render chart until device colors are initialized
     if (!optimizedData || deviceColors.size === 0) return null
 
     const datasets = []
@@ -456,8 +445,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             })
           : processedPoints
 
-        if (filteredPoints.length > 0) {
-          // Ensure all data points are properly formatted and not null/undefined
+  if (filteredPoints.length > 0) {
+          
           let validDataPoints = filteredPoints.filter(
             (point) =>
               point &&
@@ -466,8 +455,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               !isNaN(point.x) &&
               !isNaN(point.y),
           )
-
-          // Apply client-side downsampling if needed
+          
           const deviceCount = Object.keys(optimizedData.datasets).length
           const dataTypeCount = Object.keys(deviceData).length
           if (
@@ -486,8 +474,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
           if (validDataPoints.length > 0) {
             totalDataPoints += validDataPoints.length
-
-            // Adjust styling based on dataset size
+            
             const pointCount = validDataPoints.length
             const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
             const borderWidth = pointCount > 3000 ? 1 : 2
@@ -512,9 +499,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
 
     if (totalDataPoints > 0) {
-      console.log(
-        `Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`,
-      )
+      console.log(`Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`)
       if (totalDataPoints > maxDataPoints) {
         console.warn(
           `High data point count (${totalDataPoints}) may impact performance. Consider enabling downsampling.`,

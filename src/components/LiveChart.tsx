@@ -597,8 +597,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
     [getChartSummary, getLatestDataSummary],
   )
 
-  // Data table component for accessibility - REMOVED
-
   return (
     <section
       className="card"
@@ -606,7 +604,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
       aria-labelledby="chart-title"
       onKeyDown={handleKeyboardNavigation}
     >
-      {/* Screen reader announcements */}
       <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
         {announcementText}
       </div>
@@ -685,8 +682,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         </div>
       </div>
 
-      {/* Buffer Statistics Panel (Debug Mode) */}
-      {/* Removed buffer stats panel to simplify UI */}
+  {/* Omitted debug buffer stats panel to reduce UI clutter */}
     </section>
   )
 }

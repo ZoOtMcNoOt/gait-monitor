@@ -1,6 +1,4 @@
-/*────────────────────────────────────────────────────────
-  Modern DataViewer Component - UX/UI Optimized Styles
-────────────────────────────────────────────────────────*/
+/* DataViewer styles */
 
 /* CSS Custom Properties for Consistent Design System */
 :root {
@@ -288,7 +286,6 @@
   margin: 0 var(--dv-spacing-xs);
 }
 
-/* View Mode Tabs */
 .view-mode-tabs {
   display: flex;
   background: var(--color-card-bg, #ffffff);
@@ -340,7 +337,6 @@
   white-space: nowrap;
 }
 
-/* Action Buttons */
 .action-buttons {
   display: flex;
   align-items: center;
@@ -462,7 +458,6 @@
   transform: rotate(180deg);
 }
 
-/* Settings Panel */
 .settings-panel.enhanced {
   background: var(--color-bg, #f8fafc);
   border-bottom: 1px solid var(--color-border, #e2e8f0);
@@ -538,7 +533,6 @@
   opacity: 0.8;
 }
 
-/* Performance Indicator */
 .performance-indicator {
   display: flex;
   align-items: center;
@@ -651,7 +645,6 @@
   margin-left: var(--dv-spacing-md);
 }
 
-/* Range Input Group */
 .range-input-group {
   display: flex;
   flex-direction: column;
@@ -985,7 +978,6 @@
   margin-right: var(--dv-spacing-xs);
 }
 
-/* Zoom Presets */
 .zoom-presets {
   display: flex;
   align-items: center;
@@ -1040,7 +1032,6 @@
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
-/* Fine Zoom Controls */
 .zoom-fine-controls {
   display: flex;
   align-items: center;
@@ -1096,7 +1087,6 @@
   font-size: 1.1em;
 }
 
-/* Zoom Display */
 .zoom-display-enhanced {
   display: flex;
   flex-direction: column;
@@ -1170,7 +1160,6 @@
   width: 100%;
 }
 
-/* Time Info with Navigation */
 .time-info-enhanced {
   display: flex;
   align-items: center;
@@ -1223,9 +1212,7 @@
   border-left: 1px solid var(--color-border, #e2e8f0);
 }
 
-/* Remove old duplicate styles - now handled by .zoom-group */
 
-/* Time Info - Updated for new structure */
 .time-info {
   display: flex;
   align-items: center;
@@ -1259,7 +1246,6 @@
    CLEAN TIMELINE IMPLEMENTATION
 ======================================== */
 
-/* Timeline Row Container - Simple Flexbox Layout */
 .timeline-row {
   display: flex;
   align-items: center;
@@ -1269,7 +1255,6 @@
   box-sizing: border-box;
 }
 
-/* Time Markers - Start and End */
 .timeline-row .time-marker {
   font-family: 'Courier New', monospace !important;
   font-size: 12px !important;
@@ -1284,7 +1269,6 @@
   white-space: nowrap !important;
 }
 
-/* Timeline Container - Holds the track and slider */
 .timeline-container {
   flex: 1 !important;
   position: relative !important;
@@ -1297,7 +1281,6 @@
   box-sizing: content-box !important;
 }
 
-/* Timeline Background Track */
 .timeline-background {
   position: absolute !important;
   top: 0 !important;
@@ -1309,7 +1292,6 @@
   z-index: 1 !important;
 }
 
-/* Visible Range Indicator - Shows current viewport */
 .timeline-visible-range {
   position: absolute !important;
   top: 0 !important;
@@ -1322,7 +1304,6 @@
   z-index: 2 !important;
 }
 
-/* Invisible Range Input - Functional but hidden */
 .timeline-slider {
   position: absolute !important;
   top: 0 !important;
@@ -1342,12 +1323,10 @@
   outline: none !important;
 }
 
-/* Focus ring when the hidden slider receives focus */
 .timeline-container:focus-within .timeline-visible-range {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
 }
 
-/* Hide all slider visual elements */
 .timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none !important;
   width: 0 !important;
@@ -1372,7 +1351,6 @@
   height: 100% !important;
 }
 
-/* Range Info Display - Shows current time range */
 .range-info {
   font-family: 'Courier New', monospace !important;
   font-size: 12px !important;
@@ -1515,7 +1493,6 @@
   opacity: 1;
 }
 
-/* Reduced intro animation */
 @keyframes rangeIntro {
   0% {
     opacity: 0;
@@ -1531,7 +1508,6 @@
   animation: rangeIntro 0.3s ease-out;
 }
 
-/* JavaScript will update these CSS custom properties */
 .timeline-track-container {
   --timeline-position: 0;
   --timeline-width: 10;
@@ -1597,7 +1573,6 @@
   outline-offset: 2px;
 }
 
-/* Completely remove all slider elements */
 .main-timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -1668,7 +1643,6 @@
   padding: 0;
 }
 
-/* Active state feedback */
 .main-timeline-slider:active ~ .timeline-visible-range {
   transform: scale(1.01);
   box-shadow:
@@ -1700,7 +1674,6 @@
   border-color: rgba(59, 130, 246, 0.3);
 }
 
-/* Selection Info */
 .selection-info {
   display: flex;
   align-items: center;
@@ -1735,7 +1708,6 @@
   transform: scale(1.05);
 }
 
-/* Empty States */
 .empty-chart-state {
   flex: 1;
   display: flex;
@@ -1784,7 +1756,6 @@
   margin: var(--dv-spacing-md);
 }
 
-/* Empty States */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1826,7 +1797,6 @@
   margin: var(--dv-spacing-md) 0;
 }
 
-/* Legacy Chart Styles - Keeping for compatibility */
 .dark .mode-btn {
   color: var(--color-text);
   background: transparent;
@@ -1880,7 +1850,6 @@
   border-color: var(--color-border);
 }
 
-/* Chart header and controls */
 .chart-header {
   display: flex;
   justify-content: space-between;
@@ -1895,7 +1864,6 @@
   font-size: 1.25rem;
 }
 
-/* Generic chart controls for non-DataViewer charts */
 .main-collection-area .chart-controls {
   display: flex;
   align-items: center;
@@ -1936,7 +1904,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Data Viewer Chart container - Specific styling for DataViewer modal */
 .data-viewer-modal .chart-container {
   position: relative;
   height: 400px;
@@ -1952,7 +1919,6 @@
   height: 100% !important;
 }
 
-/* Chart info and data display */
 .chart-info {
   margin-top: 1rem;
   padding: 0.75rem;
@@ -1975,7 +1941,6 @@
   font-weight: 500;
 }
 
-/* Chart adjustments for specific layouts */
 .main-collection-area .chart-container {
   height: 350px;
   margin-bottom: 1rem;
@@ -1985,7 +1950,6 @@
   max-height: 300px;
 }
 
-/* Animations */
 @keyframes pulse {
   0%,
   100% {
@@ -1996,7 +1960,6 @@
   }
 }
 
-/* Responsive chart adjustments */
 @media (max-width: 768px) {
   .chart-header {
     flex-direction: column;
@@ -2023,11 +1986,8 @@
   }
 }
 
-/*────────────────────────────────────────────────────────
-  Chart Accessibility Styles
-────────────────────────────────────────────────────────*/
+/* Chart accessibility styles */
 
-/* Screen reader only content */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2040,7 +2000,6 @@
   border: 0;
 }
 
-/* Chart description and help text */
 .chart-description {
   font-size: 0.9rem;
   color: var(--color-text-secondary);
@@ -2058,7 +2017,6 @@
   border-left: 3px solid var(--color-primary);
 }
 
-/* Accessibility controls */
 .accessibility-controls {
   display: flex;
   gap: 0.5rem;
@@ -2070,7 +2028,6 @@
   padding: 0.4rem 0.8rem;
 }
 
-/* Data table styles */
 .data-table-container {
   margin-top: 1.5rem;
   padding: 1rem;
@@ -2122,7 +2079,6 @@
   font-style: italic;
 }
 
-/* Focus indicators for keyboard navigation */
 .card[role='region']:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -2134,7 +2090,6 @@
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
-/* High contrast mode enhancements */
 @media (prefers-contrast: high) {
   .chart-data-table {
     border: 2px solid;
@@ -2155,9 +2110,7 @@
   }
 }
 
-/*────────────────────────────────────────────────────────
-  High Contrast Mode Support
-────────────────────────────────────────────────────────*/
+/* High contrast mode support */
 .high-contrast .chart-container {
   background: var(--color-bg) !important;
   border: 3px solid var(--color-border) !important;

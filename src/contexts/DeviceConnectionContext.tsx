@@ -87,7 +87,6 @@ interface DeviceConnectionProviderProps {
 }
 
 export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> = ({ children }) => {
-  // State
   const [availableDevices, setAvailableDevices] = useState<string[]>([])
   const [connectedDevices, setConnectedDevicesState] = useState<string[]>([])
   const [expectedDevices, setExpectedDevices] = useState<Set<string>>(new Set())
