@@ -259,9 +259,25 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
     }
 
     // Show confirmation modal with collection details
-    const collectionTimeText = dataBuffer.current.length > 0 && collectedData?.timestamp ? 
-      `${Math.round((Date.now() - collectedData.timestamp.getTime()) / 1000)}s` : 
-      'N/A'
+    // Safely derive session start time (timestamp may be Date, string, or number after persistence)
+    let sessionStartMs: number | undefined
+    if (collectedData?.timestamp) {
+      const rawTs: unknown = collectedData.timestamp as unknown
+      if (rawTs instanceof Date) {
+        sessionStartMs = rawTs.getTime()
+      } else if (typeof rawTs === 'number') {
+        sessionStartMs = rawTs
+      } else if (typeof rawTs === 'string') {
+        const parsed = Date.parse(rawTs)
+        if (!isNaN(parsed)) sessionStartMs = parsed
+      }
+      if (sessionStartMs === undefined) {
+        console.warn('[Collect][Warn] Unable to parse collectedData.timestamp, raw value:', rawTs)
+      }
+    }
+    const collectionTimeText = dataBuffer.current.length > 0 && sessionStartMs !== undefined
+      ? `${Math.round((Date.now() - sessionStartMs) / 1000)}s`
+      : 'N/A'
 
     const warningText = dataBuffer.current.length > 0 
       ? "Your collected data will be saved and you can review it in the next step."
@@ -478,7 +494,7 @@ ${warningText}`,
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           
           /* Default hidden state */
-          opacity: 0;pacity: 0;
+          opacity: 0;
           max-height: 0;
           padding: 0 0.75rem;
           margin-bottom: 0;

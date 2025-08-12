@@ -449,72 +449,72 @@ export default function LiveChart({ isCollecting = false }: Props) {
   }, [])
 
   // Subscribe to gait data from context and handle simulation
-  useEffect(() => {
-  console.log(`[LiveChart] Collection effect triggered. isCollecting: ${isCollecting}`)
-  console.log('[LiveChart][Debug] activeCollectingDevices:', activeCollectingDevices)
-    
-    if (!isCollecting) return
+  const prevCollectingRef = useRef<boolean>(false)
+  const unsubscribeRef = useRef<(() => void) | null>(null)
+  const simulationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const simulationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    let simulationInterval: ReturnType<typeof setInterval> | null = null
-    
-  console.log('[LiveChart] Clearing buffers and chart data for new collection session')
-    
-    // Clear buffers when starting collection (TimestampManager handles base timestamp)
-    bufferManager.clearAll()
-    
-    // Clear our single data storage
-    setAllDataPoints(new Map())
-    
-  console.log('[LiveChart] Starting new data collection session')
-    
-    // Subscribe to real BLE data
-  const unsubscribeGait = subscribeToGaitData((payload: GaitDataPayload) => {
-      const gaitData = convertPayloadToGaitData(payload)
-  console.log('[LiveChart] Received BLE data:', payload.device_id, 'at timestamp:', payload.timestamp)
-      addBLEDataToChart(gaitData)
-    })
-    
-    // Start simulation if no active collecting devices after 2 seconds
-    const fallbackTimeout = setTimeout(() => {
-      if (activeCollectingDevices.length === 0) {
-  console.log('[LiveChart] Starting simulation mode')
-        const simStartTime = Date.now()
-        
-        simulationInterval = setInterval(() => {
-          const now = Date.now()
-          const timeSeconds = (now - simStartTime) / 1000
-          
-          // Simulate realistic gait data
-          const walkCycle = Math.sin(timeSeconds * 2 * Math.PI) // 1 Hz walking cycle
-          const noise = () => (Math.random() - 0.5) * 2
-          
-          const gaitData: GaitData = {
-            device_id: 'simulation',
-            R1: 10.0 + walkCycle * 5 + noise(), // Resistance values with walking pattern
-            R2: 11.0 + walkCycle * 4 + noise(),
-            R3: 12.0 + walkCycle * 3 + noise(),
-            X: walkCycle * 2 + noise(), // Acceleration data
-            Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
-            Z: 9.8 + walkCycle * 0.5 + noise(), // Gravity + movement
-            timestamp: now // Use absolute timestamp like real BLE data
-          }
-          
-          addBLEDataToChart(gaitData)
-        }, 10) // 100Hz to match Arduino
-      }
-    }, 2000)
-    
-    // Cleanup function
-    return () => {
-      // Only tear down if we are actually stopping collection, otherwise a rapid state bounce could remove subscription prematurely
-      if (!isCollecting) {
-        clearTimeout(fallbackTimeout)
-        unsubscribeGait()
-        if (simulationInterval) {
-          clearInterval(simulationInterval)
+  useEffect(() => {
+    const prev = prevCollectingRef.current
+    // START (rising edge)
+    if (isCollecting && !prev) {
+      console.log('[LiveChart] Collection START detected')
+      // Clear buffers only on true transition
+      bufferManager.clearAll()
+      setAllDataPoints(new Map())
+      console.log('[LiveChart] Buffers cleared for new session')
+
+      // Subscribe to real BLE data
+      unsubscribeRef.current = subscribeToGaitData((payload: GaitDataPayload) => {
+        const gaitData = convertPayloadToGaitData(payload)
+        console.log('[LiveChart] Received BLE data:', payload.device_id, 'at timestamp:', payload.timestamp)
+        addBLEDataToChart(gaitData)
+      })
+
+      // Schedule simulation fallback (cancelled if real devices stream first)
+      simulationTimeoutRef.current = setTimeout(() => {
+        if (activeCollectingDevices.length === 0 && isCollecting) {
+          console.log('[LiveChart] Starting simulation mode (no active devices)')
+          const simStartTime = Date.now()
+          simulationIntervalRef.current = setInterval(() => {
+            const now = Date.now()
+            const timeSeconds = (now - simStartTime) / 1000
+            const walkCycle = Math.sin(timeSeconds * 2 * Math.PI)
+            const noise = () => (Math.random() - 0.5) * 2
+            addBLEDataToChart({
+              device_id: 'simulation',
+              R1: 10.0 + walkCycle * 5 + noise(),
+              R2: 11.0 + walkCycle * 4 + noise(),
+              R3: 12.0 + walkCycle * 3 + noise(),
+              X: walkCycle * 2 + noise(),
+              Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
+              Z: 9.8 + walkCycle * 0.5 + noise(),
+              timestamp: now
+            })
+          }, 10)
         }
+      }, 2000)
+    }
+
+    // STOP (falling edge)
+    if (!isCollecting && prev) {
+      console.log('[LiveChart] Collection STOP detected')
+      if (simulationTimeoutRef.current) {
+        clearTimeout(simulationTimeoutRef.current)
+        simulationTimeoutRef.current = null
+      }
+      if (simulationIntervalRef.current) {
+        clearInterval(simulationIntervalRef.current)
+        simulationIntervalRef.current = null
+      }
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+        unsubscribeRef.current = null
       }
     }
+
+    // Update previous flag
+    prevCollectingRef.current = isCollecting
   }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices, bufferManager])
 
   // Accessibility helpers
@@ -618,7 +618,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                   type="button"
                   className={`view-btn ${chartMode === 'all' ? 'active' : ''}`}
                   onClick={() => setChartMode('all')}
-                  aria-pressed={chartMode === 'all'}
+                  data-state={chartMode === 'all' ? 'pressed' : 'unpressed'}
                   title="Show all channels (keyboard: 1)"
                 >
                   All
@@ -627,7 +627,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                   type="button"
                   className={`view-btn ${chartMode === 'resistance' ? 'active' : ''}`}
                   onClick={() => setChartMode('resistance')}
-                  aria-pressed={chartMode === 'resistance'}
+                  data-state={chartMode === 'resistance' ? 'pressed' : 'unpressed'}
                   title="Show resistance channels only (keyboard: 2)"
                 >
                   Resistance
@@ -636,7 +636,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                   type="button"
                   className={`view-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
                   onClick={() => setChartMode('acceleration')}
-                  aria-pressed={chartMode === 'acceleration'}
+                  data-state={chartMode === 'acceleration' ? 'pressed' : 'unpressed'}
                   title="Show acceleration channels only (keyboard: 3)"
                 >
                   Acceleration
