@@ -1082,7 +1082,7 @@ tbody tr:hover {
 }
 
 .dark .main-collection-area {
-  background: var(--color-card-bg);
+  background: transparent;
   border-color: var(--color-border);
 }
 

@@ -2,7 +2,7 @@
 
 /* Chart container to match collection controls styling */
 .main-collection-area .chart-container {
-  background: var(--color-card-bg);
+  background: transparent;
   border-radius: var(--radius);
   border: none;
   padding: 0;
@@ -10,9 +10,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 400px);
-  min-height: 400px;
-  max-height: 700px;
+  height: 100%;
+  width: 100%;
   flex: 1;
 }
 
@@ -53,7 +52,7 @@
 
 /* Main chart container styling */
 .main-collection-area .chart-container {
-  background: var(--color-card-bg);
+  background: transparent;
   border-radius: var(--radius);
   border: none;
   padding: 0;
@@ -61,9 +60,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 400px);
-  min-height: 400px;
-  max-height: 700px;
+  height: 100%;
+  width: 100%;
   flex: 1;
 }
 
