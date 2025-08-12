@@ -17,7 +17,7 @@ import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
 import { useTimestampManager } from '../hooks/useTimestampManager'
-import { generateMultiDeviceColors, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
+import { generateMultiDeviceColors, generateDeviceColorPalette, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
 
 Chart.register(
   LineController, 
@@ -223,51 +223,53 @@ export default function LiveChart({ isCollecting = false }: Props) {
   // Function to add real BLE data to chart
   const addBLEDataToChart = useCallback((gaitData: GaitData) => {
     const deviceId = gaitData.device_id
-    
-    // Use timestamp manager for optimized timestamp handling
-    const relativeTime = getChartTimestamp(gaitData.timestamp)
-    const normalizedGaitData = { 
-      ...gaitData, 
-      timestamp: relativeTime 
-    }
-    
-    // Add to unified buffer manager
+
+    // Preserve absolute timestamp in ms (as sent by backend) for buffering & sample rate calcs
+    const absoluteTimestampMs = gaitData.timestamp
+    // Derive relative seconds for chart display
+    const relativeSeconds = getChartTimestamp(absoluteTimestampMs)
+
+    // Add ORIGINAL (ms) timestamp to buffer manager (it expects ms – avoids window math bugs)
     bufferManager.addDataPoint(deviceId, {
       device_id: deviceId,
-      R1: normalizedGaitData.R1,
-      R2: normalizedGaitData.R2,
-      R3: normalizedGaitData.R3,
-      X: normalizedGaitData.X,
-      Y: normalizedGaitData.Y,
-      Z: normalizedGaitData.Z,
-      timestamp: relativeTime
+      R1: gaitData.R1,
+      R2: gaitData.R2,
+      R3: gaitData.R3,
+      X: gaitData.X,
+      Y: gaitData.Y,
+      Z: gaitData.Z,
+      timestamp: absoluteTimestampMs
     })
-    
-    // Update local data state immediately for responsiveness
+
+    // Create a chart-only copy with relative seconds
+    const chartPoint: GaitData = {
+      ...gaitData,
+      timestamp: relativeSeconds
+    }
+
     if (chartRef.current) {
-      updateChartForDevice(deviceId, normalizedGaitData)
-      
+      updateChartForDevice(deviceId, chartPoint)
+
       // Mark device for batched chart update
       pendingUpdatesRef.current.add(deviceId)
-      
-      // Batch chart updates to reduce render frequency from 400Hz to ~20Hz
+
+      // Throttle chart updates (~20Hz)
       if (chartUpdateBatchRef.current) {
         clearTimeout(chartUpdateBatchRef.current)
       }
-      
+
       chartUpdateBatchRef.current = setTimeout(() => {
         if (chartRef.current && pendingUpdatesRef.current.size > 0) {
-          // Single chart update for all pending device updates
           chartRef.current.update('none')
           pendingUpdatesRef.current.clear()
         }
         chartUpdateBatchRef.current = null
-      }, 50) // 20Hz update rate instead of 400Hz
-      
-      // Get buffer stats for debugging
+      }, 50)
+
+      // Periodic buffer debug
       const bufferStats = bufferManager.getBufferStats()
-      if (bufferStats && bufferStats.totalDataPoints % 100 === 0) { // Log every 100 points
-      console.log(`[Buffer] ${bufferStats.totalDataPoints} total points across ${bufferStats.totalDevices} devices, memory: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
+      if (bufferStats && bufferStats.totalDataPoints % 250 === 0) {
+        console.log(`[Buffer] ${bufferStats.totalDataPoints} points / ${bufferStats.totalDevices} devices, mem: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
       }
     }
   }, [updateChartForDevice, bufferManager, getChartTimestamp])
@@ -317,11 +319,21 @@ export default function LiveChart({ isCollecting = false }: Props) {
     // Create datasets for each device and channel combination
     allDataPoints.forEach((deviceData, deviceId) => {
       if (deviceData.length === 0) return
-      
+
       const deviceLabel = getDeviceLabel(deviceId)
-      const deviceColorPalette = deviceColors.get(deviceId)
-      
-      if (!deviceColorPalette) return
+      let deviceColorPalette = deviceColors.get(deviceId)
+
+      // Fallback: generate palette on the fly if a device started streaming before appearing in connectedDevices
+      if (!deviceColorPalette) {
+        console.warn(`[LiveChart] Missing color palette for ${deviceId} – generating fallback.`)
+        const fallbackPalette = generateDeviceColorPalette(deviceId, 0)
+        setDeviceColors(prev => {
+          const next = new Map(prev)
+            next.set(deviceId, fallbackPalette)
+          return next
+        })
+        deviceColorPalette = fallbackPalette
+      }
       
       channelsToShow.forEach(({key, label, colorKey}) => {
         const colors = deviceColorPalette[colorKey]
@@ -439,6 +451,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   // Subscribe to gait data from context and handle simulation
   useEffect(() => {
   console.log(`[LiveChart] Collection effect triggered. isCollecting: ${isCollecting}`)
+  console.log('[LiveChart][Debug] activeCollectingDevices:', activeCollectingDevices)
     
     if (!isCollecting) return
 
@@ -455,7 +468,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   console.log('[LiveChart] Starting new data collection session')
     
     // Subscribe to real BLE data
-    const unsubscribeGait = subscribeToGaitData((payload: GaitDataPayload) => {
+  const unsubscribeGait = subscribeToGaitData((payload: GaitDataPayload) => {
       const gaitData = convertPayloadToGaitData(payload)
   console.log('[LiveChart] Received BLE data:', payload.device_id, 'at timestamp:', payload.timestamp)
       addBLEDataToChart(gaitData)
@@ -493,13 +506,16 @@ export default function LiveChart({ isCollecting = false }: Props) {
     
     // Cleanup function
     return () => {
-      clearTimeout(fallbackTimeout)
-      unsubscribeGait()
-      if (simulationInterval) {
-        clearInterval(simulationInterval)
+      // Only tear down if we are actually stopping collection, otherwise a rapid state bounce could remove subscription prematurely
+      if (!isCollecting) {
+        clearTimeout(fallbackTimeout)
+        unsubscribeGait()
+        if (simulationInterval) {
+          clearInterval(simulationInterval)
+        }
       }
     }
-  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices.length, bufferManager])
+  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices, bufferManager])
 
   // Accessibility helpers
   const getChartSummary = useCallback((): string => {

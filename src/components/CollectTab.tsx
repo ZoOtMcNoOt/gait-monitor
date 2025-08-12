@@ -84,15 +84,19 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   const setIsStopping = (stopping: boolean) => updateWorkflowField('isStopping', stopping)
 
   // Handle workflow restoration - reset any active states that shouldn't persist
+  const restorationAppliedRef = useRef(false)
   useEffect(() => {
+    // Only attempt restoration reset once per mount to avoid clobbering new sessions
+    if (restorationAppliedRef.current) return
     if (isInitialized && hasSavedData()) {
-      // Reset active collection states on restoration to prevent issues
       const currentState = workflowState
       if (currentState.isCollecting || currentState.isStopping || currentState.isSaving) {
+        console.log('[Collect][Restore] Resetting transient flags from restored workflow')
         updateWorkflowField('isCollecting', false)
         updateWorkflowField('isStopping', false)
         updateWorkflowField('isSaving', false)
       }
+      restorationAppliedRef.current = true
     }
   }, [isInitialized, hasSavedData, workflowState, updateWorkflowField])
 
