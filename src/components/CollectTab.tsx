@@ -535,7 +535,7 @@ ${warningText}`,
         <h1>Data Collection</h1>
         <p>Follow the 3-step process to collect and save gait data.</p>
       </div>
- 
+
       <div className="wizard-progress">
         {steps.map((step, index) => {
           const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
@@ -555,7 +555,6 @@ ${warningText}`,
         })}
       </div>
 
- 
       <div className="wizard-content">
         {currentStep === 'metadata' && (
           <div className="wizard-step-content">
@@ -601,7 +600,6 @@ ${warningText}`,
               </div>
             </div>
 
-            
             <div className="collection-layout">
               <div className="main-collection-area">
                 <ErrorBoundary
@@ -688,7 +686,6 @@ ${warningText}`,
         )}
       </div>
 
-      
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}

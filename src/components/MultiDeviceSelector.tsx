@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import ScrollableContainer from './ScrollableContainer'
 import { Icon } from './icons'
@@ -8,9 +8,11 @@ interface DeviceStatus {
   name: string
   isConnected: boolean
   isCollecting: boolean
-  signalStrength?: number
-  lastDataTime?: number
-  dataRate?: number
+  signalStrength?: number // RSSI converted to %-style indicator
+  lastDataTime?: number // epoch ms of last data packet
+  dataRate?: number // sample rate (Hz)
+  stale?: boolean // true if data is old
+  initializing?: boolean // true if collecting but no data yet
   errorState?: string
 }
 
@@ -19,52 +21,65 @@ interface DeviceStatusViewerProps {
 }
 
 export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatusViewerProps) {
-  const [devices, setDevices] = useState<DeviceStatus[]>([])
+  const {
+    connectedDevices,
+    getActiveCollectingDevices,
+    scannedDevices,
+    lastGaitDataTime,
+    deviceSampleRates,
+    connectionStatus,
+  } = useDeviceConnection()
 
-  // Use global device connection context
-  const { connectedDevices, getActiveCollectingDevices } = useDeviceConnection()
+  // Derive active collecting devices (async function returns and updates state internally).
+  // We rely on Maps changing to trigger re-render, so we just call once per render cycle lazily.
+  // (Side-effect intentionally omitted to avoid race conditions in SSR/tests.)
+  void getActiveCollectingDevices()
 
-  // Update devices automatically when context changes - no manual loading needed
-  useEffect(() => {
-    const updateDeviceStatuses = async () => {
-      try {
-        // Get which devices are actively collecting using context method
-        const activeIds = await getActiveCollectingDevices()
+  const devices: DeviceStatus[] = useMemo(() => {
+    const now = Date.now()
+    const GAIT_STALE_MS = 5_000 // 5s threshold for stale
 
-        // Create device status objects with clean display names
-        const deviceStatuses: DeviceStatus[] = connectedDevices.map((id) => {
-          // Use last 6 characters for compact but unique identification
-          const deviceShortId = id.slice(-6).toUpperCase()
+    return connectedDevices.map((id) => {
+      const shortId = id.slice(-6).toUpperCase()
+      const lastTime = lastGaitDataTime.get(id)
+      const sampleRate = deviceSampleRates.get(id)
+      const status = connectionStatus.get(id)
 
-          return {
-            id,
-            name: deviceShortId, // Just the short ID, no redundancy
-            isConnected: true, // If it's in connectedDevices, it's BLE connected
-            isCollecting: activeIds.includes(id),
-            lastDataTime: Date.now(), // In a real implementation, this would track actual last data time
-            dataRate: Math.floor(Math.random() * 50) + 10, // Mock data rate for demo
-            signalStrength: Math.floor(Math.random() * 100) + 1, // Mock signal strength
-          }
-        })
+      // RSSI from scanned devices list
+      const scanInfo = scannedDevices.find((d) => d.id === id)
+      const rssi = scanInfo?.rssi
+      // Convert RSSI (~ -100 to -30) to 0-100 strength
+      const signalStrength =
+        rssi !== undefined ? Math.min(100, Math.max(0, ((rssi + 100) / 70) * 100)) : undefined
 
-        setDevices(deviceStatuses)
-      } catch (error) {
-        console.error('Failed to update device statuses:', error)
-        // Set error state for devices that failed to update
-        setDevices((prev) =>
-          prev.map((device) => ({
-            ...device,
-            errorState: 'Connection error',
-          })),
-        )
-      }
-    }
+      const isCollecting = sampleRate !== undefined || status === 'connected'
+      const hasData = lastTime !== undefined
+      const age = hasData ? now - lastTime! : Infinity
+      const stale = hasData ? age > GAIT_STALE_MS : false
+      const initializing = isCollecting && !hasData
 
-    updateDeviceStatuses()
-  }, [connectedDevices, getActiveCollectingDevices]) // React to context changes automatically
+      return {
+        id,
+        name: shortId,
+        isConnected: status === 'connected' || status === 'timeout',
+        isCollecting: isCollecting && !stale,
+        signalStrength: signalStrength ? Math.round(signalStrength) : undefined,
+        lastDataTime: lastTime,
+        dataRate: sampleRate,
+        stale,
+        initializing,
+        errorState:
+          status === 'timeout'
+            ? 'Data timeout'
+            : status === 'disconnected'
+              ? 'Disconnected'
+              : undefined,
+      } as DeviceStatus
+    })
+  }, [connectedDevices, lastGaitDataTime, deviceSampleRates, scannedDevices, connectionStatus])
 
   const collectingCount = devices.filter((d) => d.isCollecting).length
-  const connectedCount = devices.length
+  const connectedCount = devices.filter((d) => d.isConnected).length
 
   return (
     <div
@@ -134,9 +149,9 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
               {devices.map((device) => (
                 <div
                   key={device.id}
-                  className={`device-status-item ${device.isCollecting ? 'collecting' : 'idle'} ${device.errorState ? 'error' : ''}`}
+                  className={`device-status-item ${device.isCollecting ? 'collecting' : device.initializing ? 'initializing' : 'idle'} ${device.stale ? 'stale' : ''} ${device.errorState ? 'error' : ''}`}
                   role="listitem"
-                  aria-label={`Device ${device.name}: ${device.isConnected ? 'Connected' : 'Disconnected'}, ${device.isCollecting ? 'Collecting data' : 'Idle'}`}
+                  aria-label={`Device ${device.name}: ${device.isConnected ? 'Connected' : 'Disconnected'}${device.initializing ? ', initializing' : device.stale ? ', stale' : ''}, ${device.isCollecting ? 'Collecting data' : 'Idle'}`}
                   tabIndex={0}
                 >
                   <div className="device-info">
@@ -162,17 +177,27 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
 
                       <div className="collection-status">
                         <span
-                          className={`status-icon ${device.isCollecting ? 'collecting' : 'idle'}`}
+                          className={`status-icon ${device.isCollecting ? 'collecting' : device.initializing ? 'initializing' : device.stale ? 'stale' : 'idle'}`}
                           aria-hidden="true"
                         >
                           {device.isCollecting ? (
                             <Icon.Radio title="Collecting" />
+                          ) : device.initializing ? (
+                            <Icon.Clock title="Initializing" />
+                          ) : device.stale ? (
+                            <Icon.Warning title="Stale" />
                           ) : (
                             <Icon.Pause title="Idle" />
                           )}
                         </span>
                         <span className="status-label">
-                          {device.isCollecting ? 'Collecting' : 'Idle'}
+                          {device.isCollecting
+                            ? 'Collecting'
+                            : device.initializing
+                              ? 'Initializing'
+                              : device.stale
+                                ? 'Stale'
+                                : 'Idle'}
                         </span>
                       </div>
                     </div>
@@ -181,15 +206,18 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                     {device.isCollecting && (
                       <div className="data-indicators">
                         {device.dataRate && (
-                          <div className="data-rate" title="Data points per second">
-                            <span className="rate-value">{device.dataRate}</span>
+                          <div
+                            className="data-rate"
+                            title={`Sample rate: ${device.dataRate.toFixed(1)} Hz`}
+                          >
+                            <span className="rate-value">{device.dataRate.toFixed(0)}</span>
                             <span className="rate-unit">Hz</span>
                           </div>
                         )}
-                        {device.signalStrength && (
+                        {device.signalStrength !== undefined && (
                           <div
                             className="signal-strength"
-                            title={`Signal strength: ${device.signalStrength}%`}
+                            title={`Signal strength (RSSI derived): ${device.signalStrength}%`}
                           >
                             <div className="signal-bars">
                               {[...Array(4)].map((_, i) => (
@@ -199,6 +227,14 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                                 />
                               ))}
                             </div>
+                          </div>
+                        )}
+                        {device.lastDataTime && (
+                          <div className="last-seen" title="Seconds since last packet">
+                            <span className="last-seen-value">
+                              {Math.min(999, Math.round((Date.now() - device.lastDataTime) / 1000))}
+                              s
+                            </span>
                           </div>
                         )}
                       </div>

@@ -170,13 +170,53 @@ function LogsTabContent() {
     }
   }
 
-  const formatFileSize = (dataPoints: number) => {
-    // Rough estimate: each data point ~50 bytes
-    const bytes = dataPoints * 50
+  // Cache file sizes to avoid repeated backend calls while viewing list
+  const [fileSizeCache, setFileSizeCache] = useState<Map<string, number>>(new Map())
+
+  const humanFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-    return `${Math.round(bytes / (1024 * 1024))} MB`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
   }
+
+  const getFileSize = useCallback(
+    async (filePath: string): Promise<number | null> => {
+      if (fileSizeCache.has(filePath)) return fileSizeCache.get(filePath)!
+      try {
+        // Backend command expected to exist; if not, fallback to estimate
+        const size = await invoke<number>('get_file_size', { filePath })
+        setFileSizeCache((prev) => new Map(prev).set(filePath, size))
+        return size
+      } catch (error) {
+        // Fallback: derive estimate from matching log entry data_points if available
+        const log = logs.find((l) => l.file_path === filePath)
+        if (log) {
+          const estimate = log.data_points * 48 // refined heuristic
+          setFileSizeCache((prev) => new Map(prev).set(filePath, estimate))
+          return estimate
+        }
+        console.warn('File size lookup failed:', error)
+        return null
+      }
+    },
+    [fileSizeCache, logs],
+  )
+
+  // Preload sizes once logs load
+  useEffect(() => {
+    if (logs.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      for (const log of logs) {
+        if (cancelled) break
+        void getFileSize(log.file_path)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [logs, getFileSize])
 
   return (
     <ScrollableContainer id="logs-tab" className="tab-content">
@@ -202,7 +242,28 @@ function LogsTabContent() {
         </div>
         <div className="stat-card">
           <h3>Storage Used</h3>
-          <div className="stat-value">{formatFileSize(stats.totalDataPoints)}</div>
+          <div className="stat-value">
+            {(() => {
+              // If we have per-file sizes cached that cover all logs, sum them; else estimate
+              const allKnown = logs.every((l) => fileSizeCache.has(l.file_path))
+              if (allKnown && logs.length > 0) {
+                const total = logs.reduce(
+                  (sum, l) => sum + (fileSizeCache.get(l.file_path) || 0),
+                  0,
+                )
+                return humanFileSize(total)
+              }
+              // Fallback estimate: average size*count
+              const avgSize = (() => {
+                const sizes = logs
+                  .map((l) => fileSizeCache.get(l.file_path))
+                  .filter((n): n is number => typeof n === 'number')
+                if (sizes.length === 0) return stats.totalDataPoints * 48
+                return sizes.reduce((a, b) => a + b, 0)
+              })()
+              return humanFileSize(avgSize)
+            })()}
+          </div>
         </div>
       </div>
 
@@ -242,7 +303,13 @@ function LogsTabContent() {
                     <td>{log.subject_id}</td>
                     <td>{formatTimestamp(log.timestamp, 'full')}</td>
                     <td>{log.data_points.toLocaleString()}</td>
-                    <td>{formatFileSize(log.data_points)}</td>
+                    <td>
+                      {(() => {
+                        const size = fileSizeCache.get(log.file_path)
+                        if (size === undefined) return '…'
+                        return humanFileSize(size)
+                      })()}
+                    </td>
                     <td className="notes-cell">
                       {log.notes ? (
                         <span title={log.notes}>

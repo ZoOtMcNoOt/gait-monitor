@@ -445,8 +445,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
             })
           : processedPoints
 
-  if (filteredPoints.length > 0) {
-          
+        if (filteredPoints.length > 0) {
           let validDataPoints = filteredPoints.filter(
             (point) =>
               point &&
@@ -455,7 +454,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
               !isNaN(point.x) &&
               !isNaN(point.y),
           )
-          
+
           const deviceCount = Object.keys(optimizedData.datasets).length
           const dataTypeCount = Object.keys(deviceData).length
           if (
@@ -474,7 +473,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
           if (validDataPoints.length > 0) {
             totalDataPoints += validDataPoints.length
-            
+
             const pointCount = validDataPoints.length
             const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
             const borderWidth = pointCount > 3000 ? 1 : 2
@@ -499,7 +498,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
 
     if (totalDataPoints > 0) {
-      console.log(`Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`)
+      console.log(
+        `Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`,
+      )
       if (totalDataPoints > maxDataPoints) {
         console.warn(
           `High data point count (${totalDataPoints}) may impact performance. Consider enabling downsampling.`,

@@ -2223,6 +2223,38 @@ async fn get_storage_path(
   Ok(storage_path.to_string_lossy().to_string())
 }
 
+// Lightweight helper to obtain actual file size on disk for a session data file.
+
+#[tauri::command]
+async fn get_file_size(
+  file_path: String,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<u64, String> {
+  use std::path::Path;
+
+  if file_path.trim().is_empty() {
+    return Err("File path cannot be empty".to_string());
+  }
+  if file_path.contains("..") { // basic traversal guard
+    return Err("Invalid file path".to_string());
+  }
+
+  let config = path_config.0.lock().await;
+  let path = Path::new(&file_path);
+
+  if !config.is_path_allowed(path) {
+    return Err("Path is not within allowed directories".to_string());
+  }
+  if !path.exists() {
+    return Err("File does not exist".to_string());
+  }
+
+  match tokio::fs::metadata(path).await {
+    Ok(meta) => Ok(meta.len()),
+    Err(e) => Err(format!("Failed to read file metadata: {}", e)),
+  }
+}
+
 fn main() {
   // Initialize structured logging
   tracing_subscriber::fmt()
@@ -2297,6 +2329,7 @@ fn main() {
       load_optimized_chart_data,
       save_filtered_data, 
       get_storage_path, 
+  get_file_size,
       get_sample_rate
     ])
     .run(tauri::generate_context!())

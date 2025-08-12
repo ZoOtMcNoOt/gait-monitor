@@ -682,7 +682,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         </div>
       </div>
 
-  {/* Omitted debug buffer stats panel to reduce UI clutter */}
+      {/* Omitted debug buffer stats panel to reduce UI clutter */}
     </section>
   )
 }
