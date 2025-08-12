@@ -560,7 +560,6 @@ ${warningText}`,
                 <p><strong>Subject:</strong> {collectedData?.subjectId}</p>
                 <p><strong>Status:</strong> {isCollecting ? 'Collecting...' : 'Ready'}</p>
                 <p><strong>Connected Devices:</strong> {connectedDevices.length} device(s)</p>
-                <p><strong>Data Points Collected:</strong> {dataBuffer.current.length}</p>
                 {isUsingRealData && <p><strong>Data Source:</strong> Synchronized BLE Devices</p>}
                 {!isUsingRealData && isCollecting && <p><strong>Data Source:</strong> Simulation Mode</p>}
               </div>

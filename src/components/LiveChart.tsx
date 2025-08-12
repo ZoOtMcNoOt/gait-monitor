@@ -742,9 +742,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
             </button>
           </div>
         </div>
-        <div className="help-text" id="chart-mode-help">
-          Keyboard shortcuts: 1-3 to switch views, T to toggle data table, S for summary, D for latest data
-        </div>
       </div>
       <div className="chart-container">
         <canvas 
