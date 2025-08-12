@@ -558,10 +558,6 @@ ${warningText}`,
               <div className="collection-info">
                 <p><strong>Session:</strong> {collectedData?.sessionName}</p>
                 <p><strong>Subject:</strong> {collectedData?.subjectId}</p>
-                <p><strong>Status:</strong> {isCollecting ? 'Collecting...' : 'Ready'}</p>
-                <p><strong>Connected Devices:</strong> {connectedDevices.length} device(s)</p>
-                {isUsingRealData && <p><strong>Data Source:</strong> Synchronized BLE Devices</p>}
-                {!isUsingRealData && isCollecting && <p><strong>Data Source:</strong> Simulation Mode</p>}
               </div>
               <div className="collection-buttons">
                 {!isCollecting ? (
