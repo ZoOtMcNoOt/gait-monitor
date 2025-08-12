@@ -1,33 +1,38 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import '../styles/chart.css'
 import '../styles/collect.css'
-import { 
-  Chart, 
-  LineController, 
-  LineElement, 
-  PointElement, 
-  LinearScale, 
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
   TimeScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js'
 import { Icon } from './icons'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
 import { useTimestampManager } from '../hooks/useTimestampManager'
-import { generateMultiDeviceColors, generateDeviceColorPalette, getDeviceLabel, type ChannelType } from '../utils/colorGeneration'
+import {
+  generateMultiDeviceColors,
+  generateDeviceColorPalette,
+  getDeviceLabel,
+  type ChannelType,
+} from '../utils/colorGeneration'
 
 Chart.register(
-  LineController, 
-  LineElement, 
-  PointElement, 
-  LinearScale, 
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
   TimeScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
 )
 
 interface Props {
@@ -46,11 +51,15 @@ interface GaitData {
 }
 
 interface GaitDataPayload {
-  device_id: string,
-  r1: number, r2: number, r3: number,
-  x: number, y: number, z: number,
-  timestamp: number,
-  sample_rate?: number  // Add optional sample rate field
+  device_id: string
+  r1: number
+  r2: number
+  r3: number
+  x: number
+  y: number
+  z: number
+  timestamp: number
+  sample_rate?: number
 }
 
 export default function LiveChart({ isCollecting = false }: Props) {
@@ -59,26 +68,32 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
   const [announcementText, setAnnouncementText] = useState('')
-  
-  // Single data storage for all channels - will be filtered for display
-  const [allDataPoints, setAllDataPoints] = useState<Map<string, Array<{
-    timestamp: number;
-    R1: number;
-    R2: number;
-    R3: number;
-    X: number;
-    Y: number;
-    Z: number;
-  }>>>(new Map())
-  
-  // Color management for multi-device support
-  const [deviceColors, setDeviceColors] = useState<Map<string, Record<ChannelType, { primary: string; light: string; dark: string; background: string }>>>(new Map())
-  
-  // Performance optimization: batch chart updates to avoid 400Hz update calls
+
+  const [allDataPoints, setAllDataPoints] = useState<
+    Map<
+      string,
+      Array<{
+        timestamp: number
+        R1: number
+        R2: number
+        R3: number
+        X: number
+        Y: number
+        Z: number
+      }>
+    >
+  >(new Map())
+
+  const [deviceColors, setDeviceColors] = useState<
+    Map<
+      string,
+      Record<ChannelType, { primary: string; light: string; dark: string; background: string }>
+    >
+  >(new Map())
+
   const chartUpdateBatchRef = useRef<NodeJS.Timeout | null>(null)
   const pendingUpdatesRef = useRef<Set<string>>(new Set())
-  
-  // Cleanup timeout on unmount
+
   useEffect(() => {
     return () => {
       if (chartUpdateBatchRef.current) {
@@ -86,23 +101,16 @@ export default function LiveChart({ isCollecting = false }: Props) {
       }
     }
   }, [])
-  
-  // Use global device connection context (read-only)
-  const { 
-    connectedDevices, 
-    activeCollectingDevices,
-    subscribeToGaitData,
-    getCurrentSampleRate
-  } = useDeviceConnection()
-  
-  // Initialize unified buffer manager
+
+  const { connectedDevices, activeCollectingDevices, subscribeToGaitData, getCurrentSampleRate } =
+    useDeviceConnection()
+
   const bufferManager = useBufferManager()
-  
-  // Optimized timestamp management with caching
+
   const { getChartTimestamp } = useTimestampManager({
     useRelativeTime: true,
     autoSetBase: true,
-    cacheExpiration: 1000 // 1 second cache for high-frequency data
+    cacheExpiration: 1000, // 1 second cache for high-frequency data
   })
 
   // Update device colors when connected devices change
@@ -113,28 +121,27 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [connectedDevices])
 
-  // Calculate current sample rate display
   const getCurrentSampleRateDisplay = useCallback((): string => {
     if (activeCollectingDevices.length === 0) {
-      return "0 Hz"
+      return '0 Hz'
     }
-    
+
     const rates = activeCollectingDevices
-      .map(deviceId => getCurrentSampleRate(deviceId))
+      .map((deviceId) => getCurrentSampleRate(deviceId))
       .filter((rate): rate is number => rate !== null && rate > 0)
-    
+
     if (rates.length === 0) {
-      return "calculating..."
+      return 'calculating...'
     }
-    
+
     if (rates.length === 1) {
       return `${rates[0].toFixed(1)} Hz`
     }
-    
+
     // Multiple devices - show range or average
     const minRate = Math.min(...rates)
     const maxRate = Math.max(...rates)
-    
+
     if (Math.abs(maxRate - minRate) < 1) {
       // Similar rates, show average
       const avgRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length
@@ -145,7 +152,6 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [activeCollectingDevices, getCurrentSampleRate])
 
-  // Convert Tauri payload to internal format
   const convertPayloadToGaitData = useCallback((payload: GaitDataPayload): GaitData => {
     return {
       device_id: payload.device_id,
@@ -155,16 +161,15 @@ export default function LiveChart({ isCollecting = false }: Props) {
       X: payload.x,
       Y: payload.y,
       Z: payload.z,
-      timestamp: payload.timestamp
+      timestamp: payload.timestamp,
     }
   }, [])
 
-  // Function to update chart datasets for a specific device  
   const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
     // Optimize state updates by batching them - use callback form to avoid excessive re-renders
-    setAllDataPoints(prev => {
+    setAllDataPoints((prev) => {
       const deviceData = prev.get(deviceId) || []
-      
+
       // Add new point
       const newPoint = {
         timestamp: gaitData.timestamp,
@@ -173,37 +178,38 @@ export default function LiveChart({ isCollecting = false }: Props) {
         R3: gaitData.R3,
         X: gaitData.X,
         Y: gaitData.Y,
-        Z: gaitData.Z
+        Z: gaitData.Z,
       }
-      
+
       // Performance optimization: only create new Map if data actually changes
       const updatedData = [...deviceData, newPoint]
-      
+
       // Apply time-based filtering to keep only recent data
       const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
-      const filteredData = updatedData.filter(point => point.timestamp >= cutoffTime)
-      
+      const filteredData = updatedData.filter((point) => point.timestamp >= cutoffTime)
+
       // Apply maximum points limit
       const maxPoints = config.bufferConfig.maxChartPoints
-      const finalData = filteredData.length > maxPoints 
-        ? filteredData.slice(-maxPoints) 
-        : filteredData
-      
+      const finalData =
+        filteredData.length > maxPoints ? filteredData.slice(-maxPoints) : filteredData
+
       // Only update state if data actually changed
-      if (finalData.length === deviceData.length && 
-          finalData.every((point, index) => 
-            deviceData[index] && point.timestamp === deviceData[index].timestamp)) {
+      if (
+        finalData.length === deviceData.length &&
+        finalData.every(
+          (point, index) => deviceData[index] && point.timestamp === deviceData[index].timestamp,
+        )
+      ) {
         return prev // No change needed
       }
-      
+
       const newMap = new Map(prev)
       newMap.set(deviceId, finalData)
       return newMap
     })
 
-    // Update sliding window x-axis range based on latest data (no chart.update here - batched)
     if (!chartRef.current) return
-    
+
     const chart = chartRef.current
     const currentTime = gaitData.timestamp
     const windowSize = config.bufferConfig.slidingWindowSeconds
@@ -217,134 +223,123 @@ export default function LiveChart({ isCollecting = false }: Props) {
         xScale.max = currentTime + 1
       }
     }
-    // Note: chart.update() is now batched in addBLEDataToChart for performance
+    // chart.update() batched elsewhere for perf
   }, [])
 
-  // Function to add real BLE data to chart
-  const addBLEDataToChart = useCallback((gaitData: GaitData) => {
-    const deviceId = gaitData.device_id
+  const addBLEDataToChart = useCallback(
+    (gaitData: GaitData) => {
+      const deviceId = gaitData.device_id
 
-    // Preserve absolute timestamp in ms (as sent by backend) for buffering & sample rate calcs
-    const absoluteTimestampMs = gaitData.timestamp
-    // Derive relative seconds for chart display
-    const relativeSeconds = getChartTimestamp(absoluteTimestampMs)
+      const absoluteTimestampMs = gaitData.timestamp
+      const relativeSeconds = getChartTimestamp(absoluteTimestampMs)
 
-    // Add ORIGINAL (ms) timestamp to buffer manager (it expects ms – avoids window math bugs)
-    bufferManager.addDataPoint(deviceId, {
-      device_id: deviceId,
-      R1: gaitData.R1,
-      R2: gaitData.R2,
-      R3: gaitData.R3,
-      X: gaitData.X,
-      Y: gaitData.Y,
-      Z: gaitData.Z,
-      timestamp: absoluteTimestampMs
-    })
+      bufferManager.addDataPoint(deviceId, {
+        device_id: deviceId,
+        R1: gaitData.R1,
+        R2: gaitData.R2,
+        R3: gaitData.R3,
+        X: gaitData.X,
+        Y: gaitData.Y,
+        Z: gaitData.Z,
+        timestamp: absoluteTimestampMs,
+      })
 
-    // Create a chart-only copy with relative seconds
-    const chartPoint: GaitData = {
-      ...gaitData,
-      timestamp: relativeSeconds
-    }
-
-    if (chartRef.current) {
-      updateChartForDevice(deviceId, chartPoint)
-
-      // Mark device for batched chart update
-      pendingUpdatesRef.current.add(deviceId)
-
-      // Throttle chart updates (~20Hz)
-      if (chartUpdateBatchRef.current) {
-        clearTimeout(chartUpdateBatchRef.current)
+      const chartPoint: GaitData = {
+        ...gaitData,
+        timestamp: relativeSeconds,
       }
 
-      chartUpdateBatchRef.current = setTimeout(() => {
-        if (chartRef.current && pendingUpdatesRef.current.size > 0) {
-          chartRef.current.update('none')
-          pendingUpdatesRef.current.clear()
+      if (chartRef.current) {
+        updateChartForDevice(deviceId, chartPoint)
+
+        pendingUpdatesRef.current.add(deviceId)
+
+        if (chartUpdateBatchRef.current) {
+          clearTimeout(chartUpdateBatchRef.current)
         }
-        chartUpdateBatchRef.current = null
-      }, 50)
 
-      // Periodic buffer debug
-      const bufferStats = bufferManager.getBufferStats()
-      if (bufferStats && bufferStats.totalDataPoints % 250 === 0) {
-        console.log(`[Buffer] ${bufferStats.totalDataPoints} points / ${bufferStats.totalDevices} devices, mem: ${bufferStats.memoryUsageMB.toFixed(2)}MB`)
+        chartUpdateBatchRef.current = setTimeout(() => {
+          if (chartRef.current && pendingUpdatesRef.current.size > 0) {
+            chartRef.current.update('none')
+            pendingUpdatesRef.current.clear()
+          }
+          chartUpdateBatchRef.current = null
+        }, 50)
+
+        const bufferStats = bufferManager.getBufferStats()
+        if (bufferStats && bufferStats.totalDataPoints % 250 === 0) {
+          console.log(
+            `[Buffer] ${bufferStats.totalDataPoints} points / ${bufferStats.totalDevices} devices, mem: ${bufferStats.memoryUsageMB.toFixed(2)}MB`,
+          )
+        }
       }
-    }
-  }, [updateChartForDevice, bufferManager, getChartTimestamp])
+    },
+    [updateChartForDevice, bufferManager, getChartTimestamp],
+  )
 
-  // Chart mode filter effect - rebuild datasets based on selected channels and current data
-  // Optimized with caching to avoid expensive rebuilds
   useEffect(() => {
     if (!chartRef.current) return
-    
+
     const chart = chartRef.current
-  console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
-    
-    // Performance optimization: only rebuild if we have data to avoid empty rebuilds
+    console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
+
     if (allDataPoints.size === 0) {
       chart.data.datasets = []
       chart.update('none')
       return
     }
-    
-    // Clear existing datasets and rebuild them based on current mode and data
+
     chart.data.datasets = []
-    
-    // Define which channels to show based on mode (using constants for performance)
+
     const channelConfigs = {
       all: [
-        {key: 'R1' as const, label: 'R1 (Resistance)', colorKey: 'R1' as const},
-        {key: 'R2' as const, label: 'R2 (Resistance)', colorKey: 'R2' as const},
-        {key: 'R3' as const, label: 'R3 (Resistance)', colorKey: 'R3' as const},
-        {key: 'X' as const, label: 'X (Accel)', colorKey: 'X' as const},
-        {key: 'Y' as const, label: 'Y (Accel)', colorKey: 'Y' as const},
-        {key: 'Z' as const, label: 'Z (Accel)', colorKey: 'Z' as const}
+        { key: 'R1' as const, label: 'R1 (Resistance)', colorKey: 'R1' as const },
+        { key: 'R2' as const, label: 'R2 (Resistance)', colorKey: 'R2' as const },
+        { key: 'R3' as const, label: 'R3 (Resistance)', colorKey: 'R3' as const },
+        { key: 'X' as const, label: 'X (Accel)', colorKey: 'X' as const },
+        { key: 'Y' as const, label: 'Y (Accel)', colorKey: 'Y' as const },
+        { key: 'Z' as const, label: 'Z (Accel)', colorKey: 'Z' as const },
       ],
       resistance: [
-        {key: 'R1' as const, label: 'R1 (Resistance)', colorKey: 'R1' as const},
-        {key: 'R2' as const, label: 'R2 (Resistance)', colorKey: 'R2' as const},
-        {key: 'R3' as const, label: 'R3 (Resistance)', colorKey: 'R3' as const}
+        { key: 'R1' as const, label: 'R1 (Resistance)', colorKey: 'R1' as const },
+        { key: 'R2' as const, label: 'R2 (Resistance)', colorKey: 'R2' as const },
+        { key: 'R3' as const, label: 'R3 (Resistance)', colorKey: 'R3' as const },
       ],
       acceleration: [
-        {key: 'X' as const, label: 'X (Accel)', colorKey: 'X' as const},
-        {key: 'Y' as const, label: 'Y (Accel)', colorKey: 'Y' as const},
-        {key: 'Z' as const, label: 'Z (Accel)', colorKey: 'Z' as const}
-      ]
+        { key: 'X' as const, label: 'X (Accel)', colorKey: 'X' as const },
+        { key: 'Y' as const, label: 'Y (Accel)', colorKey: 'Y' as const },
+        { key: 'Z' as const, label: 'Z (Accel)', colorKey: 'Z' as const },
+      ],
     }
-    
+
     const channelsToShow = channelConfigs[chartMode] || channelConfigs.all
-    
-    // Create datasets for each device and channel combination
+
     allDataPoints.forEach((deviceData, deviceId) => {
       if (deviceData.length === 0) return
 
       const deviceLabel = getDeviceLabel(deviceId)
       let deviceColorPalette = deviceColors.get(deviceId)
 
-      // Fallback: generate palette on the fly if a device started streaming before appearing in connectedDevices
       if (!deviceColorPalette) {
         console.warn(`[LiveChart] Missing color palette for ${deviceId} – generating fallback.`)
         const fallbackPalette = generateDeviceColorPalette(deviceId, 0)
-        setDeviceColors(prev => {
+        setDeviceColors((prev) => {
           const next = new Map(prev)
-            next.set(deviceId, fallbackPalette)
+          next.set(deviceId, fallbackPalette)
           return next
         })
         deviceColorPalette = fallbackPalette
       }
-      
-      channelsToShow.forEach(({key, label, colorKey}) => {
+
+      channelsToShow.forEach(({ key, label, colorKey }) => {
         const colors = deviceColorPalette[colorKey]
         const datasetLabel = `${deviceLabel} - ${label}`
-        
-        // Create filtered data points for this channel
-        const channelData = deviceData.map(point => ({
+
+        const channelData = deviceData.map((point) => ({
           x: point.timestamp,
-          y: point[key] as number
+          y: point[key] as number,
         }))
-        
+
         const dataset = {
           label: datasetLabel,
           data: channelData,
@@ -352,22 +347,26 @@ export default function LiveChart({ isCollecting = false }: Props) {
           backgroundColor: colors.background,
           tension: 0.1,
           pointRadius: 0,
-          borderWidth: 2
+          borderWidth: 2,
         }
-        
+
         chart.data.datasets.push(dataset)
       })
     })
 
-    // Update y-axis title based on chart mode
     const yScale = chart.options.scales?.y
     if (yScale && typeof yScale === 'object' && 'title' in yScale && yScale.title) {
-      yScale.title.text = chartMode === 'resistance' ? 'Resistance Values' : 
-                         chartMode === 'acceleration' ? 'Acceleration (m/s²)' : 
-                         'Sensor Values'
+      yScale.title.text =
+        chartMode === 'resistance'
+          ? 'Resistance Values'
+          : chartMode === 'acceleration'
+            ? 'Acceleration (m/s²)'
+            : 'Sensor Values'
     }
-    
-  console.log(`[LiveChart] Created ${chart.data.datasets.length} datasets for ${allDataPoints.size} devices`)
+
+    console.log(
+      `[LiveChart] Created ${chart.data.datasets.length} datasets for ${allDataPoints.size} devices`,
+    )
     chart.update('none')
   }, [chartMode, allDataPoints, deviceColors])
 
@@ -378,39 +377,39 @@ export default function LiveChart({ isCollecting = false }: Props) {
     chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
       data: { datasets: [] },
-      options: { 
+      options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
         interaction: {
           intersect: false,
-          mode: 'index'
+          mode: 'index',
         },
-        scales: { 
-          x: { 
+        scales: {
+          x: {
             type: 'linear',
             title: {
               display: true,
-              text: 'Time (seconds)'
+              text: 'Time (seconds)',
             },
             grid: {
-              color: 'rgba(0,0,0,0.1)'
+              color: 'rgba(0,0,0,0.1)',
             },
             min: 0,
             max: config.bufferConfig.slidingWindowSeconds,
             ticks: {
-              stepSize: 2
-            }
+              stepSize: 2,
+            },
           },
           y: {
             title: {
               display: true,
-              text: 'Sensor Values'
+              text: 'Sensor Values',
             },
             grid: {
-              color: 'rgba(0,0,0,0.1)'
-            }
-          }
+              color: 'rgba(0,0,0,0.1)',
+            },
+          },
         },
         plugins: {
           legend: {
@@ -421,23 +420,26 @@ export default function LiveChart({ isCollecting = false }: Props) {
               pointStyle: 'line',
               padding: 15,
               font: {
-                size: 12
-              }
-            }
+                size: 12,
+              },
+            },
           },
           tooltip: {
             mode: 'index',
             intersect: false,
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const label = context.dataset.label || ''
-                const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(2) : context.parsed.y
+                const value =
+                  typeof context.parsed.y === 'number'
+                    ? context.parsed.y.toFixed(2)
+                    : context.parsed.y
                 return `${label}: ${value}`
-              }
-            }
-          }
-        }
-      }
+              },
+            },
+          },
+        },
+      },
     })
 
     return () => {
@@ -467,7 +469,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
       // Subscribe to real BLE data
       unsubscribeRef.current = subscribeToGaitData((payload: GaitDataPayload) => {
         const gaitData = convertPayloadToGaitData(payload)
-        console.log('[LiveChart] Received BLE data:', payload.device_id, 'at timestamp:', payload.timestamp)
+        console.log(
+          '[LiveChart] Received BLE data:',
+          payload.device_id,
+          'at timestamp:',
+          payload.timestamp,
+        )
         addBLEDataToChart(gaitData)
       })
 
@@ -489,7 +496,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
               X: walkCycle * 2 + noise(),
               Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
               Z: 9.8 + walkCycle * 0.5 + noise(),
-              timestamp: now
+              timestamp: now,
             })
           }, 10)
         }
@@ -515,21 +522,31 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
     // Update previous flag
     prevCollectingRef.current = isCollecting
-  }, [isCollecting, subscribeToGaitData, convertPayloadToGaitData, addBLEDataToChart, activeCollectingDevices, bufferManager])
+  }, [
+    isCollecting,
+    subscribeToGaitData,
+    convertPayloadToGaitData,
+    addBLEDataToChart,
+    activeCollectingDevices,
+    bufferManager,
+  ])
 
   // Accessibility helpers
   const getChartSummary = useCallback((): string => {
     const stats = bufferManager.getBufferStats()
     const totalSamples = stats ? stats.totalDataPoints : 0
     const deviceCount = connectedDevices.length
-    const currentMode = chartMode === 'all' ? 'all channels' : 
-                       chartMode === 'resistance' ? 'resistance channels (R1, R2, R3)' : 
-                       'acceleration channels (X, Y, Z)'
-    
+    const currentMode =
+      chartMode === 'all'
+        ? 'all channels'
+        : chartMode === 'resistance'
+          ? 'resistance channels (R1, R2, R3)'
+          : 'acceleration channels (X, Y, Z)'
+
     if (totalSamples === 0) {
       return `Gait monitoring chart showing ${currentMode}. No data collected yet. ${deviceCount} device${deviceCount !== 1 ? 's' : ''} connected.`
     }
-    
+
     return `Gait monitoring chart showing ${currentMode}. ${totalSamples} data points collected from ${deviceCount} device${deviceCount !== 1 ? 's' : ''}. Current sample rate: ${getCurrentSampleRateDisplay()}.`
   }, [bufferManager, connectedDevices.length, chartMode, getCurrentSampleRateDisplay])
 
@@ -540,7 +557,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
 
     const summaries: string[] = []
-    chart.data.datasets.forEach(dataset => {
+    chart.data.datasets.forEach((dataset) => {
       const data = dataset.data as { x: number; y: number }[]
       if (data.length > 0) {
         const latest = data[data.length - 1]
@@ -552,47 +569,45 @@ export default function LiveChart({ isCollecting = false }: Props) {
     return summaries.length > 0 ? summaries.join(', ') : 'No current readings'
   }, [])
 
-  const handleKeyboardNavigation = useCallback((event: React.KeyboardEvent) => {
-    switch (event.key) {
-      case '1':
-        setChartMode('all')
-        setAnnouncementText('Switched to all channels view')
-        break
-      case '2':
-        setChartMode('resistance')
-        setAnnouncementText('Switched to resistance channels view')
-        break
-      case '3':
-        setChartMode('acceleration')
-        setAnnouncementText('Switched to acceleration channels view')
-        break
-      case 's':
-      case 'S':
-        setAnnouncementText(getChartSummary())
-        break
-      case 'd':
-      case 'D':
-        setAnnouncementText(`Latest readings: ${getLatestDataSummary()}`)
-        break
-    }
-  }, [getChartSummary, getLatestDataSummary])
+  const handleKeyboardNavigation = useCallback(
+    (event: React.KeyboardEvent) => {
+      switch (event.key) {
+        case '1':
+          setChartMode('all')
+          setAnnouncementText('Switched to all channels view')
+          break
+        case '2':
+          setChartMode('resistance')
+          setAnnouncementText('Switched to resistance channels view')
+          break
+        case '3':
+          setChartMode('acceleration')
+          setAnnouncementText('Switched to acceleration channels view')
+          break
+        case 's':
+        case 'S':
+          setAnnouncementText(getChartSummary())
+          break
+        case 'd':
+        case 'D':
+          setAnnouncementText(`Latest readings: ${getLatestDataSummary()}`)
+          break
+      }
+    },
+    [getChartSummary, getLatestDataSummary],
+  )
 
   // Data table component for accessibility - REMOVED
 
   return (
-    <section 
+    <section
       className="card"
       role="region"
       aria-labelledby="chart-title"
       onKeyDown={handleKeyboardNavigation}
     >
       {/* Screen reader announcements */}
-      <div 
-        aria-live="polite" 
-        aria-atomic="true" 
-        className="sr-only"
-        role="status"
-      >
+      <div aria-live="polite" aria-atomic="true" className="sr-only" role="status">
         {announcementText}
       </div>
 
@@ -610,11 +625,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
               <span className="sample-rate">{getCurrentSampleRateDisplay()}</span>
             </div>
           </div>
-          
+
           <div className="chart-controls-area">
             <div className="view-controls">
               <div className="button-group" role="group" aria-label="Chart view modes">
-                <button 
+                <button
                   type="button"
                   className={`view-btn ${chartMode === 'all' ? 'active' : ''}`}
                   onClick={() => setChartMode('all')}
@@ -623,7 +638,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                 >
                   All
                 </button>
-                <button 
+                <button
                   type="button"
                   className={`view-btn ${chartMode === 'resistance' ? 'active' : ''}`}
                   onClick={() => setChartMode('resistance')}
@@ -632,7 +647,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
                 >
                   Resistance
                 </button>
-                <button 
+                <button
                   type="button"
                   className={`view-btn ${chartMode === 'acceleration' ? 'active' : ''}`}
                   onClick={() => setChartMode('acceleration')}
@@ -643,27 +658,23 @@ export default function LiveChart({ isCollecting = false }: Props) {
                 </button>
               </div>
             </div>
-            
+
             <div className="chart-status-area">
               <div className={`recording-badge ${isCollecting ? 'recording' : 'idle'}`}>
                 <div className="status-indicator">
                   {isCollecting ? <Icon.Radio title="Recording" /> : <Icon.Pause title="Idle" />}
                 </div>
-                <span className="status-label">
-                  {isCollecting ? 'Recording' : 'Ready'}
-                </span>
+                <span className="status-label">{isCollecting ? 'Recording' : 'Ready'}</span>
               </div>
             </div>
           </div>
         </div>
-        
-        <p className="chart-description sr-only">
-          {getChartSummary()}
-        </p>
+
+        <p className="chart-description sr-only">{getChartSummary()}</p>
       </header>
       <div className="chart-container">
-        <canvas 
-          ref={canvasRef} 
+        <canvas
+          ref={canvasRef}
           role="img"
           aria-label={getChartSummary()}
           aria-describedby="chart-data-summary"
@@ -673,7 +684,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           Latest readings: {getLatestDataSummary()}
         </div>
       </div>
-      
+
       {/* Buffer Statistics Panel (Debug Mode) */}
       {/* Removed buffer stats panel to simplify UI */}
     </section>

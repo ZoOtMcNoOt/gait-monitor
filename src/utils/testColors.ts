@@ -7,7 +7,7 @@ const testDevices = ['device1', 'device2', 'device3']
 const colors = generateMultiDeviceColors(testDevices)
 
 console.log('=== COLOR GENERATION TEST ===')
-testDevices.forEach(device => {
+testDevices.forEach((device) => {
   const palette = colors.get(device)!
   console.log(`\nDevice: ${device}`)
   console.log(`  R1: ${palette.R1.primary}`)
@@ -20,7 +20,7 @@ testDevices.forEach(device => {
 
 // Check if colors are unique across devices
 const allColors = new Set()
-testDevices.forEach(device => {
+testDevices.forEach((device) => {
   const palette = colors.get(device)!
   Object.values(palette).forEach((scheme: ColorScheme) => {
     allColors.add(scheme.primary)

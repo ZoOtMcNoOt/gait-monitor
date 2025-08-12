@@ -41,7 +41,9 @@
   background: var(--color-card-bg);
   color: var(--color-text);
   font-size: 1rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   min-height: 2.75rem; /* Consistent height for all inputs */
   box-sizing: border-box;
   font-family: inherit;
@@ -284,11 +286,11 @@
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .metadata-form {
     gap: 1rem;
   }
-  
+
   .form-group {
     min-height: 70px;
   }

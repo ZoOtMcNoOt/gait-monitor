@@ -14,18 +14,21 @@ A professional real-time gait analysis application built with **Tauri**, **React
 ## 🏗️ Architecture
 
 ### Frontend (React + TypeScript)
+
 - **Vite** - Fast build tool and dev server
 - **React 19** - UI framework with hooks
 - **Chart.js** - Real-time data visualization
 - **Tauri API** - Native system integration
 
 ### Backend (Rust)
+
 - **Tauri** - Cross-platform desktop framework
 - **btleplug** - Bluetooth Low Energy library
 - **async-std** - Async runtime for concurrent operations
 - **serde** - Serialization framework
 
 ### Data Flow
+
 ```
 BLE Sensor Device → Rust Backend → Tauri Events → React Frontend → Live Chart
 ```
@@ -33,6 +36,7 @@ BLE Sensor Device → Rust Backend → Tauri Events → React Frontend → Live 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - **Node.js** (v18 or later)
 - **Rust** (latest stable)
 - **npm** or **yarn**
@@ -41,12 +45,14 @@ BLE Sensor Device → Rust Backend → Tauri Events → React Frontend → Live 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd gait-monitor
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -59,11 +65,13 @@ BLE Sensor Device → Rust Backend → Tauri Events → React Frontend → Live 
 ### Development
 
 **Start development server:**
+
 ```bash
 npm run tauri dev
 ```
 
 This will:
+
 - Start the Vite development server
 - Compile and run the Rust backend
 - Launch the desktop application
@@ -72,11 +80,13 @@ This will:
 ### Production Build
 
 **Build for production:**
+
 ```bash
 npm run tauri build
 ```
 
 This generates:
+
 - **Windows**: `.msi` installer and `.exe` executable
 - **macOS**: `.dmg` disk image and `.app` bundle
 - **Linux**: `.deb`, `.rpm`, and `.AppImage` packages
@@ -108,13 +118,16 @@ gait-monitor/
 ## 🔌 BLE Integration
 
 ### Supported Data Format
+
 - **Packet Size**: 24 bytes (6 × 4-byte floats)
 - **Data Channels**: R1, R2, R3, X, Y, Z
 - **Byte Order**: Little-endian
 - **Sample Rate**: Up to 100Hz
 
 ### Arduino/ESP32 Compatibility
+
 Compatible with sensors using the standard gait monitoring format:
+
 ```cpp
 // Example Arduino BLE characteristic
 // Service UUID: 48877734-d012-40c4-81de-3ab006f71189
@@ -154,6 +167,7 @@ npm run type-check
 ## 📊 Data Visualization
 
 The LiveChart component provides:
+
 - **6 color-coded channels** for different sensor readings
 - **Scrolling time window** with configurable duration
 - **100Hz update rate** for smooth real-time display
@@ -163,11 +177,13 @@ The LiveChart component provides:
 ## 🔧 Configuration
 
 ### Tauri Configuration (`src-tauri/tauri.conf.json`)
+
 - Application metadata and build settings
 - Window configuration and permissions
 - Bundle identifier and version info
 
 ### Rust Dependencies (`src-tauri/Cargo.toml`)
+
 - BLE functionality via `btleplug`
 - Async runtime with `async-std`
 - UUID handling and futures support
@@ -187,16 +203,19 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🆘 Troubleshooting
 
 ### BLE Issues
+
 - Ensure Bluetooth adapter is enabled
 - Check device permissions on your OS
 - Verify sensor device compatibility
 
 ### Build Issues
+
 - Update Rust to latest stable version
 - Clear node_modules and reinstall dependencies
 - Check Tauri prerequisites for your platform
 
 ### Performance Issues
+
 - Monitor memory usage during data collection
 - Adjust chart update frequency if needed
 - Check for background processes interfering with BLE
@@ -204,6 +223,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For issues and questions:
+
 - Check the [Issues](./issues) section
 - Review the troubleshooting guide above
 - Consult Tauri documentation for platform-specific help

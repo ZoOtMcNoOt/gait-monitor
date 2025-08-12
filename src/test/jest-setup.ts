@@ -4,7 +4,7 @@
 // Override the problematic internal module path
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(global as any).getConfig = () => ({
-  testIdAttribute: 'data-testid'
+  testIdAttribute: 'data-testid',
 })
 
 // Set up the environment to avoid the getConfig issue

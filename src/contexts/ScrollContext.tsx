@@ -29,7 +29,7 @@ export const ScrollProvider: React.FC<ScrollProviderProps> = ({ children }) => {
       const scrollToTop = () => {
         element.scrollTo({ top: 0, behavior: 'instant' })
       }
-      
+
       scrollableRefs.current.set(id, { element, scrollToTop })
     } else {
       scrollableRefs.current.delete(id)
@@ -66,11 +66,7 @@ export const ScrollProvider: React.FC<ScrollProviderProps> = ({ children }) => {
     scrollToTop,
   }
 
-  return (
-    <ScrollContext.Provider value={value}>
-      {children}
-    </ScrollContext.Provider>
-  )
+  return <ScrollContext.Provider value={value}>{children}</ScrollContext.Provider>
 }
 
 export default ScrollContext

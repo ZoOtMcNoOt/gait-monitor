@@ -30,7 +30,7 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
 
   beforeAll(async () => {
     // Mock import.meta.env for testing
-    (globalThis as any).import = {
+    ;(globalThis as any).import = {
       meta: {
         env: {
           VITE_APP_MODE: 'development',
@@ -61,9 +61,9 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
           VITE_ENABLE_MOCK_DATA: 'false',
           VITE_MOCK_DEVICE_COUNT: '2',
           VITE_REACT_DEVTOOLS: 'true',
-          VITE_HOT_RELOAD: 'true'
-        }
-      }
+          VITE_HOT_RELOAD: 'true',
+        },
+      },
     }
 
     // Mock console to prevent log spam
@@ -176,7 +176,7 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
     it('validateConfig should detect invalid configurations', () => {
       const invalidConfig = {
         ...actualConfig.config,
-        maxChartPoints: -1
+        maxChartPoints: -1,
       }
       const errors = actualConfig.validateConfig(invalidConfig)
       expect(errors.length).toBeGreaterThan(0)
@@ -187,19 +187,19 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
   describe('Configuration Structure', () => {
     it('should have all required configuration properties', () => {
       const config = actualConfig.config
-      
+
       // Application settings
       expect(config.mode).toBeDefined()
       expect(config.debugEnabled).toBeDefined()
       expect(config.debugDevices).toBeDefined()
       expect(config.debugCharts).toBeDefined()
-      
+
       // Data collection settings
       expect(config.maxChartPoints).toBeDefined()
       expect(config.dataUpdateInterval).toBeDefined()
       expect(config.heartbeatTimeout).toBeDefined()
       expect(config.connectionTimeout).toBeDefined()
-      
+
       // Buffer configuration
       expect(config.bufferConfig).toBeDefined()
       expect(config.bufferConfig.maxChartPoints).toBeDefined()
@@ -209,24 +209,24 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
       expect(config.bufferConfig.cleanupInterval).toBeDefined()
       expect(config.bufferConfig.slidingWindowSeconds).toBeDefined()
       expect(config.bufferConfig.enableCircularBuffers).toBeDefined()
-      
+
       // UI settings
       expect(config.defaultTheme).toBeDefined()
       expect(config.animationsEnabled).toBeDefined()
       expect(config.chartSmoothing).toBeDefined()
       expect(config.toastDuration).toBeDefined()
-      
+
       // Storage settings
       expect(config.dataRetentionDays).toBeDefined()
       expect(config.autoSaveEnabled).toBeDefined()
       expect(config.autoSaveInterval).toBeDefined()
       expect(config.maxExportSize).toBeDefined()
-      
+
       // Performance settings
       expect(config.performanceMonitoring).toBeDefined()
       expect(config.maxConcurrentDevices).toBeDefined()
       expect(config.chartRenderThrottle).toBeDefined()
-      
+
       // Development settings
       expect(config.enableMockData).toBeDefined()
       expect(config.mockDeviceCount).toBeDefined()
@@ -236,7 +236,7 @@ describe('Config Module - Integration Tests (Real Implementation)', () => {
 
     it('should have sensible default values', () => {
       const config = actualConfig.config
-      
+
       expect(config.maxChartPoints).toBeGreaterThan(0)
       expect(config.dataUpdateInterval).toBeGreaterThan(0)
       expect(config.heartbeatTimeout).toBeGreaterThan(0)

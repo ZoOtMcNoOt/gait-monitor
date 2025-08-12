@@ -4,34 +4,39 @@
   1. Variables & Base
 ────────────────────────────────────────────────────────*/
 :root {
-  --color-primary:       #2563eb;
+  --color-primary: #2563eb;
   --color-primary-light: #3b82f6;
-  --color-bg:            #f8fafc;
-  --color-card-bg:       #ffffff;
-  --color-text:          #0f172a;
-  --color-text-light:    #ffffff;
-  --color-border:        #e2e8f0;
-  --radius:              0.5rem;
-  --spacing:             1rem;
-  --font-base:           -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Inter', sans-serif;
-  --font-mono:           'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  --accent-color:        #10b981;
-  --accent-hover:        #059669;
-  --success-color:       #10b981;
-  --success-bg:          #ecfdf5;
-  --error-color:         #dc2626;
-  --error-bg:            #fee2e2;
-  --text-color:          #0f172a;
-  --text-secondary:      #64748b;
-  --bg-color:            #ffffff;
-  --border-color:        #e2e8f0;
+  --color-bg: #f8fafc;
+  --color-card-bg: #ffffff;
+  --color-text: #0f172a;
+  --color-text-light: #ffffff;
+  --color-border: #e2e8f0;
+  --radius: 0.5rem;
+  --spacing: 1rem;
+  --font-base:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Inter', sans-serif;
+  --font-mono:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  --accent-color: #10b981;
+  --accent-hover: #059669;
+  --success-color: #10b981;
+  --success-bg: #ecfdf5;
+  --error-color: #dc2626;
+  --error-bg: #fee2e2;
+  --text-color: #0f172a;
+  --text-secondary: #64748b;
+  --bg-color: #ffffff;
+  --border-color: #e2e8f0;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body, html, #root {
+body,
+html,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -90,7 +95,7 @@ body, html, #root {
 }
 
 .sidebar button:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar button.active {
@@ -115,7 +120,7 @@ body, html, #root {
 .card {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: var(--spacing);
   display: flex;
   flex-direction: column;
@@ -140,7 +145,9 @@ button {
   color: var(--color-text-light);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
   min-height: 2.5rem;
   box-sizing: border-box;
   font-size: 0.9rem;
@@ -206,7 +213,9 @@ button:active {
   min-width: 2rem;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   padding: 0.5rem;
   border: 1px solid var(--color-border);
@@ -215,12 +224,14 @@ input, select, textarea {
   transition: border-color 0.2s;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--color-primary);
 }
 
 /*────────────────────────────────────────────────────────
-  4.1. Enhanced Focus Indicators (A3.5: Keyboard Navigation)
+  4.1. Focus Indicators (keyboard navigation)
 ────────────────────────────────────────────────────────*/
 
 /* Hide default outline for all elements, we'll add custom ones */
@@ -228,10 +239,10 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 
-/* Enhanced focus styles for interactive elements */
+/* Focus styles for interactive elements */
 button:focus,
 .btn:focus,
-[role="button"]:focus,
+[role='button']:focus,
 a:focus,
 [href]:focus {
   outline: 2px solid var(--color-primary);
@@ -253,7 +264,7 @@ a:focus,
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Enhanced focus for form inputs */
+/* Focus styles for form inputs */
 input:focus,
 select:focus,
 textarea:focus {
@@ -262,7 +273,7 @@ textarea:focus {
 }
 
 /* Focus for modal and dialog elements */
-[role="dialog"]:focus,
+[role='dialog']:focus,
 .modal:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 4px;
@@ -275,11 +286,11 @@ textarea:focus {
 }
 
 /* Keyboard navigation indicators */
-[data-keyboard-navigation="true"] button:focus,
-[data-keyboard-navigation="true"] a:focus,
-[data-keyboard-navigation="true"] input:focus,
-[data-keyboard-navigation="true"] select:focus,
-[data-keyboard-navigation="true"] textarea:focus {
+[data-keyboard-navigation='true'] button:focus,
+[data-keyboard-navigation='true'] a:focus,
+[data-keyboard-navigation='true'] input:focus,
+[data-keyboard-navigation='true'] select:focus,
+[data-keyboard-navigation='true'] textarea:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(30, 64, 175, 0.15);
@@ -289,13 +300,13 @@ textarea:focus {
 @media (prefers-contrast: high) {
   button:focus,
   .btn:focus,
-  [role="button"]:focus,
+  [role='button']:focus,
   a:focus,
   [href]:focus {
     outline: 3px solid;
     outline-offset: 2px;
   }
-  
+
   input:focus,
   select:focus,
   textarea:focus {
@@ -309,7 +320,7 @@ textarea:focus {
   *:focus {
     transition: none;
   }
-  
+
   .skip-link {
     transition: none;
   }
@@ -328,14 +339,15 @@ thead {
   background: var(--color-bg);
 }
 
-th, td {
+th,
+td {
   text-align: left;
   padding: 0.5rem;
   border-bottom: 1px solid var(--color-border);
 }
 
 tbody tr:hover {
-  background: rgba(0,0,0,0.03);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 /*────────────────────────────────────────────────────────
@@ -380,13 +392,13 @@ tbody tr:hover {
   border-radius: 8px;
   background-color: var(--color-card-bg);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   width: 100%;
   box-sizing: border-box;
 }
 
 .device-card:hover {
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.12),
     0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
@@ -400,7 +412,7 @@ tbody tr:hover {
 }
 
 .device-card.connected:hover {
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(16, 185, 129, 0.15),
     0 4px 12px rgba(16, 185, 129, 0.1);
   background-color: #f0fdf4;
@@ -420,7 +432,7 @@ tbody tr:hover {
 }
 
 .device-card.gaitble-device::before {
-  content: "GaitBLE";
+  content: 'GaitBLE';
   position: absolute;
   top: -1px;
   right: -1px;
@@ -443,7 +455,7 @@ tbody tr:hover {
 }
 
 .device-card.gaitble-device:hover {
-  box-shadow: 
+  box-shadow:
     0 12px 32px rgba(59, 130, 246, 0.25),
     0 6px 16px rgba(59, 130, 246, 0.15);
   transform: translateY(-2px);
@@ -667,7 +679,7 @@ tbody tr:hover {
 .btn-connect:hover:not(:disabled) {
   background-color: var(--color-primary-light);
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(var(--color-primary), 0.25),
     0 3px 8px rgba(var(--color-primary), 0.15);
 }
@@ -686,7 +698,7 @@ tbody tr:hover {
 .btn-disconnect:hover:not(:disabled) {
   background-color: #b91c1c;
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(220, 38, 38, 0.25),
     0 3px 8px rgba(220, 38, 38, 0.15);
 }
@@ -699,7 +711,7 @@ tbody tr:hover {
 .btn-debug:hover {
   background-color: #4b5563;
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(107, 114, 128, 0.25),
     0 3px 8px rgba(107, 114, 128, 0.15);
 }
@@ -709,17 +721,17 @@ tbody tr:hover {
   .device-info-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .device-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .action-buttons {
     flex-direction: column;
   }
-  
+
   .btn {
     min-width: auto;
   }
@@ -801,13 +813,15 @@ tbody tr:hover {
   color: #6c757d;
 }
 
-.device-services, .device-manufacturer {
+.device-services,
+.device-manufacturer {
   font-size: 0.8em;
   color: #495057;
   margin: 3px 0;
 }
 
-.device-services strong, .device-manufacturer strong {
+.device-services strong,
+.device-manufacturer strong {
   color: #343a40;
 }
 
@@ -819,27 +833,27 @@ tbody tr:hover {
   8. Dark Mode
 ────────────────────────────────────────────────────────*/
 .dark {
-  --color-primary:       #3b82f6;
+  --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
-  --color-bg:            #0f172a;
-  --color-card-bg:       #1e293b;
-  --color-text:          #f1f5f9;
-  --color-text-light:    #ffffff;
-  --color-border:        #334155;
-  --color-dark-bg:       #0f172a;
-  --color-dark-card:     #1e293b;
-  --color-dark-border:   #334155;
-  --color-dark-text:     #f1f5f9;
-  --accent-color:        #10b981;
-  --accent-hover:        #059669;
-  --success-color:       #10b981;
-  --success-bg:          #064e3b;
-  --error-color:         #f87171;
-  --error-bg:            #7f1d1d;
-  --text-color:          #f1f5f9;
-  --text-secondary:      #cbd5e1;
-  --bg-color:            #1e293b;
-  --border-color:        #334155;
+  --color-bg: #0f172a;
+  --color-card-bg: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-light: #ffffff;
+  --color-border: #334155;
+  --color-dark-bg: #0f172a;
+  --color-dark-card: #1e293b;
+  --color-dark-border: #334155;
+  --color-dark-text: #f1f5f9;
+  --accent-color: #10b981;
+  --accent-hover: #059669;
+  --success-color: #10b981;
+  --success-bg: #064e3b;
+  --error-color: #f87171;
+  --error-bg: #7f1d1d;
+  --text-color: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --bg-color: #1e293b;
+  --border-color: #334155;
 }
 
 /*────────────────────────────────────────────────────────
@@ -902,7 +916,7 @@ tbody tr:hover {
 
 .dark button:focus,
 .dark .btn:focus,
-.dark [role="button"]:focus,
+.dark [role='button']:focus,
 .dark a:focus,
 .dark [href]:focus {
   outline-color: var(--color-primary);
@@ -927,14 +941,14 @@ tbody tr:hover {
   border-color: var(--color-primary);
   background: var(--color-bg);
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.4),
     0 4px 12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(var(--color-primary), 0.1);
 }
 
 .dark .device-card.connected:hover {
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(16, 185, 129, 0.3),
     0 4px 12px rgba(16, 185, 129, 0.2),
     0 0 0 1px rgba(16, 185, 129, 0.2);
@@ -951,7 +965,7 @@ tbody tr:hover {
   border-color: var(--color-primary);
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), var(--color-bg));
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 12px 32px rgba(59, 130, 246, 0.2),
     0 6px 16px rgba(59, 130, 246, 0.15),
     0 0 0 1px rgba(59, 130, 246, 0.2);
@@ -1122,7 +1136,7 @@ tbody tr:hover {
   padding: 1.5rem;
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
   min-height: 80px; /* Fixed height to prevent shifts */
   box-sizing: border-box; /* Include padding in width calculation */
@@ -1227,7 +1241,7 @@ tbody tr:hover {
   padding: 1.5rem;
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   min-height: 100px; /* Prevent layout shift */
   width: 100%; /* Fixed width */
   box-sizing: border-box; /* Include padding in width */
@@ -1259,7 +1273,7 @@ tbody tr:hover {
   background: var(--color-card-bg);
   padding: 1.5rem;
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .review-metadata h3 {
@@ -1337,7 +1351,7 @@ tbody tr:hover {
   background: var(--color-border);
   border-color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.4),
     0 4px 12px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(var(--color-primary), 0.15);
@@ -1346,7 +1360,7 @@ tbody tr:hover {
 .dark .device-status-viewer .device-status-item.collecting:hover {
   background: linear-gradient(to right, rgba(16, 185, 129, 0.08), var(--color-border));
   border-color: var(--color-primary);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(16, 185, 129, 0.25),
     0 4px 12px rgba(16, 185, 129, 0.15),
     0 0 0 1px rgba(16, 185, 129, 0.2);
@@ -1355,7 +1369,7 @@ tbody tr:hover {
 .dark .device-status-viewer .device-status-item.error:hover {
   background: linear-gradient(to right, rgba(220, 38, 38, 0.08), var(--color-border));
   border-color: var(--color-primary);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(220, 38, 38, 0.25),
     0 4px 12px rgba(220, 38, 38, 0.15),
     0 0 0 1px rgba(220, 38, 38, 0.2);
@@ -1419,7 +1433,7 @@ tbody tr:hover {
 .dark .device-status-viewer .stat:hover {
   background: rgba(30, 64, 175, 0.12);
   border-color: rgba(30, 64, 175, 0.3);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(30, 64, 175, 0.2),
     0 3px 8px rgba(30, 64, 175, 0.15);
 }
@@ -1452,42 +1466,42 @@ tbody tr:hover {
     width: 100%; /* Ensure full width */
     max-width: 100%; /* Override max-width for smaller screens */
   }
-  
+
   .step-label {
     font-size: 0.75rem;
     max-width: 80px;
   }
-  
+
   .step-indicator {
     width: 2rem;
     height: 2rem;
     font-size: 0.8rem;
     flex-shrink: 0; /* Prevent shrinking */
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .collection-controls {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
-  
+
   .collection-info {
     margin-right: 0;
   }
-  
+
   .collection-buttons {
     justify-content: center;
   }
-  
+
   .review-actions {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .settings-actions {
     flex-direction: column;
     align-items: stretch;
@@ -1498,7 +1512,7 @@ tbody tr:hover {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .wizard-progress {
     flex-direction: column;
     gap: 1rem;
@@ -1507,40 +1521,40 @@ tbody tr:hover {
     width: 100%; /* Maintain full width */
     max-width: 100%; /* Override max-width for mobile */
   }
-  
+
   .wizard-step:not(:last-child)::after {
     display: none;
   }
-  
+
   .step-label {
     max-width: none;
     white-space: normal;
   }
-  
+
   .btn-primary,
   .btn-secondary,
   .btn-tertiary,
   .btn-danger {
     min-width: 100px;
   }
-  
+
   /* Device list responsive adjustments */
   .device-list-card {
     padding: clamp(0.75rem, 2vw, 1rem);
   }
-  
+
   .device-card {
     padding: clamp(0.75rem, 2vw, 1rem);
     margin: clamp(0.25rem, 1vw, 0.5rem) 0;
   }
-  
+
   .device-list-container {
     gap: clamp(0.5rem, 1.5vw, 0.75rem);
   }
 }
 
 /*────────────────────────────────────────────────────────
-  15. Collection Layout & Device Status Viewer Enhanced
+  15. Collection Layout & Device Status Viewer
 ────────────────────────────────────────────────────────*/
 
 /* Device Status Viewer Styles - Sidebar Style */
@@ -1558,7 +1572,7 @@ tbody tr:hover {
   flex-direction: column;
 }
 
-/* Enhanced Status Header */
+/* Status Header */
 .device-status-viewer .status-header {
   display: flex;
   justify-content: space-between;
@@ -1589,11 +1603,16 @@ tbody tr:hover {
 }
 
 @keyframes pulse-live {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
-/* Enhanced No Devices State */
+/* No Devices State */
 .device-status-viewer .no-devices {
   display: flex;
   flex-direction: column;
@@ -1603,7 +1622,11 @@ tbody tr:hover {
   text-align: center;
   color: var(--text-secondary);
   flex: 1;
-  background: linear-gradient(135deg, rgba(var(--text-secondary), 0.02), rgba(var(--text-secondary), 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(var(--text-secondary), 0.02),
+    rgba(var(--text-secondary), 0.05)
+  );
   border-radius: calc(var(--radius) + 4px);
   border: 2px dashed var(--color-border);
   margin: 1rem;
@@ -1618,8 +1641,15 @@ tbody tr:hover {
 }
 
 @keyframes gentle-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
 }
 
 .device-status-viewer .no-devices-title {
@@ -1656,7 +1686,7 @@ tbody tr:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* Enhanced Device Status Items */
+/* Device Status Items */
 .device-status-viewer .device-status-item {
   background: var(--color-card-bg);
   border: 1px solid var(--color-border);
@@ -1673,7 +1703,7 @@ tbody tr:hover {
   background: var(--color-bg);
   border-color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.08),
     0 4px 12px rgba(0, 0, 0, 0.06),
     0 0 0 1px rgba(var(--color-primary), 0.1);
@@ -1687,7 +1717,7 @@ tbody tr:hover {
 
 .device-status-viewer .device-status-item:active {
   transform: translateY(0);
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.08),
     0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -1701,7 +1731,7 @@ tbody tr:hover {
 .device-status-viewer .device-status-item.collecting:hover {
   background: linear-gradient(to right, rgba(16, 185, 129, 0.06), var(--color-bg));
   border-color: var(--color-primary);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(16, 185, 129, 0.12),
     0 4px 12px rgba(16, 185, 129, 0.08),
     0 0 0 1px rgba(16, 185, 129, 0.15);
@@ -1716,7 +1746,7 @@ tbody tr:hover {
 .device-status-viewer .device-status-item.error:hover {
   background: linear-gradient(to right, rgba(220, 38, 38, 0.06), var(--color-bg));
   border-color: var(--color-primary);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(220, 38, 38, 0.12),
     0 4px 12px rgba(220, 38, 38, 0.08),
     0 0 0 1px rgba(220, 38, 38, 0.15);
@@ -1795,8 +1825,15 @@ tbody tr:hover {
 }
 
 @keyframes collecting-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.1); opacity: 0.8; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .device-status-viewer .status-label {
@@ -1805,7 +1842,7 @@ tbody tr:hover {
   font-weight: 500;
 }
 
-/* Enhanced Data Indicators */
+/* Data Indicators */
 .device-status-viewer .data-indicators {
   display: flex;
   gap: 1.25rem;
@@ -1869,10 +1906,18 @@ tbody tr:hover {
   transition: all 0.3s ease;
 }
 
-.device-status-viewer .signal-bar:nth-child(1) { height: 8px; }
-.device-status-viewer .signal-bar:nth-child(2) { height: 12px; }
-.device-status-viewer .signal-bar:nth-child(3) { height: 16px; }
-.device-status-viewer .signal-bar:nth-child(4) { height: 20px; }
+.device-status-viewer .signal-bar:nth-child(1) {
+  height: 8px;
+}
+.device-status-viewer .signal-bar:nth-child(2) {
+  height: 12px;
+}
+.device-status-viewer .signal-bar:nth-child(3) {
+  height: 16px;
+}
+.device-status-viewer .signal-bar:nth-child(4) {
+  height: 20px;
+}
 
 .device-status-viewer .signal-bar.active {
   background: var(--success-color);
@@ -1937,30 +1982,30 @@ tbody tr:hover {
   background: var(--success-color);
   border-radius: 50%;
   animation: pulse-activity 1.2s infinite ease-in-out;
-  box-shadow: 
+  box-shadow:
     0 0 0 0 rgba(16, 185, 129, 0.7),
     0 0 8px rgba(16, 185, 129, 0.3);
 }
 
 @keyframes pulse-activity {
-  0% { 
-    opacity: 1; 
+  0% {
+    opacity: 1;
     transform: scale(1);
-    box-shadow: 
+    box-shadow:
       0 0 0 0 rgba(16, 185, 129, 0.7),
       0 0 8px rgba(16, 185, 129, 0.3);
   }
-  70% { 
-    opacity: 0.8; 
+  70% {
+    opacity: 0.8;
     transform: scale(1.3);
-    box-shadow: 
+    box-shadow:
       0 0 0 8px rgba(16, 185, 129, 0),
       0 0 12px rgba(16, 185, 129, 0.5);
   }
-  100% { 
-    opacity: 1; 
+  100% {
+    opacity: 1;
     transform: scale(1);
-    box-shadow: 
+    box-shadow:
       0 0 0 0 rgba(16, 185, 129, 0),
       0 0 8px rgba(16, 185, 129, 0.3);
   }
@@ -2025,12 +2070,12 @@ tbody tr:hover {
     gap: 0.5rem;
     align-items: flex-start;
   }
-  
+
   .device-status-viewer .data-indicators {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .device-status-viewer .device-name {
     font-size: 0.85rem;
   }
@@ -2040,15 +2085,15 @@ tbody tr:hover {
   .device-status-viewer .device-status-item {
     padding: 0.75rem;
   }
-  
+
   .device-status-viewer .device-info {
     gap: 0.5rem;
   }
-  
+
   .device-status-viewer .no-devices {
     padding: 1.5rem 1rem;
   }
-  
+
   .device-status-viewer .no-devices-icon {
     font-size: 2.5rem;
   }
@@ -2292,7 +2337,7 @@ tbody tr:hover {
   background: rgba(var(--color-primary), 0.08);
   border-color: rgba(var(--color-primary), 0.25);
   transform: translateY(-2px);
-  box-shadow: 
+  box-shadow:
     0 6px 20px rgba(var(--color-primary), 0.15),
     0 3px 8px rgba(var(--color-primary), 0.1);
 }
@@ -2485,8 +2530,12 @@ tbody tr:hover {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Device connection status styling */
@@ -2694,7 +2743,7 @@ tbody tr:hover {
 }
 
 .connected-devices-section h3::before {
-  content: "";
+  content: '';
 }
 
 .connected-devices-section .device-card {
@@ -2768,7 +2817,7 @@ tbody tr:hover {
     gap: 1rem;
     height: auto;
   }
-  
+
   .collection-sidebar {
     order: -1; /* Move sidebar above main content on mobile */
     max-height: 300px;
@@ -2779,7 +2828,7 @@ tbody tr:hover {
   .collection-layout {
     gap: 0.75rem;
   }
-  
+
   .collection-sidebar {
     max-height: 250px;
   }
@@ -2830,7 +2879,7 @@ tbody tr:hover {
   --color-success: #00ff00;
   --color-info: #00ffff;
   --color-card-bg: #000000;
-  
+
   /* Chart colors for high contrast */
   --chart-color-r1: #ff0000;
   --chart-color-r2: #ff8800;
@@ -2838,7 +2887,7 @@ tbody tr:hover {
   --chart-color-x: #00ff00;
   --chart-color-y: #0088ff;
   --chart-color-z: #8800ff;
-  
+
   /* Additional utility colors */
   --focus-color: #00ff00;
   --hover-color: #ffffff;

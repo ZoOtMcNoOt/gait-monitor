@@ -7,20 +7,22 @@ expect.extend({
     const pass = received !== null && document.body.contains(received)
     return {
       pass,
-      message: () => pass 
-        ? `Expected element not to be in the document`
-        : `Expected element to be in the document`
+      message: () =>
+        pass
+          ? `Expected element not to be in the document`
+          : `Expected element to be in the document`,
     }
   },
   toHaveClass(received: Element | null, className: string) {
     const pass = received?.classList.contains(className) || false
     return {
       pass,
-      message: () => pass
-        ? `Expected element not to have class "${className}"`
-        : `Expected element to have class "${className}"`
+      message: () =>
+        pass
+          ? `Expected element not to have class "${className}"`
+          : `Expected element to have class "${className}"`,
     }
-  }
+  },
 })
 
 // Mock import.meta.env for Vite environment variables
@@ -55,16 +57,16 @@ const mockImportMeta = {
     VITE_MOCK_DEVICE_COUNT: '2',
     VITE_REACT_DEV_TOOLS: 'true',
     VITE_HOT_RELOAD: 'true',
-  }
+  },
 }
 
 // Mock import.meta globally
 Object.defineProperty(global, 'import', {
   value: {
-    meta: mockImportMeta
+    meta: mockImportMeta,
   },
   writable: true,
-  configurable: true
+  configurable: true,
 })
 
 // Mock the ResizeObserver
@@ -74,7 +76,7 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }))
 
-// Mock the IntersectionObserver  
+// Mock the IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),

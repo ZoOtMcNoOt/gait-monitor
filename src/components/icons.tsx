@@ -2,197 +2,602 @@ type IconProps = {
   size?: number
   className?: string
   title?: string
-  "data-icon"?: string
+  'data-icon'?: string
   ariaHidden?: boolean
 }
 
 // Small, dependency-free inline SVG icon set
 export const Icon = {
   Link: ({ size = 16, className, title = 'Link', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M10 14a5 5 0 007.07 0l1.17-1.17a5 5 0 000-7.07 5 5 0 00-7.07 0L10 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M14 10a5 5 0 00-7.07 0L5.76 11.17a5 5 0 000 7.07 5 5 0 007.07 0L14 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M10 14a5 5 0 007.07 0l1.17-1.17a5 5 0 000-7.07 5 5 0 00-7.07 0L10 7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 10a5 5 0 00-7.07 0L5.76 11.17a5 5 0 000 7.07 5 5 0 007.07 0L14 17"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Chart: ({ size = 16, className, title = 'Chart', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M4 19V5M10 19V9M16 19V13M22 19H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M4 19V5M10 19V9M16 19V13M22 19H2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Clipboard: ({ size = 16, className, title = 'Clipboard', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
-      <path d="M9 4h6v3H9z" stroke="currentColor" strokeWidth="2"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M9 4h6v3H9z" stroke="currentColor" strokeWidth="2" />
     </svg>
   ),
   Gear: ({ size = 16, className, title = 'Settings', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2"/>
-      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.11a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.11a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.11a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c0 .66.39 1.26 1 1.51H21a2 2 0 110 4h-.11a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.11a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.11a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.11a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c0 .66.39 1.26 1 1.51H21a2 2 0 110 4h-.11a1.65 1.65 0 00-1.51 1z"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
     </svg>
   ),
   Plug: ({ size = 16, className, title = 'No devices', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M9 7v6M15 7v6M7 13h10M12 19v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M8 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M9 7v6M15 7v6M7 13h10M12 19v-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path d="M8 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Radio: ({ size = 14, className, title = 'Collecting', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="12" r="2" fill="currentColor"/>
-      <path d="M5 12a7 7 0 017-7M19 12a7 7 0 00-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M3 12a9 9 0 019-9M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path
+        d="M5 12a7 7 0 017-7M19 12a7 7 0 00-7-7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3 12a9 9 0 019-9M21 12a9 9 0 00-9-9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Pause: ({ size = 14, className, title = 'Idle', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <rect x="7" y="5" width="4" height="14" fill="currentColor"/>
-      <rect x="13" y="5" width="4" height="14" fill="currentColor"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <rect x="7" y="5" width="4" height="14" fill="currentColor" />
+      <rect x="13" y="5" width="4" height="14" fill="currentColor" />
     </svg>
   ),
   Warning: ({ size = 16, className, title = 'Warning', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M12 2l10 18H2L12 2z" stroke="currentColor" strokeWidth="2" fill="none"/>
-      <path d="M12 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="17" r="1" fill="currentColor"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M12 2l10 18H2L12 2z" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path d="M12 8v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="17" r="1" fill="currentColor" />
     </svg>
   ),
   Info: ({ size = 16, className, title = 'Info', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-      <path d="M12 16v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="8" r="1" fill="currentColor"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 16v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="8" r="1" fill="currentColor" />
     </svg>
   ),
   Success: ({ size = 16, className, title = 'Success', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-      <path d="M8 12l3 3 5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M8 12l3 3 5-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Error: ({ size = 16, className, title = 'Error', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-      <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+      <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Search: ({ size = 16, className, title = 'Search', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
-      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Heart: ({ size = 16, className, title = 'Heart', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+      />
     </svg>
   ),
   HeartOff: ({ size = 16, className, title = 'No Data', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M2 2l20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67 9.88 3.55M4.22 4.22a5.5 5.5 0 000 7.78L12 21.23l4.55-4.55" stroke="currentColor" strokeWidth="2" fill="none"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M2 2l20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67 9.88 3.55M4.22 4.22a5.5 5.5 0 000 7.78L12 21.23l4.55-4.55"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+      />
     </svg>
   ),
   Clock: ({ size = 16, className, title = 'Timeout', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="2"/>
-      <path d="M12 13V8M9 3h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="13" r="8" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 13V8M9 3h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Refresh: ({ size = 16, className, title = 'Refresh', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M20 12a8 8 0 1 1-8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M20 4v6h-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Eye: ({ size = 16, className, title = 'View', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" stroke="currentColor" strokeWidth="2" fill="none"/>
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
     </svg>
   ),
   Download: ({ size = 16, className, title = 'Download', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M8 11l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M8 11l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Trash: ({ size = 16, className, title = 'Delete', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2"/>
-      <path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14" stroke="currentColor" strokeWidth="2"/>
-      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2" />
+      <path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14" stroke="currentColor" strokeWidth="2" />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Close: ({ size = 16, className, title = 'Close', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Export: ({ size = 16, className, title = 'Export', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path d="M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M8 7l4-4 4 4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Zoom: ({ size = 16, className, title = 'Zoom', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
-      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   ChevronDown: ({ size = 16, className, title = 'Chevron down', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Fit: ({ size = 16, className, title = 'Fit', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M3 9V5a2 2 0 012-2h4M15 3h4a2 2 0 012 2v4M21 15v4a2 2 0 01-2 2h-4M9 21H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M3 9V5a2 2 0 012-2h4M15 3h4a2 2 0 012 2v4M21 15v4a2 2 0 01-2 2h-4M9 21H5a2 2 0 01-2-2v-4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
     </svg>
   ),
   Home: ({ size = 16, className, title = 'Home', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M3 11l9-7 9 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5 10v10h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M3 11l9-7 9 7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M5 10v10h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   StepBack: ({ size = 16, className, title = 'Back', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M15 18l-6-6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   StepForward: ({ size = 16, className, title = 'Forward', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <path
+        d="M9 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   Antenna: ({ size = 14, className, title = 'Sample rate', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <circle cx="12" cy="12" r="2" fill="currentColor"/>
-      <path d="M5 12a7 7 0 0 1 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M19 12a7 7 0 0 0-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M3 12a9 9 0 0 1 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M5 12a7 7 0 0 1 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M19 12a7 7 0 0 0-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M3 12a9 9 0 0 1 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   Device: ({ size = 14, className, title = 'Devices', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" role="img" aria-label={title} className={className} {...rest}>
-      <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" strokeWidth="2"/>
-      <circle cx="12" cy="19" r="1" fill="currentColor"/>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="19" r="1" fill="currentColor" />
     </svg>
   ),
   StatusGood: ({ size = 10, className, title = 'Optimal', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 10 10" role="img" aria-label={title} className={className} {...rest}><circle cx="5" cy="5" r="5" fill="#10b981"/></svg>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="5" cy="5" r="5" fill="#10b981" />
+    </svg>
   ),
   StatusWarning: ({ size = 10, className, title = 'Moderate', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 10 10" role="img" aria-label={title} className={className} {...rest}><circle cx="5" cy="5" r="5" fill="#f59e0b"/></svg>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="5" cy="5" r="5" fill="#f59e0b" />
+    </svg>
   ),
   StatusDanger: ({ size = 10, className, title = 'High load', ...rest }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 10 10" role="img" aria-label={title} className={className} {...rest}><circle cx="5" cy="5" r="5" fill="#ef4444"/></svg>
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      role="img"
+      aria-label={title}
+      className={className}
+      {...rest}
+    >
+      <circle cx="5" cy="5" r="5" fill="#ef4444" />
+    </svg>
   ),
 }
 

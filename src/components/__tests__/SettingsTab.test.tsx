@@ -16,7 +16,7 @@ jest.mock('@tauri-apps/api/core')
 const mockToast = {
   showSuccess: jest.fn(),
   showError: jest.fn(),
-  showInfo: jest.fn()
+  showInfo: jest.fn(),
 }
 
 const mockConfirmation = {
@@ -27,9 +27,9 @@ const mockConfirmation = {
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     onConfirm: jest.fn(),
-    onCancel: jest.fn()
+    onCancel: jest.fn(),
   },
-  showConfirmation: jest.fn()
+  showConfirmation: jest.fn(),
 }
 
 const mockScroll = {
@@ -39,29 +39,29 @@ const mockScroll = {
   isScrolledToTop: false,
   isScrolledToBottom: false,
   registerScrollable: jest.fn(),
-  unregisterScrollable: jest.fn()
+  unregisterScrollable: jest.fn(),
 }
 
 const mockProtectedOperations = {
   withCSRFProtection: jest.fn(),
-  requestPermission: jest.fn().mockResolvedValue(true)
+  requestPermission: jest.fn().mockResolvedValue(true),
 }
 
 // Mock Tauri invoke
 const mockInvoke = jest.fn()
 jest.mock('@tauri-apps/api/core', () => ({
-  invoke: (...args: unknown[]) => mockInvoke(...args)
+  invoke: (...args: unknown[]) => mockInvoke(...args),
 }))
 
 // Mock localStorage
 const mockLocalStorage = {
   getItem: jest.fn(),
   setItem: jest.fn(),
-  removeItem: jest.fn()
+  removeItem: jest.fn(),
 }
 
 Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage
+  value: mockLocalStorage,
 })
 
 describe('SettingsTab', () => {
@@ -78,18 +78,20 @@ describe('SettingsTab', () => {
     ;(useToast as jest.Mock).mockReturnValue(mockToast)
     ;(useConfirmation as jest.Mock).mockReturnValue(mockConfirmation)
     ;(useScroll as jest.Mock).mockReturnValue(mockScroll)
-    
+
     // Mock protectedOperations
     Object.assign(protectedOperations, mockProtectedOperations)
 
     // Mock localStorage responses
-    mockLocalStorage.getItem.mockReturnValue(JSON.stringify({
-      defaultStoragePath: './test_data',
-      dataRetentionDays: 30,
-      autoBackup: true,
-      exportFormat: 'json',
-      sampleRate: 200
-    }))
+    mockLocalStorage.getItem.mockReturnValue(
+      JSON.stringify({
+        defaultStoragePath: './test_data',
+        dataRetentionDays: 30,
+        autoBackup: true,
+        exportFormat: 'json',
+        sampleRate: 200,
+      }),
+    )
 
     mockInvoke.mockImplementation((command) => {
       if (command === 'get_app_settings') {
@@ -98,13 +100,13 @@ describe('SettingsTab', () => {
           dataRetentionDays: 30,
           autoBackup: true,
           exportFormat: 'json',
-          sampleRate: 200
+          sampleRate: 200,
         })
       }
       if (command === 'get_sessions') {
         return Promise.resolve([
           { id: '1', name: 'Session 1', timestamp: Date.now() },
-          { id: '2', name: 'Session 2', timestamp: Date.now() }
+          { id: '2', name: 'Session 2', timestamp: Date.now() },
         ])
       }
       if (command === 'get_storage_path') {
@@ -118,7 +120,7 @@ describe('SettingsTab', () => {
     mockLocalStorage.getItem.mockReset()
     mockLocalStorage.setItem.mockReset()
     mockLocalStorage.removeItem.mockReset()
-    
+
     // Reset localStorage to default behavior
     mockLocalStorage.getItem.mockReturnValue(null)
     mockLocalStorage.setItem.mockImplementation(() => {})
@@ -145,7 +147,7 @@ describe('SettingsTab', () => {
       })
 
       // Wait for useEffect to run
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith('appSettings')
     })
@@ -171,15 +173,16 @@ describe('SettingsTab', () => {
     })
 
     it('should display dark mode toggle', () => {
-      const darkModeToggle = container.querySelector('input[type="checkbox"]') ||
-                            container.querySelector('[data-testid="dark-mode-toggle"]')
-      
+      const darkModeToggle =
+        container.querySelector('input[type="checkbox"]') ||
+        container.querySelector('[data-testid="dark-mode-toggle"]')
+
       expect(darkModeToggle).toBeInTheDocument()
     })
 
     it('should handle dark mode toggle', () => {
       const darkModeToggle = container.querySelector('input[type="checkbox"]') as HTMLInputElement
-      
+
       if (darkModeToggle) {
         flushSync(() => {
           darkModeToggle.click()
@@ -190,10 +193,12 @@ describe('SettingsTab', () => {
     })
 
     it('should display high contrast mode option', () => {
-      const highContrastToggle = container.querySelector('input[data-testid="high-contrast"]') ||
-                                Array.from(container.querySelectorAll('input[type="checkbox"]')).find(input => 
-                                  input.nextSibling?.textContent?.includes('High Contrast'))
-      
+      const highContrastToggle =
+        container.querySelector('input[data-testid="high-contrast"]') ||
+        Array.from(container.querySelectorAll('input[type="checkbox"]')).find((input) =>
+          input.nextSibling?.textContent?.includes('High Contrast'),
+        )
+
       if (highContrastToggle) {
         expect(highContrastToggle).toBeInTheDocument()
       }
@@ -205,7 +210,7 @@ describe('SettingsTab', () => {
       })
 
       const darkModeToggle = container.querySelector('input[type="checkbox"]') as HTMLInputElement
-      
+
       if (darkModeToggle) {
         expect(darkModeToggle.checked).toBe(true)
       }
@@ -220,39 +225,44 @@ describe('SettingsTab', () => {
     })
 
     it('should display storage path setting', () => {
-      const storagePathInput = container.querySelector('input[data-testid="storage-path"]') ||
-                              container.querySelector('input[type="text"]')
-      
+      const storagePathInput =
+        container.querySelector('input[data-testid="storage-path"]') ||
+        container.querySelector('input[type="text"]')
+
       expect(storagePathInput).toBeInTheDocument()
     })
 
     it('should display data retention setting', () => {
-      const retentionInput = container.querySelector('input[data-testid="retention-days"]') ||
-                            container.querySelector('input[type="number"]')
-      
+      const retentionInput =
+        container.querySelector('input[data-testid="retention-days"]') ||
+        container.querySelector('input[type="number"]')
+
       expect(retentionInput).toBeInTheDocument()
     })
 
     it('should display auto backup setting', () => {
-      const autoBackupToggle = container.querySelector('input[data-testid="auto-backup"]') ||
-                              Array.from(container.querySelectorAll('input[type="checkbox"]')).find(input => 
-                                input.nextSibling?.textContent?.includes('Auto Backup'))
-      
+      const autoBackupToggle =
+        container.querySelector('input[data-testid="auto-backup"]') ||
+        Array.from(container.querySelectorAll('input[type="checkbox"]')).find((input) =>
+          input.nextSibling?.textContent?.includes('Auto Backup'),
+        )
+
       if (autoBackupToggle) {
         expect(autoBackupToggle).toBeInTheDocument()
       }
     })
 
     it('should display export format setting', () => {
-      const exportFormatSelect = container.querySelector('select[data-testid="export-format"]') ||
-                                container.querySelector('select')
-      
+      const exportFormatSelect =
+        container.querySelector('select[data-testid="export-format"]') ||
+        container.querySelector('select')
+
       expect(exportFormatSelect).toBeInTheDocument()
     })
 
     it('should handle storage path change', () => {
       const storagePathInput = container.querySelector('input[type="text"]') as HTMLInputElement
-      
+
       if (storagePathInput) {
         flushSync(() => {
           storagePathInput.value = './new_path'
@@ -272,16 +282,18 @@ describe('SettingsTab', () => {
     })
 
     it('should display sample rate setting', () => {
-      const sampleRateSelect = container.querySelector('select[data-testid="sample-rate"]') ||
-                               container.querySelector('select')
-      
+      const sampleRateSelect =
+        container.querySelector('select[data-testid="sample-rate"]') ||
+        container.querySelector('select')
+
       expect(sampleRateSelect).toBeInTheDocument()
     })
 
     it('should handle sample rate change', () => {
-      const sampleRateSelect = container.querySelector('select[data-testid="sample-rate"]') ||
-                               container.querySelector('select')
-      
+      const sampleRateSelect =
+        container.querySelector('select[data-testid="sample-rate"]') ||
+        container.querySelector('select')
+
       if (sampleRateSelect) {
         const selectElement = sampleRateSelect as HTMLSelectElement
         flushSync(() => {
@@ -294,8 +306,10 @@ describe('SettingsTab', () => {
     })
 
     it('should validate sample rate bounds', () => {
-      const sampleRateSelect = container.querySelector('select[data-testid="sample-rate"]') as HTMLSelectElement
-      
+      const sampleRateSelect = container.querySelector(
+        'select[data-testid="sample-rate"]',
+      ) as HTMLSelectElement
+
       if (sampleRateSelect) {
         // Test with the available options (50, 100, 200, 500)
         flushSync(() => {
@@ -318,12 +332,13 @@ describe('SettingsTab', () => {
     })
 
     it('should save settings to localStorage', () => {
-      const saveButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Save'))
-      
+      const saveButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Save'),
+      )
+
       if (saveButton) {
         flushSync(() => {
-          (saveButton as HTMLButtonElement).click()
+          ;(saveButton as HTMLButtonElement).click()
         })
 
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith('appSettings', expect.any(String))
@@ -331,28 +346,29 @@ describe('SettingsTab', () => {
     })
 
     it('should show save confirmation', () => {
-      const saveButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Save'))
-      
+      const saveButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Save'),
+      )
+
       if (saveButton) {
         flushSync(() => {
-          (saveButton as HTMLButtonElement).click()
+          ;(saveButton as HTMLButtonElement).click()
         })
 
         expect(mockToast.showSuccess).toHaveBeenCalledWith(
-          expect.stringContaining('Settings saved') ||
-          expect.stringContaining('Saved')
+          expect.stringContaining('Settings saved') || expect.stringContaining('Saved'),
         )
       }
     })
 
     it('should reset settings to default', () => {
-      const resetButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Reset') || btn.textContent?.includes('Default'))
-      
+      const resetButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Reset') || btn.textContent?.includes('Default'),
+      )
+
       if (resetButton) {
         flushSync(() => {
-          (resetButton as HTMLButtonElement).click()
+          ;(resetButton as HTMLButtonElement).click()
         })
 
         expect(mockConfirmation.showConfirmation).toHaveBeenCalled()
@@ -361,18 +377,21 @@ describe('SettingsTab', () => {
 
     it('should detect unsaved changes', () => {
       const input = container.querySelector('input[data-testid="storage-path"]') as HTMLInputElement
-      
+
       if (input) {
         flushSync(() => {
           // For React controlled components, we need to simulate the change properly
-          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, 'modified value')
+          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(
+            input,
+            'modified value',
+          )
           input.dispatchEvent(new Event('change', { bubbles: true }))
         })
 
         expect(
           container.textContent?.includes('unsaved') ||
-          container.textContent?.includes('modified') ||
-          container.textContent?.includes('Save Settings')
+            container.textContent?.includes('modified') ||
+            container.textContent?.includes('Save Settings'),
         ).toBe(true)
       }
     })
@@ -386,25 +405,25 @@ describe('SettingsTab', () => {
     })
 
     it('should provide data cleanup options', () => {
-      const cleanupButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Clean') || btn.textContent?.includes('Clear'))
-      
+      const cleanupButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Clean') || btn.textContent?.includes('Clear'),
+      )
+
       if (cleanupButton) {
         expect(cleanupButton).toBeInTheDocument()
       }
     })
 
     it('should handle data cleanup', () => {
-      const cleanupButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Clean'))
-      
+      const cleanupButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Clean'),
+      )
+
       if (cleanupButton) {
-        mockProtectedOperations.withCSRFProtection.mockImplementation(
-          (operation) => operation()
-        )
+        mockProtectedOperations.withCSRFProtection.mockImplementation((operation) => operation())
 
         flushSync(() => {
-          (cleanupButton as HTMLButtonElement).click()
+          ;(cleanupButton as HTMLButtonElement).click()
         })
 
         expect(mockProtectedOperations.withCSRFProtection).toHaveBeenCalled()
@@ -412,25 +431,25 @@ describe('SettingsTab', () => {
     })
 
     it('should provide backup functionality', () => {
-      const backupButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Backup') || btn.textContent?.includes('Export'))
-      
+      const backupButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Backup') || btn.textContent?.includes('Export'),
+      )
+
       if (backupButton) {
         expect(backupButton).toBeInTheDocument()
       }
     })
 
     it('should handle backup creation', () => {
-      const backupButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Backup'))
-      
+      const backupButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Backup'),
+      )
+
       if (backupButton) {
-        mockProtectedOperations.withCSRFProtection.mockImplementation(
-          (operation) => operation()
-        )
+        mockProtectedOperations.withCSRFProtection.mockImplementation((operation) => operation())
 
         flushSync(() => {
-          (backupButton as HTMLButtonElement).click()
+          ;(backupButton as HTMLButtonElement).click()
         })
 
         expect(mockProtectedOperations.withCSRFProtection).toHaveBeenCalled()
@@ -453,17 +472,18 @@ describe('SettingsTab', () => {
           throw new Error('Storage quota exceeded')
         })
 
-        const saveButton = Array.from(container.querySelectorAll('button')).find(btn => 
-          btn.textContent?.includes('Save'))
-        
+        const saveButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+          btn.textContent?.includes('Save'),
+        )
+
         if (saveButton) {
           flushSync(() => {
-            (saveButton as HTMLButtonElement).click()
+            ;(saveButton as HTMLButtonElement).click()
           })
 
           expect(mockToast.showError).toHaveBeenCalledWith(
             expect.stringContaining('Save Failed'),
-            expect.stringContaining('Storage quota exceeded')
+            expect.stringContaining('Storage quota exceeded'),
           )
         }
       } finally {
@@ -478,17 +498,17 @@ describe('SettingsTab', () => {
         root.render(<SettingsTab darkMode={false} onToggleDarkMode={mockOnToggleDarkMode} />)
       })
 
-      const cleanupButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Clean'))
-      
+      const cleanupButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Clean'),
+      )
+
       if (cleanupButton) {
         flushSync(() => {
-          (cleanupButton as HTMLButtonElement).click()
+          ;(cleanupButton as HTMLButtonElement).click()
         })
 
         expect(mockToast.showError).toHaveBeenCalledWith(
-          expect.stringContaining('Cleanup failed') ||
-          expect.stringContaining('Error')
+          expect.stringContaining('Cleanup failed') || expect.stringContaining('Error'),
         )
       }
     })
@@ -502,13 +522,18 @@ describe('SettingsTab', () => {
     })
 
     it('should validate retention days', () => {
-      const retentionInput = container.querySelector('input[data-testid="retention-days"]') as HTMLInputElement
-      
+      const retentionInput = container.querySelector(
+        'input[data-testid="retention-days"]',
+      ) as HTMLInputElement
+
       if (retentionInput) {
         const originalValue = retentionInput.value
-        
+
         flushSync(() => {
-          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(retentionInput, '-1')
+          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(
+            retentionInput,
+            '-1',
+          )
           retentionInput.dispatchEvent(new Event('change', { bubbles: true }))
         })
 
@@ -518,13 +543,18 @@ describe('SettingsTab', () => {
     })
 
     it('should validate storage path', () => {
-      const storagePathInput = container.querySelector('input[data-testid="storage-path"]') as HTMLInputElement
-      
+      const storagePathInput = container.querySelector(
+        'input[data-testid="storage-path"]',
+      ) as HTMLInputElement
+
       if (storagePathInput) {
         const originalValue = storagePathInput.value
-        
+
         flushSync(() => {
-          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(storagePathInput, '')
+          Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(
+            storagePathInput,
+            '',
+          )
           storagePathInput.dispatchEvent(new Event('change', { bubbles: true }))
         })
 
@@ -534,8 +564,10 @@ describe('SettingsTab', () => {
     })
 
     it('should validate sample rate range', () => {
-      const sampleRateSelect = container.querySelector('select[data-testid="sample-rate"]') as HTMLSelectElement
-      
+      const sampleRateSelect = container.querySelector(
+        'select[data-testid="sample-rate"]',
+      ) as HTMLSelectElement
+
       if (sampleRateSelect) {
         // Test with valid options
         flushSync(() => {
@@ -558,21 +590,22 @@ describe('SettingsTab', () => {
 
     it('should have proper labels for form elements', () => {
       const inputs = container.querySelectorAll('input, select')
-      inputs.forEach(input => {
-        const hasLabel = container.querySelector(`label[for="${input.id}"]`) ||
-                        input.closest('label') ||
-                        input.getAttribute('aria-label') ||
-                        input.getAttribute('aria-labelledby')
-        
+      inputs.forEach((input) => {
+        const hasLabel =
+          container.querySelector(`label[for="${input.id}"]`) ||
+          input.closest('label') ||
+          input.getAttribute('aria-label') ||
+          input.getAttribute('aria-labelledby')
+
         expect(hasLabel).toBeTruthy()
       })
     })
 
     it('should support keyboard navigation', () => {
       const focusableElements = container.querySelectorAll(
-        'input, select, button, [tabindex]:not([tabindex="-1"])'
+        'input, select, button, [tabindex]:not([tabindex="-1"])',
       )
-      
+
       expect(focusableElements.length).toBeGreaterThan(0)
     })
 
@@ -583,11 +616,11 @@ describe('SettingsTab', () => {
 
     it('should provide form validation feedback', () => {
       const inputs = container.querySelectorAll('input, select')
-      inputs.forEach(input => {
+      inputs.forEach((input) => {
         expect(
           input.getAttribute('aria-describedby') !== null ||
-          input.getAttribute('aria-label') !== null ||
-          input.getAttribute('aria-labelledby') !== null
+            input.getAttribute('aria-label') !== null ||
+            input.getAttribute('aria-labelledby') !== null,
         ).toBe(true)
       })
     })
@@ -596,14 +629,14 @@ describe('SettingsTab', () => {
   describe('Performance', () => {
     it('should handle frequent settings changes efficiently', () => {
       const startTime = performance.now()
-      
+
       flushSync(() => {
         root.render(<SettingsTab darkMode={false} onToggleDarkMode={mockOnToggleDarkMode} />)
       })
 
       // Simulate rapid changes
       const input = container.querySelector('input[type="text"]') as HTMLInputElement
-      
+
       if (input) {
         for (let i = 0; i < 10; i++) {
           flushSync(() => {
@@ -614,7 +647,7 @@ describe('SettingsTab', () => {
       }
 
       const endTime = performance.now()
-      
+
       // Should handle rapid changes efficiently
       expect(endTime - startTime).toBeLessThan(1000)
     })

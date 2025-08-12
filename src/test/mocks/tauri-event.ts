@@ -1,7 +1,7 @@
 // Mock for @tauri-apps/api/event
 export const listen = jest.fn().mockImplementation((event: string) => {
   console.log(`Mock listen called for event: ${event}`)
-  
+
   // Return a mock unlisten function
   return Promise.resolve(() => {
     console.log(`Mock unlisten called for event: ${event}`)

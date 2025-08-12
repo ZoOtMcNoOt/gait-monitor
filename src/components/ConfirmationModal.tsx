@@ -3,14 +3,14 @@ import '../styles/modal.css'
 import { Icon } from './icons'
 
 interface ConfirmationModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  type?: 'warning' | 'danger' | 'info';
+  isOpen: boolean
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  onConfirm: () => void
+  onCancel: () => void
+  type?: 'warning' | 'danger' | 'info'
 }
 
 export const ConfirmationModal = ({
@@ -21,55 +21,55 @@ export const ConfirmationModal = ({
   cancelText = 'Cancel',
   onConfirm,
   onCancel,
-  type = 'warning'
+  type = 'warning',
 }: ConfirmationModalProps) => {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null)
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
 
   // Focus management for accessibility
   useEffect(() => {
     if (isOpen && cancelButtonRef.current) {
-      cancelButtonRef.current.focus();
+      cancelButtonRef.current.focus()
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onCancel();
+        onCancel()
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onCancel]);
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onCancel])
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === modalRef.current) {
-      onCancel();
+      onCancel()
     }
-  };
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const typeStyles = {
     warning: {
       icon: <Icon.Warning title="Warning" />,
-      confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+      confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
     },
     danger: {
       icon: <Icon.Error title="Danger" />,
-      confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+      confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
     },
     info: {
       icon: <Icon.Info title="Information" />,
-      confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-    }
-  } as const;
+      confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    },
+  } as const
 
-  const currentStyle = typeStyles[type];
+  const currentStyle = typeStyles[type]
 
   return (
     <div
@@ -88,31 +88,22 @@ export const ConfirmationModal = ({
             {title}
           </h3>
         </div>
-        
+
         <div className="confirmation-modal-body">
-          <p id="modal-description">
-            {message}
-          </p>
+          <p id="modal-description">{message}</p>
         </div>
-        
+
         <div className="confirmation-modal-footer">
-          <button
-            ref={cancelButtonRef}
-            onClick={onCancel}
-            className="btn-secondary"
-          >
+          <button ref={cancelButtonRef} onClick={onCancel} className="btn-secondary">
             {cancelText}
           </button>
-          <button
-            onClick={onConfirm}
-            className={type === 'danger' ? 'btn-danger' : 'btn-primary'}
-          >
+          <button onClick={onConfirm} className={type === 'danger' ? 'btn-danger' : 'btn-primary'}>
             {confirmText}
           </button>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ConfirmationModal;
+export default ConfirmationModal

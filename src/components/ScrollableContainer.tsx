@@ -29,21 +29,18 @@ const ScrollableContainer = forwardRef<ScrollableContainerRef, ScrollableContain
 
     useEffect(() => {
       registerScrollable(id, containerRef.current)
-      
+
       return () => {
         unregisterScrollable(id)
       }
     }, [id, registerScrollable, unregisterScrollable])
 
     return (
-      <div 
-        ref={containerRef}
-        className={className}
-      >
+      <div ref={containerRef} className={className}>
         {children}
       </div>
     )
-  }
+  },
 )
 
 ScrollableContainer.displayName = 'ScrollableContainer'

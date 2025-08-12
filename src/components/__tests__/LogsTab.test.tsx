@@ -20,8 +20,8 @@ jest.mock('../../hooks/useScroll', () => ({
     scrollToBottom: jest.fn(),
     scrollToElement: jest.fn(),
     registerScrollable: jest.fn(),
-    unregisterScrollable: jest.fn()
-  }))
+    unregisterScrollable: jest.fn(),
+  })),
 }))
 jest.mock('../DataViewer', () => {
   return function DataViewer({ sessionId, sessionName, onClose }: any) {
@@ -38,7 +38,7 @@ jest.mock('../DataViewer', () => {
 const mockToast = {
   showSuccess: jest.fn(),
   showError: jest.fn(),
-  showInfo: jest.fn()
+  showInfo: jest.fn(),
 }
 
 const mockConfirmation = {
@@ -50,25 +50,25 @@ const mockConfirmation = {
     cancelText: 'Cancel',
     onConfirm: jest.fn(),
     onCancel: jest.fn(),
-    type: 'warning' as const
+    type: 'warning' as const,
   },
-  showConfirmation: jest.fn()
+  showConfirmation: jest.fn(),
 }
 
 const mockTimestampManager = {
   convertToLocalTime: jest.fn((timestamp) => timestamp),
   formatTimestamp: jest.fn((timestamp) => new Date(timestamp).toLocaleString()),
-  getCurrentTimestamp: jest.fn(() => Date.now())
+  getCurrentTimestamp: jest.fn(() => Date.now()),
 }
 
 const mockProtectedOperations = {
   withCSRFProtection: jest.fn(),
-  requestPermission: jest.fn().mockResolvedValue(true)
+  requestPermission: jest.fn().mockResolvedValue(true),
 }
 
 // Mock Tauri invoke
 jest.mock('@tauri-apps/api/core', () => ({
-  invoke: jest.fn()
+  invoke: jest.fn(),
 }))
 
 // Get the mocked invoke function after the mock is set up
@@ -84,7 +84,7 @@ const mockLogEntries = [
     data_points: 1500,
     file_path: '/path/to/session1.json',
     notes: 'Test notes',
-    devices: ['GaitBLE_Left', 'GaitBLE_Right']
+    devices: ['GaitBLE_Left', 'GaitBLE_Right'],
   },
   {
     id: 'session2',
@@ -93,8 +93,8 @@ const mockLogEntries = [
     timestamp: 1640995800000,
     data_points: 2000,
     file_path: '/path/to/session2.json',
-    devices: ['GaitBLE_Left']
-  }
+    devices: ['GaitBLE_Left'],
+  },
 ]
 
 describe('LogsTab', () => {
@@ -122,7 +122,7 @@ describe('LogsTab', () => {
         return Promise.resolve({
           totalSessions: 2,
           totalDataPoints: 3500,
-          lastSession: 1640995800000
+          lastSession: 1640995800000,
         })
       }
       return Promise.resolve()
@@ -142,7 +142,7 @@ describe('LogsTab', () => {
         root.render(<LogsTab />)
       })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(container).toBeInTheDocument()
       expect(mockInvoke).toHaveBeenCalledWith('get_sessions')
@@ -158,16 +158,22 @@ describe('LogsTab', () => {
       try {
         mockInvoke.mockImplementation((command) => {
           if (command === 'get_sessions') {
-            return new Promise(resolve => setTimeout(() => resolve(mockLogEntries), 1000))
+            return new Promise((resolve) => setTimeout(() => resolve(mockLogEntries), 1000))
           }
           if (command === 'get_logs_stats') {
-            return new Promise(resolve => setTimeout(() => resolve({
-              totalSessions: 2,
-              totalDataPoints: 3500,
-              lastSession: 1640995800000
-            }), 1000))
+            return new Promise((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    totalSessions: 2,
+                    totalDataPoints: 3500,
+                    lastSession: 1640995800000,
+                  }),
+                1000,
+              ),
+            )
           }
-          return new Promise(resolve => setTimeout(resolve, 1000))
+          return new Promise((resolve) => setTimeout(resolve, 1000))
         })
 
         flushSync(() => {
@@ -188,7 +194,7 @@ describe('LogsTab', () => {
         root.render(<LogsTab />)
       })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockInvoke).toHaveBeenCalledWith('get_sessions')
     })
@@ -198,7 +204,7 @@ describe('LogsTab', () => {
         root.render(<LogsTab />)
       })
 
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockInvoke).toHaveBeenCalledWith('get_sessions')
     })
@@ -209,8 +215,8 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should display session list', () => {
@@ -246,8 +252,8 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should display total sessions count', () => {
@@ -268,17 +274,18 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should handle session viewing', () => {
-      const viewButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('View') || btn.textContent?.includes('Open'))
-      
+      const viewButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('View') || btn.textContent?.includes('Open'),
+      )
+
       if (viewButton) {
         flushSync(() => {
-          (viewButton as HTMLButtonElement).click()
+          ;(viewButton as HTMLButtonElement).click()
         })
 
         expect(container.querySelector('[data-testid="data-viewer"]')).toBeInTheDocument()
@@ -286,12 +293,13 @@ describe('LogsTab', () => {
     })
 
     it('should handle session deletion', () => {
-      const deleteButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Delete') || btn.textContent?.includes('Remove'))
-      
+      const deleteButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Delete') || btn.textContent?.includes('Remove'),
+      )
+
       if (deleteButton) {
         flushSync(() => {
-          (deleteButton as HTMLButtonElement).click()
+          ;(deleteButton as HTMLButtonElement).click()
         })
 
         expect(mockConfirmation.showConfirmation).toHaveBeenCalled()
@@ -299,16 +307,15 @@ describe('LogsTab', () => {
     })
 
     it('should handle session export', () => {
-      const exportButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Export') || btn.textContent?.includes('Download'))
-      
+      const exportButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Export') || btn.textContent?.includes('Download'),
+      )
+
       if (exportButton) {
-        mockProtectedOperations.withCSRFProtection.mockImplementation(
-          (operation) => operation()
-        )
+        mockProtectedOperations.withCSRFProtection.mockImplementation((operation) => operation())
 
         flushSync(() => {
-          (exportButton as HTMLButtonElement).click()
+          ;(exportButton as HTMLButtonElement).click()
         })
 
         expect(mockProtectedOperations.withCSRFProtection).toHaveBeenCalled()
@@ -321,17 +328,18 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should open data viewer for session', () => {
-      const viewButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('View'))
-      
+      const viewButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('View'),
+      )
+
       if (viewButton) {
         flushSync(() => {
-          (viewButton as HTMLButtonElement).click()
+          ;(viewButton as HTMLButtonElement).click()
         })
 
         const dataViewer = container.querySelector('[data-testid="data-viewer"]')
@@ -341,19 +349,20 @@ describe('LogsTab', () => {
     })
 
     it('should close data viewer', () => {
-      const viewButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('View'))
-      
+      const viewButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('View'),
+      )
+
       if (viewButton) {
         flushSync(() => {
-          (viewButton as HTMLButtonElement).click()
+          ;(viewButton as HTMLButtonElement).click()
         })
 
         const closeButton = container.querySelector('[data-testid="data-viewer"] button')
-        
+
         if (closeButton) {
           flushSync(() => {
-            (closeButton as HTMLButtonElement).click()
+            ;(closeButton as HTMLButtonElement).click()
           })
 
           expect(container.querySelector('[data-testid="data-viewer"]')).not.toBeInTheDocument()
@@ -367,14 +376,15 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should provide session filtering', () => {
-      const filterInput = container.querySelector('input[type="text"]') ||
-                          container.querySelector('input[data-testid="filter"]')
-      
+      const filterInput =
+        container.querySelector('input[type="text"]') ||
+        container.querySelector('input[data-testid="filter"]')
+
       if (filterInput) {
         expect(filterInput).toBeInTheDocument()
       }
@@ -382,7 +392,7 @@ describe('LogsTab', () => {
 
     it('should provide sorting options', () => {
       const sortSelect = container.querySelector('select[data-testid="sort"]')
-      
+
       if (sortSelect) {
         expect(sortSelect).toBeInTheDocument()
       }
@@ -390,10 +400,10 @@ describe('LogsTab', () => {
 
     it('should filter by subject ID', () => {
       const filterInput = container.querySelector('input[type="text"]')
-      
+
       if (filterInput) {
         flushSync(() => {
-          (filterInput as HTMLInputElement).value = 'Subject 1'
+          ;(filterInput as HTMLInputElement).value = 'Subject 1'
           filterInput.dispatchEvent(new Event('input', { bubbles: true }))
         })
 
@@ -403,7 +413,7 @@ describe('LogsTab', () => {
 
     it('should filter by date range', () => {
       const dateFilter = container.querySelector('input[type="date"]')
-      
+
       if (dateFilter) {
         expect(dateFilter).toBeInTheDocument()
       }
@@ -415,14 +425,15 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should handle pagination controls', () => {
-      const nextButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Next') || btn.textContent?.includes('>'))
-      
+      const nextButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Next') || btn.textContent?.includes('>'),
+      )
+
       if (nextButton) {
         expect(nextButton).toBeInTheDocument()
       }
@@ -449,11 +460,11 @@ describe('LogsTab', () => {
           root.render(<LogsTab />)
         })
 
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
 
         expect(mockToast.showError).toHaveBeenCalledWith(
           'Load Error',
-          'Failed to load sessions: Failed to load logs'
+          'Failed to load sessions: Failed to load logs',
         )
       } finally {
         console.error = originalError
@@ -480,19 +491,19 @@ describe('LogsTab', () => {
           root.render(<LogsTab />)
         })
 
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
 
-        const deleteButton = Array.from(container.querySelectorAll('button')).find(btn => 
-          btn.textContent?.includes('Delete'))
-        
+        const deleteButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+          btn.textContent?.includes('Delete'),
+        )
+
         if (deleteButton) {
           flushSync(() => {
-            (deleteButton as HTMLButtonElement).click()
+            ;(deleteButton as HTMLButtonElement).click()
           })
 
           expect(mockToast.showError).toHaveBeenCalledWith(
-            expect.stringContaining('Delete failed') ||
-            expect.stringContaining('Error')
+            expect.stringContaining('Delete failed') || expect.stringContaining('Error'),
           )
         }
       } finally {
@@ -520,7 +531,7 @@ describe('LogsTab', () => {
           root.render(<LogsTab />)
         })
 
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
 
         expect(container.textContent).toContain('No data logs found')
       } finally {
@@ -535,28 +546,30 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should provide refresh button', () => {
-      const refreshButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Refresh') || btn.textContent?.includes('Reload'))
-      
+      const refreshButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Refresh') || btn.textContent?.includes('Reload'),
+      )
+
       if (refreshButton) {
         expect(refreshButton).toBeInTheDocument()
       }
     })
 
     it('should refresh logs on button click', () => {
-      const refreshButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Refresh'))
-      
+      const refreshButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Refresh'),
+      )
+
       if (refreshButton) {
         jest.clearAllMocks()
-        
+
         flushSync(() => {
-          (refreshButton as HTMLButtonElement).click()
+          ;(refreshButton as HTMLButtonElement).click()
         })
 
         expect(mockInvoke).toHaveBeenCalledWith('get_sessions')
@@ -569,21 +582,20 @@ describe('LogsTab', () => {
       flushSync(() => {
         root.render(<LogsTab />)
       })
-      
-      await new Promise(resolve => setTimeout(resolve, 0))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('should have proper ARIA labels', () => {
       const buttons = container.querySelectorAll('button')
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button.getAttribute('aria-label') || button.textContent).toBeTruthy()
       })
     })
 
     it('should have table structure for logs', () => {
-      const table = container.querySelector('table') ||
-                   container.querySelector('[role="table"]')
-      
+      const table = container.querySelector('table') || container.querySelector('[role="table"]')
+
       if (table) {
         expect(table).toBeInTheDocument()
       }
@@ -591,9 +603,9 @@ describe('LogsTab', () => {
 
     it('should support keyboard navigation', () => {
       const focusableElements = container.querySelectorAll(
-        'button, input, select, [tabindex]:not([tabindex="-1"])'
+        'button, input, select, [tabindex]:not([tabindex="-1"])',
       )
-      
+
       expect(focusableElements.length).toBeGreaterThan(0)
     })
 

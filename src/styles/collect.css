@@ -37,16 +37,6 @@
   background: var(--color-bg);
   border-top-color: var(--color-border);
 }
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 400px);
-  min-height: 400px;
-  max-height: 700px;
-  flex: 1;
-}
 
 /* ===== CLEAN CHART HEADER DESIGN ===== */
 
@@ -149,7 +139,7 @@
   font-weight: 600;
   border: 2px solid transparent;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .main-collection-area .recording-badge.recording {
@@ -168,7 +158,7 @@
 
 /* Dark mode recording badge */
 .dark .main-collection-area .recording-badge {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .dark .main-collection-area .recording-badge.recording {
@@ -182,20 +172,26 @@
 }
 
 @keyframes recording-pulse {
-  0%, 100% { 
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3), 0 0 0 0 rgba(239, 68, 68, 0.4);
+  0%,
+  100% {
+    box-shadow:
+      0 2px 8px rgba(239, 68, 68, 0.3),
+      0 0 0 0 rgba(239, 68, 68, 0.4);
   }
-  50% { 
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3), 0 0 0 8px rgba(239, 68, 68, 0);
+  50% {
+    box-shadow:
+      0 2px 8px rgba(239, 68, 68, 0.3),
+      0 0 0 8px rgba(239, 68, 68, 0);
   }
 }
 
 @keyframes ready-pulse {
-  0%, 100% { 
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
-  50% { 
+  50% {
     opacity: 0.9;
     transform: scale(1.02);
   }
@@ -335,7 +331,7 @@
   .main-collection-area .chart-header-bottom {
     padding: 1rem 1.25rem;
   }
-  
+
   .main-collection-area .chart-meta {
     gap: 0.75rem;
   }
@@ -348,40 +344,40 @@
     gap: 1rem;
     padding: 1rem;
   }
-  
+
   .main-collection-area .chart-controls-area {
     justify-content: space-between;
   }
-  
+
   .main-collection-area .chart-meta {
     flex-direction: column;
     gap: 0.25rem;
     align-items: flex-start;
   }
-  
+
   .main-collection-area .device-list {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .main-collection-area .device-indicators {
     width: 100%;
   }
-  
+
   .main-collection-area .view-controls {
     align-self: stretch;
   }
-  
+
   .main-collection-area .control-group {
     justify-content: space-between;
   }
-  
+
   .main-collection-area .button-group {
     flex: 1;
     max-width: 300px;
   }
-  
+
   .main-collection-area .view-btn {
     flex: 1;
     text-align: center;
@@ -424,7 +420,7 @@
 .main-collection-area .mode-btn.active {
   background: var(--color-primary);
   color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .main-collection-area .keyboard-hint {
@@ -517,7 +513,7 @@
 .collection-sidebar .device-status-viewer {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: none;
   padding: 0;
   margin: 0;
@@ -530,7 +526,7 @@
 /* Dark mode device status viewer */
 .dark .collection-sidebar .device-status-viewer {
   background: var(--color-card-bg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Header consistency */
@@ -618,7 +614,7 @@
 .device-selector-error-fallback {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--color-border);
   padding: 2rem 1.5rem;
   text-align: center;
@@ -634,7 +630,7 @@
 .dark .chart-error-fallback,
 .dark .device-selector-error-fallback {
   background: var(--color-card-bg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   border-color: var(--color-border);
   color: var(--color-text-muted);
 }
@@ -658,7 +654,7 @@
 .collection-sidebar .device-selector-error-fallback {
   height: 100%;
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== COLLECTION CONTROLS CONSISTENCY CHECK ===== */
@@ -667,7 +663,7 @@
 .collection-controls {
   background: var(--color-card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: none;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -682,7 +678,7 @@
 /* Dark mode collection controls */
 .dark .collection-controls {
   background: var(--color-card-bg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .collection-info {
@@ -708,19 +704,19 @@
   .main-collection-area .chart-header {
     padding: 1rem 1.5rem;
   }
-  
+
   .main-collection-area .chart-info {
     padding: 0.75rem 1rem;
   }
-  
+
   .collection-sidebar .device-status-viewer .status-header {
     padding: 1rem 1.5rem;
   }
-  
+
   .collection-sidebar .device-status-viewer .status-summary {
     padding: 0.75rem 1rem;
   }
-  
+
   .collection-sidebar .device-status-viewer .device-status-item {
     padding: 0.75rem 1rem;
   }
@@ -733,36 +729,36 @@
     gap: 0.75rem;
     padding: 1rem;
   }
-  
+
   .main-collection-area .chart-mode-selector {
     justify-self: stretch;
   }
-  
+
   .main-collection-area .data-info {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .main-collection-area .chart-info {
     padding: 0.75rem 1rem;
   }
-  
+
   .collection-controls {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
   }
-  
+
   .collection-info {
     margin-right: 0;
   }
-  
+
   .collection-buttons {
     justify-content: stretch;
     align-items: stretch;
   }
-  
+
   .collection-buttons button {
     flex: 1;
   }

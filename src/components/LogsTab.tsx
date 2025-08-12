@@ -47,26 +47,22 @@ function LogsTabContent() {
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalDataPoints: 0,
-    lastSession: null as Date | null
+    lastSession: null as Date | null,
   })
   const [viewingSession, setViewingSession] = useState<LogEntry | null>(null)
-  
-  // Optimized timestamp management
+
   const { formatTimestamp } = useTimestampManager()
-  
-  // Add hooks for proper error handling
+
   const { showSuccess, showError, showInfo } = useToast()
   const { confirmationState, showConfirmation } = useConfirmation()
 
   const loadLogs = useCallback(async () => {
     try {
-      // Load real sessions from backend
       const sessions: SessionMetadata[] = await invoke('get_sessions')
-      
-  console.log('[Logs] Loaded sessions from backend:', sessions.length)
 
-      // Convert to LogEntry format
-      const logEntries: LogEntry[] = sessions.map(session => ({
+      console.log('[Logs] Loaded sessions from backend:', sessions.length)
+
+      const logEntries: LogEntry[] = sessions.map((session) => ({
         id: session.id,
         session_name: session.session_name,
         subject_id: session.subject_id,
@@ -74,77 +70,64 @@ function LogsTabContent() {
         data_points: session.data_points,
         file_path: session.file_path,
         notes: session.notes,
-        devices: session.devices
+        devices: session.devices,
       }))
-      
-      // Sort logs by timestamp - most recent at the top
+
       logEntries.sort((a, b) => {
         // Handle cases where timestamps might be missing or invalid
         const timestampA = a.timestamp || 0
         const timestampB = b.timestamp || 0
         return timestampB - timestampA // Descending order (newest first)
       })
-      
+
       setLogs(logEntries)
-      
-      // Calculate stats
+
       const totalSessions = logEntries.length
       const totalDataPoints = logEntries.reduce((sum, log) => sum + log.data_points, 0)
-      
-      // Since backend generates consistent millisecond timestamps, use them directly
+
       const validTimestamps = logEntries
-        .map(log => log.timestamp)
-        .filter(timestamp => timestamp && timestamp > 0)
-        
-      const lastSession = validTimestamps.length > 0 
-        ? new Date(Math.max(...validTimestamps))
-        : null
-        
+        .map((log) => log.timestamp)
+        .filter((timestamp) => timestamp && timestamp > 0)
+
+      const lastSession = validTimestamps.length > 0 ? new Date(Math.max(...validTimestamps)) : null
+
       setStats({ totalSessions, totalDataPoints, lastSession })
-      
     } catch (error) {
       console.error('Failed to load sessions:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
       showError('Load Error', `Failed to load sessions: ${errorMessage}`)
-      
-      // Fallback to empty state
+
       setLogs([])
       setStats({ totalSessions: 0, totalDataPoints: 0, lastSession: null })
     }
   }, [showError])
 
-  // Load logs from storage
   useEffect(() => {
     loadLogs()
   }, [loadLogs])
 
   const handleViewLog = (log: LogEntry) => {
-    // Open the data viewer with the selected session
     setViewingSession(log)
   }
 
   const handleDownloadLog = async (log: LogEntry) => {
     try {
-      // Copy the file to Downloads folder with a user-friendly name using enhanced CSRF protection
-      const safeDate = log.timestamp && log.timestamp > 0 
-        ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds directly
-        : 'unknown-date'
-        
+      const safeDate =
+        log.timestamp && log.timestamp > 0
+          ? new Date(log.timestamp).toISOString().split('T')[0] // Backend now provides milliseconds directly
+          : 'unknown-date'
+
       const result = await protectedOperations.copyFileToDownloads(
         log.file_path,
-        `${log.session_name}_${log.subject_id}_${safeDate}.csv`
+        `${log.session_name}_${log.subject_id}_${safeDate}.csv`,
       )
-      
-      showSuccess(
-        'File Exported Successfully',
-        `File exported to Downloads folder: ${result}`
-      )
+
+      showSuccess('File Exported Successfully', `File exported to Downloads folder: ${result}`)
     } catch (error) {
       console.error('Failed to export file:', error)
-      // Fallback: show file location
       showInfo(
         'Export Failed - Manual Copy Available',
-        `File location: ${log.file_path}\n\nNote: You can manually copy this file to your desired location.`
+        `File location: ${log.file_path}\n\nNote: You can manually copy this file to your desired location.`,
       )
     }
   }
@@ -152,30 +135,34 @@ function LogsTabContent() {
   const handleDeleteLog = async (logId: string) => {
     const confirmed = await showConfirmation({
       title: 'Delete Session',
-      message: 'Are you sure you want to delete this session? This action cannot be undone and will permanently remove all associated data.',
+      message:
+        'Are you sure you want to delete this session? This action cannot be undone and will permanently remove all associated data.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
-      type: 'danger'
+      type: 'danger',
     })
-    
+
     if (confirmed) {
       try {
-        // Use enhanced CSRF protection for delete operation
         await protectedOperations.deleteSession(logId)
-        
-        // Reload logs after deletion
+
         await loadLogs()
         showSuccess('Session Deleted', 'The session has been successfully deleted.')
       } catch (error) {
         console.error('Failed to delete session:', error)
         const errorMessage = error instanceof Error ? error.message : String(error)
-        
-        // Enhanced error handling for CSRF-related errors
+
         if (errorMessage.includes('CSRF')) {
-          showError('Security Error', `${errorMessage}\n\nThe page will refresh to get a new security token.`)
+          showError(
+            'Security Error',
+            `${errorMessage}\n\nThe page will refresh to get a new security token.`,
+          )
           setTimeout(() => window.location.reload(), 3000)
         } else if (errorMessage.includes('rate limit')) {
-          showError('Rate Limit Exceeded', `${errorMessage}\n\nPlease wait a moment before trying again.`)
+          showError(
+            'Rate Limit Exceeded',
+            `${errorMessage}\n\nPlease wait a moment before trying again.`,
+          )
         } else {
           showError('Delete Failed', `Failed to delete session: ${errorMessage}`)
         }
@@ -224,11 +211,11 @@ function LogsTabContent() {
       <div className="card">
         <div className="logs-header">
           <h2>Session Logs</h2>
-          <button 
-            className="btn-secondary logs-refresh-btn" 
-            onClick={loadLogs}
-          >
-            <span aria-hidden="true" className="btn-icon"><Icon.Refresh title="Refresh" /></span> Refresh
+          <button className="btn-secondary logs-refresh-btn" onClick={loadLogs}>
+            <span aria-hidden="true" className="btn-icon">
+              <Icon.Refresh title="Refresh" />
+            </span>{' '}
+            Refresh
           </button>
         </div>
         {logs.length === 0 ? (
@@ -251,7 +238,7 @@ function LogsTabContent() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map(log => (
+                {logs.map((log) => (
                   <tr key={log.id}>
                     <td className="session-name">{log.session_name}</td>
                     <td>{log.subject_id}</td>
@@ -268,29 +255,35 @@ function LogsTabContent() {
                       )}
                     </td>
                     <td className="actions-cell">
-                      <button 
+                      <button
                         className="btn-small btn-primary"
                         onClick={() => handleViewLog(log)}
                         title="View data"
                         aria-label={`View ${log.session_name}`}
                       >
-                        <span aria-hidden="true" className="btn-icon"><Icon.Eye title="View" /></span>
+                        <span aria-hidden="true" className="btn-icon">
+                          <Icon.Eye title="View" />
+                        </span>
                       </button>
-                      <button 
+                      <button
                         className="btn-small btn-secondary"
                         onClick={() => handleDownloadLog(log)}
                         title="Download CSV"
                         aria-label={`Download ${log.session_name}`}
                       >
-                        <span aria-hidden="true" className="btn-icon"><Icon.Download title="Download" /></span>
+                        <span aria-hidden="true" className="btn-icon">
+                          <Icon.Download title="Download" />
+                        </span>
                       </button>
-                      <button 
+                      <button
                         className="btn-small btn-danger"
                         onClick={() => handleDeleteLog(log.id)}
                         title="Delete log"
                         aria-label={`Delete ${log.session_name}`}
                       >
-                        <span aria-hidden="true" className="btn-icon"><Icon.Trash title="Delete" /></span>
+                        <span aria-hidden="true" className="btn-icon">
+                          <Icon.Trash title="Delete" />
+                        </span>
                       </button>
                     </td>
                   </tr>
@@ -300,7 +293,7 @@ function LogsTabContent() {
           </div>
         )}
       </div>
-      
+
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
@@ -312,7 +305,7 @@ function LogsTabContent() {
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
       />
-      
+
       {/* Data Viewer Modal */}
       {viewingSession && (
         <DataViewer

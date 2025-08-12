@@ -29,7 +29,7 @@
 }
 
 .sidebar button:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar button.active {
@@ -65,10 +65,10 @@
   opacity: 1;
 }
 
-/* Enhanced sidebar */
+/* Sidebar header */
 .sidebar-header {
   padding: var(--spacing);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: var(--spacing);
 }
 
@@ -113,7 +113,8 @@
 
 /* Sidebar animations */
 @keyframes pulse-sidebar {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -138,7 +139,7 @@
 }
 
 .dark .sidebar button:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .dark .sidebar button.active {
@@ -275,7 +276,7 @@
   .sidebar {
     display: none; /* hide sidebar on small screens */
   }
-  
+
   .collection-sidebar {
     order: -1; /* Move sidebar above main content on mobile */
     width: 100%;
@@ -298,15 +299,15 @@
   .sidebar {
     width: 200px; /* Narrower sidebar for tablets */
   }
-  
+
   .sidebar-header h1 {
     font-size: 1.3rem; /* Smaller title */
   }
-  
+
   .tab-label {
     font-size: 0.9rem; /* Smaller labels */
   }
-  
+
   .tab-shortcut {
     display: none; /* Hide shortcuts on tablet */
   }
@@ -316,11 +317,11 @@
 @media screen and (max-width: 800px) {
   /* Force mobile layout */
   .app {
-    flex-direction: column !important; 
+    flex-direction: column !important;
     height: 100vh !important;
     width: 100vw !important;
   }
-  
+
   .sidebar {
     order: 2 !important; /* Move sidebar to bottom */
     width: 100% !important;
@@ -331,7 +332,7 @@
     padding: 0 !important;
     margin: 0 !important;
     background: linear-gradient(135deg, var(--color-primary) 0%, #1e3a8a 100%) !important;
-    border-top: 1px solid rgba(255,255,255,0.15) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-bottom: none !important;
     position: fixed !important;
     bottom: 0 !important;
@@ -342,13 +343,13 @@
     display: flex !important;
     -webkit-backdrop-filter: blur(10px) !important;
     backdrop-filter: blur(10px) !important;
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1) !important;
   }
-  
+
   .sidebar-header {
     display: none !important; /* Hide header on mobile */
   }
-  
+
   .sidebar button {
     flex: 1 !important; /* Equal width buttons */
     flex-direction: column !important;
@@ -363,23 +364,23 @@
     margin: 0 !important;
     width: auto !important;
     background: transparent !important;
-    color: rgba(255,255,255,0.8) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
     transition: all 0.2s ease !important;
     position: relative !important;
     overflow: hidden !important;
   }
-  
+
   .sidebar button:hover {
-    background: rgba(255,255,255,0.1) !important;
-    color: rgba(255,255,255,0.95) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
     transform: translateY(-1px) !important;
   }
-  
+
   .sidebar button.active {
-    background: rgba(255,255,255,0.15) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
     color: #ffffff !important;
   }
-  
+
   .sidebar button.active::before {
     content: '' !important;
     position: absolute !important;
@@ -391,7 +392,7 @@
     background: linear-gradient(90deg, var(--accent-color), var(--color-primary-light)) !important;
     border-radius: 0 0 3px 3px !important;
   }
-  
+
   .tab-icon {
     font-size: clamp(1.1rem, 4vw, 1.4rem) !important;
     width: auto !important;
@@ -399,7 +400,7 @@
     margin: 0 !important;
     opacity: 1 !important;
   }
-  
+
   .tab-label {
     font-size: clamp(0.65rem, 2.5vw, 0.75rem) !important;
     font-weight: 500 !important;
@@ -410,11 +411,11 @@
     text-overflow: ellipsis !important;
     line-height: 1.1 !important;
   }
-  
+
   .tab-shortcut {
     display: none !important; /* Hide shortcuts on mobile */
   }
-  
+
   .content {
     order: 1 !important; /* Content goes above bottom tabs */
     flex: 1 !important;
@@ -435,16 +436,16 @@
     min-height: 65px !important;
     max-height: 65px !important;
   }
-  
+
   .tab-label {
     font-size: clamp(0.6rem, 2vw, 0.65rem) !important;
     line-height: 1 !important;
   }
-  
+
   .tab-icon {
     font-size: clamp(1rem, 3.5vw, 1.2rem) !important;
   }
-  
+
   .content {
     padding-bottom: 75px !important; /* Adjust for slightly smaller bottom bar */
   }
@@ -454,24 +455,24 @@
 @media screen and (max-width: 800px) {
   .dark .sidebar {
     background: linear-gradient(135deg, var(--color-dark-card) 0%, #0f172a 100%) !important;
-    border-top: 1px solid rgba(255,255,255,0.12) !important;
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.3) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.3) !important;
   }
-  
+
   .dark .sidebar button {
-    color: rgba(255,255,255,0.9) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
   }
-  
+
   .dark .sidebar button:hover {
-    background: rgba(255,255,255,0.08) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
     color: #ffffff !important;
   }
-  
+
   .dark .sidebar button.active {
-    background: rgba(255,255,255,0.12) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
   }
-  
+
   .dark .sidebar button.active::before {
     background: linear-gradient(90deg, var(--accent-color), var(--color-primary-light)) !important;
   }

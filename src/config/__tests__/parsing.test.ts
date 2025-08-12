@@ -86,7 +86,7 @@ describe('Environment Variable Parsing', () => {
   describe('parseString', () => {
     it('should return valid value when it matches valid options', () => {
       const validValues = ['development', 'production', 'test']
-      
+
       expect(parseString('development', validValues, 'development')).toBe('development')
       expect(parseString('production', validValues, 'development')).toBe('production')
       expect(parseString('test', validValues, 'development')).toBe('test')
@@ -94,26 +94,26 @@ describe('Environment Variable Parsing', () => {
 
     it('should return default value when input is not in valid options', () => {
       const validValues = ['light', 'dark', 'auto']
-      
+
       expect(parseString('invalid', validValues, 'auto')).toBe('auto')
       expect(parseString('bright', validValues, 'light')).toBe('light')
     })
 
     it('should return default value for undefined input', () => {
       const validValues = ['option1', 'option2']
-      
+
       expect(parseString(undefined, validValues, 'option1')).toBe('option1')
     })
 
     it('should return default value for empty string', () => {
       const validValues = ['a', 'b', 'c']
-      
+
       expect(parseString('', validValues, 'a')).toBe('a')
     })
 
     it('should be case sensitive', () => {
       const validValues = ['Development', 'Production']
-      
+
       expect(parseString('development', validValues, 'Development')).toBe('Development')
       expect(parseString('DEVELOPMENT', validValues, 'Development')).toBe('Development')
     })

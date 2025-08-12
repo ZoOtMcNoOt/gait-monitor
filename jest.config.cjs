@@ -10,9 +10,12 @@ module.exports = {
     // Config imports now go to the real config file for proper coverage
   },
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: 'tsconfig.test.json'
-    }],
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.test.json',
+      },
+    ],
   },
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.(ts|tsx)',
@@ -35,7 +38,5 @@ module.exports = {
     },
   },
   // Handle ES modules from node_modules
-  transformIgnorePatterns: [
-    'node_modules/(?!(chart.js|@tauri-apps)/)',
-  ]
+  transformIgnorePatterns: ['node_modules/(?!(chart.js|@tauri-apps)/)'],
 }

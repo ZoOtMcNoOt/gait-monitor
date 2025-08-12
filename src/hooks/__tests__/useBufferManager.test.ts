@@ -14,8 +14,8 @@ jest.mock('../../config', () => ({
       cleanupInterval: 5000,
       slidingWindowSeconds: 10,
       enableCircularBuffers: true,
-    }
-  }
+    },
+  },
 }))
 
 describe('useBufferManager', () => {
@@ -32,9 +32,9 @@ describe('useBufferManager', () => {
     container = document.createElement('div')
     root = createRoot(container)
     root.render(React.createElement(TestComponent))
-    
+
     // Wait for React to initialize the hook
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
   }
 
   afterEach(() => {
@@ -51,19 +51,19 @@ describe('useBufferManager', () => {
     await renderHook()
 
     expect(hookResult).toBeDefined()
-    
+
     // Wait a tick for useEffect to complete
-    await new Promise(resolve => setTimeout(resolve, 0))
-    
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     expect(hookResult!.getTotalDevices()).toBe(0)
   })
 
   it('should add data to buffer', async () => {
     await renderHook()
-    
+
     // Wait a tick for useEffect to complete
-    await new Promise(resolve => setTimeout(resolve, 0))
-    
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     const testData = createMockGaitData()
     hookResult!.addData(testData)
 
@@ -72,10 +72,10 @@ describe('useBufferManager', () => {
 
   it('should clear buffer data', async () => {
     await renderHook()
-    
+
     // Wait a tick for useEffect to complete
-    await new Promise(resolve => setTimeout(resolve, 0))
-    
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     const testData = createMockGaitData()
 
     hookResult!.addData(testData)
@@ -87,16 +87,16 @@ describe('useBufferManager', () => {
 
   it('should provide buffer statistics', async () => {
     await renderHook()
-    
+
     // Wait a bit more for the hook to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
     const testData = createMockGaitData()
 
     hookResult!.addData(testData)
-    
+
     // Give the buffer manager time to process the data
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
     const stats = hookResult!.getBufferStats()
     expect(stats).toBeTruthy()
@@ -107,10 +107,10 @@ describe('useBufferManager', () => {
 
   it('should handle multiple devices', async () => {
     await renderHook()
-    
+
     // Wait for the hook to fully initialize
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
     const device1Data = createMockGaitData({ device_id: 'device-1' })
     const device2Data = createMockGaitData({ device_id: 'device-2' })
 
@@ -118,7 +118,7 @@ describe('useBufferManager', () => {
     hookResult!.addData(device2Data)
 
     // Give the buffer manager time to process the data
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
     expect(hookResult!.getTotalDevices()).toBe(2)
   })
@@ -132,7 +132,7 @@ describe('useBufferManager', () => {
 
     // Re-render the component
     root.render(React.createElement(TestComponent))
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
     // Should maintain the same data
     expect(hookResult!.getTotalDevices()).toBe(firstDeviceCount)
@@ -142,20 +142,20 @@ describe('useBufferManager', () => {
     beforeEach(async () => {
       await renderHook()
       // Wait for initialization
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
     })
 
     it('should handle addDataPoint method', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
-      
+
       expect(hookResult!.getTotalDevices()).toBe(1)
     })
 
     it('should handle getDeviceTimeWindow method', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
-      
+
       const windowData = hookResult!.getDeviceTimeWindow(testData.device_id, 10)
       expect(windowData).toHaveLength(1)
       expect(windowData[0]).toEqual(testData)
@@ -164,7 +164,7 @@ describe('useBufferManager', () => {
     it('should handle getDeviceRecent method', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
-      
+
       const recentData = hookResult!.getDeviceRecent(testData.device_id, 5)
       expect(recentData).toHaveLength(1)
       expect(recentData[0]).toEqual(testData)
@@ -174,7 +174,7 @@ describe('useBufferManager', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
       expect(hookResult!.getTotalDevices()).toBe(1)
-      
+
       hookResult!.removeDevice(testData.device_id)
       expect(hookResult!.getTotalDevices()).toBe(0)
     })
@@ -183,7 +183,7 @@ describe('useBufferManager', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
       expect(hookResult!.getTotalDevices()).toBe(1)
-      
+
       hookResult!.clearAll()
       expect(hookResult!.getTotalDevices()).toBe(0)
     })
@@ -191,7 +191,7 @@ describe('useBufferManager', () => {
     it('should handle getMemoryUsage method', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
-      
+
       const memoryUsage = hookResult!.getMemoryUsage()
       expect(typeof memoryUsage).toBe('number')
       expect(memoryUsage).toBeGreaterThanOrEqual(0)
@@ -200,7 +200,7 @@ describe('useBufferManager', () => {
     it('should handle performCleanup method', () => {
       const testData = createMockGaitData()
       hookResult!.addDataPoint(testData.device_id, testData)
-      
+
       // Should not throw an error
       expect(() => hookResult!.performCleanup()).not.toThrow()
     })
@@ -211,14 +211,14 @@ describe('useBufferManager', () => {
       const testData1 = createMockGaitData({ timestamp: baseTime })
       const testData2 = createMockGaitData({ timestamp: baseTime + 2 })
       const testData3 = createMockGaitData({ timestamp: baseTime + 4 })
-      
+
       hookResult!.addDataPoint(testData1.device_id, testData1)
       hookResult!.addDataPoint(testData1.device_id, testData2)
       hookResult!.addDataPoint(testData1.device_id, testData3)
-      
+
       // Wait a bit for the data to be processed
-      await new Promise(resolve => setTimeout(resolve, 10))
-      
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
       // Test time range filtering
       const rangeData = hookResult!.getDeviceData(testData1.device_id, baseTime, baseTime + 2.5)
       expect(rangeData).toHaveLength(2)
@@ -229,11 +229,11 @@ describe('useBufferManager', () => {
     it('should handle clear with specific deviceId', () => {
       const testData1 = createMockGaitData({ device_id: 'device-1' })
       const testData2 = createMockGaitData({ device_id: 'device-2' })
-      
+
       hookResult!.addDataPoint(testData1.device_id, testData1)
       hookResult!.addDataPoint(testData2.device_id, testData2)
       expect(hookResult!.getTotalDevices()).toBe(2)
-      
+
       hookResult!.clear('device-1')
       expect(hookResult!.getTotalDevices()).toBe(1)
     })
@@ -245,7 +245,7 @@ describe('useBufferManager', () => {
       function TestComponentImmediate() {
         const hook = useBufferManager()
         // Test methods immediately on render, before useEffect runs
-        
+
         // These should handle null gracefully since useEffect hasn't run yet
         expect(hook.getBufferStats()).toBeNull()
         expect(hook.getMemoryUsage()).toBe(0)
@@ -259,7 +259,7 @@ describe('useBufferManager', () => {
         expect(() => hook.clearAll()).not.toThrow()
         expect(() => hook.addData(createMockGaitData())).not.toThrow()
         expect(() => hook.clear()).not.toThrow()
-        
+
         hookResult = hook
         return null
       }
@@ -269,14 +269,14 @@ describe('useBufferManager', () => {
       root.render(React.createElement(TestComponentImmediate))
 
       // Wait for the render to complete
-      await new Promise(resolve => setTimeout(resolve, 1))
+      await new Promise((resolve) => setTimeout(resolve, 1))
     })
   })
 
   describe('buffer configuration', () => {
     it('should expose buffer configuration', async () => {
       await renderHook()
-      
+
       expect(hookResult!.bufferConfig).toBeDefined()
       expect(hookResult!.bufferConfig.maxChartPoints).toBe(1000)
       expect(hookResult!.bufferConfig.maxDeviceBufferPoints).toBe(500)

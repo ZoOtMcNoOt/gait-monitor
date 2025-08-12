@@ -4,13 +4,13 @@ import LiveChart from '../LiveChart'
 
 // Mock Tauri API
 jest.mock('@tauri-apps/api/core', () => ({
-  invoke: jest.fn()
+  invoke: jest.fn(),
 }))
 
 // Mock Chart.js
 jest.mock('chart.js', () => ({
   Chart: {
-    register: jest.fn()
+    register: jest.fn(),
   },
   LineController: {},
   LineElement: {},
@@ -19,7 +19,7 @@ jest.mock('chart.js', () => ({
   TimeScale: {},
   Title: {},
   Tooltip: {},
-  Legend: {}
+  Legend: {},
 }))
 
 // Mock canvas context
@@ -37,15 +37,15 @@ const mockCanvas = {
     translate: jest.fn(),
     measureText: jest.fn(() => ({ width: 100 })),
     fillText: jest.fn(),
-    strokeText: jest.fn()
+    strokeText: jest.fn(),
   })),
   width: 800,
-  height: 400
+  height: 400,
 }
 
 // Mock HTMLCanvasElement
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-  value: mockCanvas.getContext
+  value: mockCanvas.getContext,
 })
 
 describe('LiveChart Accessibility', () => {
@@ -76,18 +76,18 @@ describe('LiveChart Accessibility', () => {
       mainSection: {
         role: 'region',
         'aria-labelledby': 'chart-title',
-        tabIndex: 0
+        tabIndex: 0,
       },
       canvas: {
         role: 'img',
         'aria-describedby': 'chart-data-summary',
-        tabIndex: -1
+        tabIndex: -1,
       },
       statusAnnouncement: {
         'aria-live': 'polite',
         'aria-atomic': 'true',
-        role: 'status'
-      }
+        role: 'status',
+      },
     }
 
     // Verify structure requirements exist
@@ -144,16 +144,19 @@ describe('LiveChart Accessibility', () => {
     const getChartSummary = (
       totalSamples: number,
       deviceCount: number,
-      chartMode: string
+      chartMode: string,
     ): string => {
-      const currentMode = chartMode === 'all' ? 'all channels' : 
-                         chartMode === 'resistance' ? 'resistance channels (R1, R2, R3)' : 
-                         'acceleration channels (X, Y, Z)'
-      
+      const currentMode =
+        chartMode === 'all'
+          ? 'all channels'
+          : chartMode === 'resistance'
+            ? 'resistance channels (R1, R2, R3)'
+            : 'acceleration channels (X, Y, Z)'
+
       if (totalSamples === 0) {
         return `Gait monitoring chart showing ${currentMode}. No data collected yet. ${deviceCount} device${deviceCount !== 1 ? 's' : ''} connected.`
       }
-      
+
       return `Gait monitoring chart showing ${currentMode}. ${totalSamples} data points collected from ${deviceCount} device${deviceCount !== 1 ? 's' : ''}.`
     }
 
@@ -173,18 +176,18 @@ describe('LiveChart Accessibility', () => {
     // Test data table accessibility requirements
     const tableStructure = {
       container: {
-        className: 'data-table-container'
+        className: 'data-table-container',
       },
       table: {
         className: 'chart-data-table',
-        'aria-label': 'Recent gait monitoring data in table format'
+        'aria-label': 'Recent gait monitoring data in table format',
       },
       headers: {
-        scope: 'col'
+        scope: 'col',
       },
       rowHeaders: {
-        scope: 'row'
-      }
+        scope: 'row',
+      },
     }
 
     // Verify table structure
@@ -201,7 +204,7 @@ describe('LiveChart Accessibility', () => {
       R3: 'var(--chart-color-r3, #eab308)',
       X: 'var(--chart-color-x, #22c55e)',
       Y: 'var(--chart-color-y, #3b82f6)',
-      Z: 'var(--chart-color-z, #8b5cf6)'
+      Z: 'var(--chart-color-z, #8b5cf6)',
     }
 
     // Verify CSS variable structure
@@ -213,7 +216,7 @@ describe('LiveChart Accessibility', () => {
   it('screen reader announcements work correctly', () => {
     // Test announcement logic
     const mockAnnouncements: string[] = []
-    
+
     const setAnnouncementText = (text: string) => {
       mockAnnouncements.push(text)
     }

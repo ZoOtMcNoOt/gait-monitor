@@ -53,10 +53,10 @@ class CircularBuffer {
   push(data: GaitDataPoint): void {
     // Add to current head position
     this.buffer[this.head] = data
-    
+
     // Update head pointer
     this.head = (this.head + 1) % this.capacity
-    
+
     // Update size and tail
     if (this.size < this.capacity) {
       this.size++
@@ -64,10 +64,11 @@ class CircularBuffer {
       // Buffer is full, move tail forward (overwriting oldest data)
       this.tail = (this.tail + 1) % this.capacity
     }
-    
+
     // Periodic time-based cleanup - only run occasionally for performance
     const now = Date.now()
-    if (now - this.lastCleanupTime > 1000) { // Cleanup every 1 second max
+    if (now - this.lastCleanupTime > 1000) {
+      // Cleanup every 1 second max
       this.cleanupOldData(data.timestamp)
       this.lastCleanupTime = now
     }
@@ -78,15 +79,15 @@ class CircularBuffer {
    */
   getTimeWindow(currentTimestamp: number, windowSeconds?: number): GaitDataPoint[] {
     const window = windowSeconds || this.windowDuration
-    const cutoffTime = currentTimestamp - (window * 1000) // Convert seconds to milliseconds
-    
+    const cutoffTime = currentTimestamp - window * 1000 // Convert seconds to milliseconds
+
     const result: GaitDataPoint[] = []
-    
+
     if (this.size === 0) return result
-    
+
     // Trigger cleanup if we have very old data
     this.cleanupOldDataIfNeeded(currentTimestamp)
-    
+
     // Iterate from tail to head
     let current = this.tail
     for (let i = 0; i < this.size; i++) {
@@ -96,7 +97,7 @@ class CircularBuffer {
       }
       current = (current + 1) % this.capacity
     }
-    
+
     return result.sort((a, b) => a.timestamp - b.timestamp)
   }
 
@@ -105,7 +106,8 @@ class CircularBuffer {
    */
   private cleanupOldDataIfNeeded(currentTimestamp: number): void {
     const now = Date.now()
-    if (now - this.lastCleanupTime > 500) { // Force cleanup every 500ms when querying
+    if (now - this.lastCleanupTime > 500) {
+      // Force cleanup every 500ms when querying
       this.cleanupOldData(currentTimestamp)
       this.lastCleanupTime = now
     }
@@ -116,11 +118,11 @@ class CircularBuffer {
    */
   getRecent(count: number): GaitDataPoint[] {
     const result: GaitDataPoint[] = []
-    
+
     if (this.size === 0) return result
-    
+
     const actualCount = Math.min(count, this.size)
-    
+
     // Get most recent points (work backwards from head)
     let current = (this.head - 1 + this.capacity) % this.capacity
     for (let i = 0; i < actualCount; i++) {
@@ -130,7 +132,7 @@ class CircularBuffer {
       }
       current = (current - 1 + this.capacity) % this.capacity
     }
-    
+
     return result
   }
 
@@ -139,9 +141,9 @@ class CircularBuffer {
    */
   getAll(): GaitDataPoint[] {
     const result: GaitDataPoint[] = []
-    
+
     if (this.size === 0) return result
-    
+
     let current = this.tail
     for (let i = 0; i < this.size; i++) {
       const point = this.buffer[current]
@@ -150,7 +152,7 @@ class CircularBuffer {
       }
       current = (current + 1) % this.capacity
     }
-    
+
     return result.sort((a, b) => a.timestamp - b.timestamp)
   }
 
@@ -158,8 +160,8 @@ class CircularBuffer {
    * Remove data older than the specified timestamp
    */
   private cleanupOldData(currentTimestamp: number): void {
-    const cutoffTime = currentTimestamp - (this.windowDuration * 1000) // Convert seconds to milliseconds
-    
+    const cutoffTime = currentTimestamp - this.windowDuration * 1000 // Convert seconds to milliseconds
+
     // Remove old data points from tail
     let removedCount = 0
     while (this.size > 0) {
@@ -174,7 +176,7 @@ class CircularBuffer {
         break
       }
     }
-    
+
     // Debug logging for significant cleanups
     if (removedCount > 0) {
       console.debug(`[Buffer][Cleanup] Cleaned ${removedCount} old data points`)
@@ -184,24 +186,30 @@ class CircularBuffer {
   /**
    * Get buffer statistics
    */
-  getStats(): { size: number; capacity: number; memoryUsageMB: number; oldestTimestamp: number; newestTimestamp: number } {
+  getStats(): {
+    size: number
+    capacity: number
+    memoryUsageMB: number
+    oldestTimestamp: number
+    newestTimestamp: number
+  } {
     if (this.size === 0) {
       return {
         size: 0,
         capacity: this.capacity,
         memoryUsageMB: 0,
         oldestTimestamp: 0,
-        newestTimestamp: 0
+        newestTimestamp: 0,
       }
     }
 
     // Estimate memory usage (each data point is roughly 64 bytes)
     const memoryUsageMB = (this.size * 64) / (1024 * 1024)
-    
+
     // Find oldest and newest timestamps
     let oldest = Infinity
     let newest = -Infinity
-    
+
     let current = this.tail
     for (let i = 0; i < this.size; i++) {
       const point = this.buffer[current]
@@ -217,7 +225,7 @@ class CircularBuffer {
       capacity: this.capacity,
       memoryUsageMB,
       oldestTimestamp: oldest === Infinity ? 0 : oldest,
-      newestTimestamp: newest === -Infinity ? 0 : newest
+      newestTimestamp: newest === -Infinity ? 0 : newest,
     }
   }
 
@@ -266,10 +274,10 @@ export class BufferManager {
     if (!this.deviceBuffers.has(deviceId)) {
       const buffer = new CircularBuffer(
         this.config.maxDeviceBufferPoints,
-        this.config.slidingWindowSeconds
+        this.config.slidingWindowSeconds,
       )
       this.deviceBuffers.set(deviceId, buffer)
-  console.log(`[Buffer] Created new buffer for device ${deviceId}`)
+      console.log(`[Buffer] Created new buffer for device ${deviceId}`)
     }
 
     const buffer = this.deviceBuffers.get(deviceId)!
@@ -280,7 +288,9 @@ export class BufferManager {
 
     // Check for overflow protection
     if (this.memoryUsage > this.config.memoryThresholdMB) {
-  console.warn(`[Buffer][Warn] Memory threshold exceeded (${this.memoryUsage.toFixed(1)}MB), triggering cleanup`)
+      console.warn(
+        `[Buffer][Warn] Memory threshold exceeded (${this.memoryUsage.toFixed(1)}MB), triggering cleanup`,
+      )
       this.performEmergencyCleanup()
     }
   }
@@ -295,7 +305,7 @@ export class BufferManager {
     // Use the most recent data point's timestamp as reference, fallback to current time
     const recentData = buffer.getRecent(1)
     const referenceTime = recentData.length > 0 ? recentData[0].timestamp : Date.now()
-    
+
     return buffer.getTimeWindow(referenceTime, windowSeconds || this.config.slidingWindowSeconds)
   }
 
@@ -337,7 +347,7 @@ export class BufferManager {
         memoryUsageMB: stats.memoryUsageMB,
         oldestTimestamp: stats.oldestTimestamp,
         newestTimestamp: stats.newestTimestamp,
-        sampleRate
+        sampleRate,
       })
     }
 
@@ -347,7 +357,7 @@ export class BufferManager {
       memoryUsageMB: this.memoryUsage,
       oldestTimestamp: oldestTimestamp === Infinity ? 0 : oldestTimestamp,
       newestTimestamp: newestTimestamp === -Infinity ? 0 : newestTimestamp,
-      deviceStats
+      deviceStats,
     }
   }
 
@@ -360,7 +370,7 @@ export class BufferManager {
       buffer.clear()
       this.deviceBuffers.delete(deviceId)
       this.updateMemoryUsage()
-  console.log(`[Buffer] Removed buffer for device ${deviceId}`)
+      console.log(`[Buffer] Removed buffer for device ${deviceId}`)
     }
   }
 
@@ -373,7 +383,7 @@ export class BufferManager {
     }
     this.deviceBuffers.clear()
     this.memoryUsage = 0
-  console.log('[Buffer] Cleared all buffers')
+    console.log('[Buffer] Cleared all buffers')
   }
 
   /**
@@ -388,14 +398,14 @@ export class BufferManager {
    */
   updateConfig(newConfig: BufferConfig): void {
     this.config = newConfig
-    
+
     // Restart cleanup timer with new interval
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer)
     }
     this.startPeriodicCleanup()
-    
-  console.log('[Buffer] Configuration updated')
+
+    console.log('[Buffer] Configuration updated')
   }
 
   /**
@@ -403,7 +413,7 @@ export class BufferManager {
    */
   performCleanup(): void {
     const now = Date.now()
-    
+
     // Skip if cleanup was performed recently
     if (now - this.lastCleanupTime < this.config.cleanupInterval / 2) {
       return
@@ -414,13 +424,13 @@ export class BufferManager {
 
     for (const [, buffer] of this.deviceBuffers) {
       const beforeSize = buffer.getCurrentSize()
-      
+
       // Circular buffer automatically manages time-based cleanup
       // but we can trigger explicit cleanup if needed
-      
+
       const afterSize = buffer.getCurrentSize()
       const cleaned = beforeSize - afterSize
-      
+
       if (cleaned > 0) {
         cleanedDevices++
         cleanedPoints += cleaned
@@ -431,7 +441,7 @@ export class BufferManager {
     this.lastCleanupTime = now
 
     if (cleanedPoints > 0) {
-  console.log(`[Buffer] Cleaned ${cleanedPoints} points from ${cleanedDevices} devices`)
+      console.log(`[Buffer] Cleaned ${cleanedPoints} points from ${cleanedDevices} devices`)
     }
   }
 
@@ -439,26 +449,30 @@ export class BufferManager {
    * Emergency cleanup when memory threshold is exceeded
    */
   private performEmergencyCleanup(): void {
-  console.warn('[Buffer][Emergency] Performing emergency cleanup')
-    
+    console.warn('[Buffer][Emergency] Performing emergency cleanup')
+
     // Reduce buffer sizes to 50% of maximum
     const emergencyLimit = Math.floor(this.config.maxDeviceBufferPoints * 0.5)
-    
+
     for (const [deviceId, buffer] of this.deviceBuffers) {
       // Get recent data and clear buffer
       const recentData = buffer.getRecent(emergencyLimit)
       buffer.clear()
-      
+
       // Re-add recent data
       for (const point of recentData) {
         buffer.push(point)
       }
-      
-  console.log(`[Buffer][Emergency] Cleanup for device ${deviceId}: reduced to ${recentData.length} points`)
+
+      console.log(
+        `[Buffer][Emergency] Cleanup for device ${deviceId}: reduced to ${recentData.length} points`,
+      )
     }
-    
+
     this.updateMemoryUsage()
-  console.warn(`[Buffer][Emergency] Cleanup complete, memory usage: ${this.memoryUsage.toFixed(1)}MB`)
+    console.warn(
+      `[Buffer][Emergency] Cleanup complete, memory usage: ${this.memoryUsage.toFixed(1)}MB`,
+    )
   }
 
   /**
@@ -475,12 +489,12 @@ export class BufferManager {
    */
   private updateMemoryUsage(): void {
     let totalMemory = 0
-    
+
     for (const buffer of this.deviceBuffers.values()) {
       const stats = buffer.getStats()
       totalMemory += stats.memoryUsageMB
     }
-    
+
     this.memoryUsage = totalMemory
   }
 
@@ -496,7 +510,7 @@ export class BufferManager {
   }
 
   // Legacy API methods for backward compatibility with tests
-  
+
   /**
    * Add data point (legacy method for tests)
    */
@@ -514,11 +528,9 @@ export class BufferManager {
     if (startTime !== undefined && endTime !== undefined) {
       // Get all data and filter by exact time range
       const allData = buffer.getAll()
-      return allData.filter(point => 
-        point.timestamp >= startTime && point.timestamp <= endTime
-      )
+      return allData.filter((point) => point.timestamp >= startTime && point.timestamp <= endTime)
     }
-    
+
     // Return all data if no time range specified
     return buffer.getAll()
   }

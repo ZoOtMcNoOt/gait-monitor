@@ -3,75 +3,78 @@
  * Part of A3.5: Keyboard Navigation Improvements
  */
 
-import { useEffect, useRef } from 'react';
-import type { KeyboardShortcut } from '../hooks/useKeyboardShortcuts';
-import { useFocusTrap } from '../hooks/useKeyboardShortcuts';
-import '../styles/keyboard-help.css';
+import { useEffect, useRef } from 'react'
+import type { KeyboardShortcut } from '../hooks/useKeyboardShortcuts'
+import { useFocusTrap } from '../hooks/useKeyboardShortcuts'
+import '../styles/keyboard-help.css'
 
 interface KeyboardHelpDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  shortcuts: KeyboardShortcut[];
+  isOpen: boolean
+  onClose: () => void
+  shortcuts: KeyboardShortcut[]
 }
 
 export function KeyboardHelpDialog({ isOpen, onClose, shortcuts }: KeyboardHelpDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   // Enable focus trap when dialog is open
-  useFocusTrap(dialogRef, isOpen);
+  useFocusTrap(dialogRef, isOpen)
 
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        onClose()
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === dialogRef.current) {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   // Group shortcuts by category
-  const groupedShortcuts = shortcuts.reduce((groups, shortcut) => {
-    const category = shortcut.category || 'General';
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(shortcut);
-    return groups;
-  }, {} as Record<string, KeyboardShortcut[]>);
+  const groupedShortcuts = shortcuts.reduce(
+    (groups, shortcut) => {
+      const category = shortcut.category || 'General'
+      if (!groups[category]) {
+        groups[category] = []
+      }
+      groups[category].push(shortcut)
+      return groups
+    },
+    {} as Record<string, KeyboardShortcut[]>,
+  )
 
   // Format keyboard shortcut for display
   const formatShortcut = (shortcut: KeyboardShortcut): string => {
-    const parts = [];
-    if (shortcut.ctrl) parts.push('Ctrl');
-    if (shortcut.alt) parts.push('Alt');
-    if (shortcut.shift) parts.push('Shift');
-    
-    // Special handling for certain keys
-    let keyDisplay = shortcut.key;
-    if (shortcut.key === ' ') keyDisplay = 'Space';
-    else if (shortcut.key === 'ArrowUp') keyDisplay = '↑';
-    else if (shortcut.key === 'ArrowDown') keyDisplay = '↓';
-    else if (shortcut.key === 'ArrowLeft') keyDisplay = '←';
-    else if (shortcut.key === 'ArrowRight') keyDisplay = '→';
-    else if (shortcut.key === '?') keyDisplay = '?';
-    else keyDisplay = shortcut.key.toUpperCase();
-    
-    parts.push(keyDisplay);
-    return parts.join(' + ');
-  };
+    const parts = []
+    if (shortcut.ctrl) parts.push('Ctrl')
+    if (shortcut.alt) parts.push('Alt')
+    if (shortcut.shift) parts.push('Shift')
 
-  if (!isOpen) return null;
+    // Special handling for certain keys
+    let keyDisplay = shortcut.key
+    if (shortcut.key === ' ') keyDisplay = 'Space'
+    else if (shortcut.key === 'ArrowUp') keyDisplay = '↑'
+    else if (shortcut.key === 'ArrowDown') keyDisplay = '↓'
+    else if (shortcut.key === 'ArrowLeft') keyDisplay = '←'
+    else if (shortcut.key === 'ArrowRight') keyDisplay = '→'
+    else if (shortcut.key === '?') keyDisplay = '?'
+    else keyDisplay = shortcut.key.toUpperCase()
+
+    parts.push(keyDisplay)
+    return parts.join(' + ')
+  }
+
+  if (!isOpen) return null
 
   return (
     <div
@@ -98,7 +101,8 @@ export function KeyboardHelpDialog({ isOpen, onClose, shortcuts }: KeyboardHelpD
 
         <div className="keyboard-help-content">
           <p id="keyboard-help-description" className="keyboard-help-intro">
-            Use these keyboard shortcuts to navigate and control the Gait Monitor application efficiently.
+            Use these keyboard shortcuts to navigate and control the Gait Monitor application
+            efficiently.
           </p>
 
           <div className="keyboard-help-sections">
@@ -109,13 +113,9 @@ export function KeyboardHelpDialog({ isOpen, onClose, shortcuts }: KeyboardHelpD
                   {categoryShortcuts.map((shortcut, index) => (
                     <div key={`${category}-${index}`} className="keyboard-shortcut-item">
                       <dt className="keyboard-shortcut-keys">
-                        <kbd className="keyboard-shortcut-key">
-                          {formatShortcut(shortcut)}
-                        </kbd>
+                        <kbd className="keyboard-shortcut-key">{formatShortcut(shortcut)}</kbd>
                       </dt>
-                      <dd className="keyboard-shortcut-description">
-                        {shortcut.description}
-                      </dd>
+                      <dd className="keyboard-shortcut-description">{shortcut.description}</dd>
                     </div>
                   ))}
                 </dl>
@@ -125,22 +125,20 @@ export function KeyboardHelpDialog({ isOpen, onClose, shortcuts }: KeyboardHelpD
 
           <div className="keyboard-help-footer">
             <p className="keyboard-help-tip">
-              <strong>Tip:</strong> Press <kbd>Escape</kbd> to close this dialog, or <kbd>?</kbd> / <kbd>F1</kbd> to reopen it.
+              <strong>Tip:</strong> Press <kbd>Escape</kbd> to close this dialog, or <kbd>?</kbd> /{' '}
+              <kbd>F1</kbd> to reopen it.
             </p>
           </div>
         </div>
 
         <footer className="keyboard-help-actions">
-          <button
-            className="btn btn-primary"
-            onClick={onClose}
-          >
+          <button className="btn btn-primary" onClick={onClose}>
             Got it
           </button>
         </footer>
       </div>
     </div>
-  );
+  )
 }
 
-export default KeyboardHelpDialog;
+export default KeyboardHelpDialog

@@ -21,20 +21,18 @@ describe('ScrollableContainer', () => {
 
   const renderWithProvider = (component: React.ReactElement) => {
     flushSync(() => {
-      root.render(
-        React.createElement(ScrollProvider, { children: component })
-      )
+      root.render(React.createElement(ScrollProvider, { children: component }))
     })
     // Give React time to render
-    return new Promise(resolve => setTimeout(resolve, 0))
+    return new Promise((resolve) => setTimeout(resolve, 0))
   }
 
   it('should render children', async () => {
     await renderWithProvider(
-      React.createElement(ScrollableContainer, { 
+      React.createElement(ScrollableContainer, {
         id: 'test-container',
-        children: React.createElement('div', { 'data-testid': 'child-content' }, 'Child Content')
-      })
+        children: React.createElement('div', { 'data-testid': 'child-content' }, 'Child Content'),
+      }),
     )
 
     // Use standard DOM query methods
@@ -43,11 +41,11 @@ describe('ScrollableContainer', () => {
 
   it('should apply className prop', async () => {
     await renderWithProvider(
-      React.createElement(ScrollableContainer, { 
-        id: 'test-container', 
+      React.createElement(ScrollableContainer, {
+        id: 'test-container',
         className: 'custom-class',
-        children: React.createElement('div', {}, 'Content')
-      })
+        children: React.createElement('div', {}, 'Content'),
+      }),
     )
 
     const scrollContainer = container.firstElementChild as HTMLElement
@@ -58,10 +56,10 @@ describe('ScrollableContainer', () => {
     // This test verifies that the component registers itself without throwing errors
     await expect(async () => {
       await renderWithProvider(
-        React.createElement(ScrollableContainer, { 
+        React.createElement(ScrollableContainer, {
           id: 'test-container',
-          children: React.createElement('div', {}, 'Content')
-        })
+          children: React.createElement('div', {}, 'Content'),
+        }),
       )
     }).not.toThrow()
   })
