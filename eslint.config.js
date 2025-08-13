@@ -14,6 +14,8 @@ export default tseslint.config([
       tseslint.configs.recommended,
       reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
+      // Prettier last to turn off formatting rules handled by Prettier
+      'eslint-config-prettier',
     ],
     languageOptions: {
       ecmaVersion: 2020,
@@ -23,8 +25,11 @@ export default tseslint.config([
       // Allow context files to export both components and hooks
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true, allowExportNames: ['useDeviceConnection', 'useToast', 'useScroll'] }
-      ]
-    }
+        {
+          allowConstantExport: true,
+          allowExportNames: ['useDeviceConnection', 'useToast', 'useScroll'],
+        },
+      ],
+    },
   },
 ])

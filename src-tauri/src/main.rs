@@ -74,10 +74,8 @@ mod sample_rate_calculator {
         }
 
         fn record_sample(&mut self, timestamp: Instant) -> Option<f64> {
-            // Add new timestamp
             self.timestamps.push_back(timestamp);
             
-            // Remove old timestamps outside the window
             let cutoff = timestamp - self.window_duration;
             while let Some(&front) = self.timestamps.front() {
                 if front < cutoff {
@@ -87,7 +85,6 @@ mod sample_rate_calculator {
                 }
             }
 
-            // Calculate rate if enough time has passed since last calculation
             if timestamp.duration_since(self.last_calculation) >= self.calculation_interval {
                 self.last_calculation = timestamp;
                 
@@ -102,7 +99,6 @@ mod sample_rate_calculator {
                 }
             }
             
-            // Return current rate even if not recalculated
             if self.last_rate > 0.0 {
                 Some(self.last_rate)
             } else {
@@ -672,13 +668,14 @@ struct BluetoothDeviceInfo {
 // Add BLE data streaming functionality
 #[derive(Clone, Serialize, serde::Deserialize)]
 struct GaitData {
-  device_id: String,  // Add device identification
+  device_id: String,  // Device identification
   r1: f32,
   r2: f32,
   r3: f32,
   x: f32,
   y: f32,
   z: f32,
+  // Millisecond timestamp retained for backward compatibility
   timestamp: u64,
 }
 
@@ -692,8 +689,13 @@ struct GaitDataWithRate {
   x: f32,
   y: f32,
   z: f32,
+  // Original millisecond (epoch) timestamp (legacy field used by frontend)
   timestamp: u64,
-  sample_rate: Option<f64>, // Add sample rate field
+  // High-resolution absolute timestamp in microseconds since Unix epoch (captured BEFORE parsing)
+  timestamp_us: u64,
+  // Monotonic relative seconds since the start of the notification stream for this device
+  monotonic_s: f64,
+  sample_rate: Option<f64>,
 }
 
 // Rate limiting structure
@@ -1163,56 +1165,123 @@ async fn start_gait_notifications(
   let duplicate_detection_clone = duplicate_detection_state.inner().clone();
   
   // Start listening for notifications in a background task
-  tauri::async_runtime::spawn(async move {
-    let mut notification_stream = peripheral.notifications().await.unwrap();
-    
-    while let Some(data) = notification_stream.next().await {
-      // Check if device is still active
-      let is_active = {
-        let active = active_notifications_clone.0.lock().await;
-        active.get(&device_id_clone).copied().unwrap_or(false)
-      };
-      
-      if !is_active {
-        break; // Stop listening if device was deactivated
+  // Capture a monotonic baseline for relative timing (stable against system clock adjustments)
+  let stream_start_instant = Instant::now();
+  // Channel capacity tuned to absorb brief bursts without large latency.
+  let (tx, rx) = async_std::channel::bounded::<(u64, u64, f64, [u8;24])>(256);
+
+  // Producer: minimal work (timestamp + copy + enqueue)
+  {
+    let device_id_clone = device_id_clone.clone();
+    let active_notifications_clone_prod = active_notifications_clone.clone();
+    tauri::async_runtime::spawn(async move {
+      let mut notification_stream = peripheral.notifications().await.unwrap();
+      use std::sync::atomic::{AtomicU64, Ordering};
+      static RAW_DROPPED: AtomicU64 = AtomicU64::new(0);
+      static RAW_PRODUCED: AtomicU64 = AtomicU64::new(0);
+      while let Some(data) = notification_stream.next().await {
+        // Quick active check (no heavy locks afterwards)
+        let is_active = {
+          let active = active_notifications_clone_prod.0.lock().await;
+          active.get(&device_id_clone).copied().unwrap_or(false)
+        };
+        if !is_active { break; }
+
+        if data.uuid == characteristic_uuid && data.value.len() == 24 {
+          let capture_mono = Instant::now();
+          let capture_abs = SystemTime::now();
+            let abs_us = capture_abs
+              .duration_since(UNIX_EPOCH)
+              .unwrap_or_else(|_| Duration::from_secs(0))
+              .as_micros() as u64;
+            let abs_ms = abs_us / 1000;
+            let monotonic_s = capture_mono
+              .duration_since(stream_start_instant)
+              .as_secs_f64();
+          let mut buf = [0u8;24];
+          buf.copy_from_slice(&data.value);
+          if tx.try_send((abs_ms, abs_us, monotonic_s, buf)).is_err() {
+            RAW_DROPPED.fetch_add(1, Ordering::Relaxed);
+          } else {
+            let produced = RAW_PRODUCED.fetch_add(1, Ordering::Relaxed) + 1;
+            if produced % 1000 == 0 { // occasional summary
+              let dropped = RAW_DROPPED.load(Ordering::Relaxed);
+              println!("[Producer][{}] Produced: {}, Dropped: {}", device_id_clone, produced, dropped);
+            }
+          }
+        }
       }
-      
-      if data.uuid == characteristic_uuid && data.value.len() == 24 {
+    });
+  }
+
+  // Consumer: parsing, duplicate detection, sample rate, emit
+  {
+    let device_id_clone = device_id_clone.clone();
+    tauri::async_runtime::spawn(async move {
+      use std::sync::atomic::{AtomicU32, Ordering};
+      static PACKET_COUNT: AtomicU32 = AtomicU32::new(0);
+      // Burst instrumentation state (group packets with inter-arrival <5ms)
+      let mut last_packet_us: u64 = 0;
+      let mut current_burst_size: u32 = 0;
+      let mut total_bursts: u64 = 0;
+      let mut burst_size_sum: u64 = 0;
+      let mut max_burst: u32 = 0;
+      // Histogram bins: index 0=>size1, 1=>2, ... 8=>9, 9=>10+ (capped)
+      let mut burst_histogram: [u64; 10] = [0; 10];
+      while let Ok((abs_ms, abs_us, monotonic_s, raw_bytes)) = rx.recv().await {
+        // Active check again to terminate ASAP if stopped
+        let is_active = {
+          let active = active_notifications_clone.0.lock().await;
+          active.get(&device_id_clone).copied().unwrap_or(false)
+        };
+        if !is_active { break; }
+
         let parse_start = std::time::Instant::now();
-        
-        // Parse the 24-byte packet (6 floats)
-        if let Ok(gait_data) = parse_gait_data(&data.value, &device_id_clone) {
+        if let Ok(gait_data) = parse_gait_data(&raw_bytes, &device_id_clone, abs_ms) {
           let parse_duration = parse_start.elapsed();
-          
-          // Check for duplicate data (comparing sensor values)
-          let current_data = (gait_data.r1, gait_data.r2, gait_data.r3, gait_data.x, gait_data.y, gait_data.z);
+
+          // ---------------- Burst grouping logic ----------------
+          if last_packet_us == 0 {
+            // First packet start a new burst
+            current_burst_size = 1;
+          } else {
+            let delta_us = abs_us.saturating_sub(last_packet_us);
+            if delta_us < 5_000 { // <5 ms => same connection event burst
+              current_burst_size += 1;
+            } else {
+              // Close previous burst
+              if current_burst_size > 0 {
+                total_bursts += 1;
+                burst_size_sum += current_burst_size as u64;
+                if current_burst_size > max_burst { max_burst = current_burst_size; }
+                let bin = if current_burst_size >= 10 { 9 } else { (current_burst_size - 1) as usize };
+                burst_histogram[bin] += 1;
+              }
+              // Start new burst
+              current_burst_size = 1;
+            }
+          }
+          last_packet_us = abs_us;
+          // ------------------------------------------------------
+
+          // Duplicate detection (can be removed or optimized later)
+          let current_tuple = (gait_data.r1, gait_data.r2, gait_data.r3, gait_data.x, gait_data.y, gait_data.z);
           let is_duplicate = {
             let mut duplicate_cache = duplicate_detection_clone.0.lock().await;
-            if let Some(last_data) = duplicate_cache.get(&device_id_clone) {
-              *last_data == current_data
+            if let Some(last) = duplicate_cache.get(&device_id_clone) {
+              if *last == current_tuple { true } else { duplicate_cache.insert(device_id_clone.clone(), current_tuple); false }
             } else {
+              duplicate_cache.insert(device_id_clone.clone(), current_tuple);
               false
             }
           };
-          
-          // Skip duplicate packets
-          if is_duplicate {
-            continue;
-          }
-          
-          // Update cache with current data
-          {
-            let mut duplicate_cache = duplicate_detection_clone.0.lock().await;
-            duplicate_cache.insert(device_id_clone.clone(), current_data);
-          }
-          
-          // Calculate sample rate
+          if is_duplicate { continue; }
+
           let sample_rate = {
             let mut rate_calc = sample_rate_state_clone.0.lock().await;
             rate_calc.record_sample(&device_id_clone)
           };
-          
-          // Create enhanced data with sample rate
+
           let gait_data_with_rate = GaitDataWithRate {
             device_id: gait_data.device_id,
             r1: gait_data.r1,
@@ -1222,28 +1291,53 @@ async fn start_gait_notifications(
             y: gait_data.y,
             z: gait_data.z,
             timestamp: gait_data.timestamp,
+            timestamp_us: abs_us,
+            monotonic_s,
             sample_rate,
           };
-          
+
           let emit_start = std::time::Instant::now();
-          // Emit enhanced data to frontend with device ID and sample rate
           let _ = app_handle_clone.emit("gait-data", &gait_data_with_rate);
-          let emit_duration = emit_start.elapsed();
-          
-          // Log timing every 100th packet to avoid spam (thread-safe)
-          use std::sync::atomic::{AtomicU32, Ordering};
-          static PACKET_COUNT: AtomicU32 = AtomicU32::new(0);
-          
+            let emit_duration = emit_start.elapsed();
+
           let count = PACKET_COUNT.fetch_add(1, Ordering::Relaxed);
-          if count % 100 == 0 {  // Log every 100th packet to reduce overhead
+          if count % 100 == 0 {
             let rate_info = sample_rate.map(|r| format!("{:.1} Hz", r)).unwrap_or_else(|| "calculating...".to_string());
-            println!("🕐 BLE Packet [{}]: Timestamp: {}, Rate: {}, Parse: {:?}, Emit: {:?}", 
-              count, gait_data_with_rate.timestamp, rate_info, parse_duration, emit_duration);
+            println!("🧵 BLE Proc [{}]: ts_ms: {}, rel_s: {:.6}, Rate: {}, Parse: {:?}, Emit: {:?}",
+              count, abs_ms, monotonic_s, rate_info, parse_duration, emit_duration);
+          }
+          if count % 500 == 0 {
+            // Finalize current burst temporarily (without resetting) for reporting snapshot
+            let (report_bursts, report_avg, report_max, hist_str) = if total_bursts > 0 {
+              let avg = burst_size_sum as f64 / total_bursts as f64;
+              let hist_parts: Vec<String> = burst_histogram.iter().enumerate().map(|(i, v)| {
+                if i < 9 { format!("{}:{}", i+1, v) } else { format!("10+:{}", v) }
+              }).collect();
+              (total_bursts, avg, max_burst, hist_parts.join(" "))
+            } else { (0, 0.0, 0, String::from("")) };
+            println!("[BurstStats][{}] packets:{} bursts:{} avg_size:{:.2} max:{} hist:[{}] current_open:{}", 
+              device_id_clone, count+1, report_bursts, report_avg, report_max, hist_str, current_burst_size);
           }
         }
       }
-    }
-  });
+      // Flush last burst on exit
+      if current_burst_size > 0 {
+        total_bursts += 1;
+        burst_size_sum += current_burst_size as u64;
+        if current_burst_size > max_burst { max_burst = current_burst_size; }
+        let bin = if current_burst_size >= 10 { 9 } else { (current_burst_size - 1) as usize };
+        burst_histogram[bin] += 1;
+      }
+      if total_bursts > 0 {
+        let avg = burst_size_sum as f64 / total_bursts as f64;
+        let hist_parts: Vec<String> = burst_histogram.iter().enumerate().map(|(i, v)| {
+          if i < 9 { format!("{}:{}", i+1, v) } else { format!("10+:{}", v) }
+        }).collect();
+        println!("[BurstStatsFinal][{}] bursts:{} avg_size:{:.2} max:{} hist:[{}]", device_id_clone, total_bursts, avg, max_burst, hist_parts.join(" "));
+      }
+      println!("[Consumer][{}] Exiting consumer loop", device_id_clone);
+    });
+  }
   
   Ok(format!("Started notifications for device: {}", device_id))
 }
@@ -1736,7 +1830,7 @@ async fn load_sessions_from_path(base_path: &Path) -> Result<Vec<SessionMetadata
   Ok(valid_sessions)
 }
 
-fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
+fn parse_gait_data(data: &[u8], device_id: &str, timestamp_ms: u64) -> Result<GaitData, String> {
   if data.len() != 24 {
     return Err(format!("Invalid data length: {} (expected 24)", data.len()));
   }
@@ -1749,13 +1843,6 @@ fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
   let y = f32::from_le_bytes([data[16], data[17], data[18], data[19]]);
   let z = f32::from_le_bytes([data[20], data[21], data[22], data[23]]);
   
-  // Use millisecond precision - sufficient for BLE data rates and reduces conversion overhead
-  // At 100Hz sample rate, we have 10ms between samples, so millisecond precision is adequate
-  let timestamp = std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .unwrap()
-    .as_millis() as u64;
-  
   Ok(GaitData {
     device_id: device_id.to_string(),
     r1,
@@ -1764,7 +1851,7 @@ fn parse_gait_data(data: &[u8], device_id: &str) -> Result<GaitData, String> {
     x,
     y,
     z,
-    timestamp,
+  timestamp: timestamp_ms,
   })
 }
 
@@ -2227,6 +2314,38 @@ async fn get_storage_path(
   Ok(storage_path.to_string_lossy().to_string())
 }
 
+// Lightweight helper to obtain actual file size on disk for a session data file.
+
+#[tauri::command]
+async fn get_file_size(
+  file_path: String,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<u64, String> {
+  use std::path::Path;
+
+  if file_path.trim().is_empty() {
+    return Err("File path cannot be empty".to_string());
+  }
+  if file_path.contains("..") { // basic traversal guard
+    return Err("Invalid file path".to_string());
+  }
+
+  let config = path_config.0.lock().await;
+  let path = Path::new(&file_path);
+
+  if !config.is_path_allowed(path) {
+    return Err("Path is not within allowed directories".to_string());
+  }
+  if !path.exists() {
+    return Err("File does not exist".to_string());
+  }
+
+  match tokio::fs::metadata(path).await {
+    Ok(meta) => Ok(meta.len()),
+    Err(e) => Err(format!("Failed to read file metadata: {}", e)),
+  }
+}
+
 fn main() {
   // Initialize structured logging
   tracing_subscriber::fmt()
@@ -2301,6 +2420,7 @@ fn main() {
       load_optimized_chart_data,
       save_filtered_data, 
       get_storage_path, 
+  get_file_size,
       get_sample_rate
     ])
     .run(tauri::generate_context!())

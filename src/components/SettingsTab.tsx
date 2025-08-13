@@ -29,43 +29,37 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     dataRetentionDays: 90,
     autoBackup: false,
     exportFormat: 'csv',
-    sampleRate: 100
+    sampleRate: 100,
   })
 
   const [isModified, setIsModified] = useState(false)
   const [highContrastMode, setHighContrastMode] = useState(false)
-  
-  // Separate input values for validation
+
   const [retentionInputValue, setRetentionInputValue] = useState('90')
   const [storagePathInputValue, setStoragePathInputValue] = useState('./gait_data')
-  
-  // Add hooks for proper error handling
-  const { showSuccess, showError, showInfo, showSettingsSaved } = useToast()
-  const { confirmationState, typedConfirmationState, showConfirmation, showTypedConfirmation } = useConfirmation()
 
-  // Load settings from localStorage
+  const { showSuccess, showError, showInfo, showSettingsSaved } = useToast()
+  const { confirmationState, typedConfirmationState, showConfirmation, showTypedConfirmation } =
+    useConfirmation()
+
   useEffect(() => {
     const savedSettings = localStorage.getItem('appSettings')
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings)
         setSettings(parsed)
-        // Initialize input values
         setRetentionInputValue(parsed.dataRetentionDays?.toString() || '90')
         setStoragePathInputValue(parsed.defaultStoragePath || './gait_data')
       } catch (e) {
         console.error('Failed to parse saved settings:', e)
-        // Set default input values
         setRetentionInputValue('90')
         setStoragePathInputValue('./gait_data')
       }
     } else {
-      // Set default input values
       setRetentionInputValue('90')
       setStoragePathInputValue('./gait_data')
     }
 
-    // Load high contrast mode preference
     const savedHighContrast = localStorage.getItem('highContrastMode')
     if (savedHighContrast === 'true') {
       setHighContrastMode(true)
@@ -73,7 +67,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     }
   }, [])
 
-  // Apply high contrast mode changes
   useEffect(() => {
     if (highContrastMode) {
       document.documentElement.classList.add('high-contrast')
@@ -84,10 +77,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     }
   }, [highContrastMode])
 
-  const handleSettingChange = <K extends keyof SettingsData>(
-    key: K,
-    value: SettingsData[K]
-  ) => {
+  const handleSettingChange = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) => {
     // Input validation
     if (key === 'dataRetentionDays' && (Number(value) < 0 || Number(value) > 365)) {
       return // Don't allow invalid values
@@ -98,41 +88,36 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
     if (key === 'sampleRate' && (Number(value) <= 0 || Number(value) > 1000)) {
       return // Don't allow invalid sample rates
     }
-    
-    setSettings(prev => ({ ...prev, [key]: value }))
+
+    setSettings((prev) => ({ ...prev, [key]: value }))
     setIsModified(true)
   }
 
-  // Controlled input handlers with validation
   const handleRetentionDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     const numValue = Number(value)
-    
-    // Validate and either accept or reject the change
+
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 365) {
       setRetentionInputValue(value)
       handleSettingChange('dataRetentionDays', numValue)
     } else {
-      // For invalid values, revert to the current valid value
       setRetentionInputValue(retentionInputValue)
     }
   }
 
   const handleStoragePathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    
-    // Validate and either accept or reject the change
+
     if (value.trim()) {
       setStoragePathInputValue(value)
       handleSettingChange('defaultStoragePath', value)
     } else {
-      // For empty values, revert to the current valid value
       setStoragePathInputValue(storagePathInputValue)
     }
   }
 
   const toggleHighContrast = () => {
-    setHighContrastMode(prev => !prev)
+    setHighContrastMode((prev) => !prev)
   }
 
   const handleSaveSettings = () => {
@@ -148,19 +133,20 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const handleResetSettings = async () => {
     const confirmed = await showConfirmation({
       title: 'Reset Settings',
-      message: 'Are you sure you want to reset all settings to their default values? This action cannot be undone.',
+      message:
+        'Are you sure you want to reset all settings to their default values? This action cannot be undone.',
       confirmText: 'Reset',
       cancelText: 'Cancel',
-      type: 'warning'
+      type: 'warning',
     })
-    
+
     if (confirmed) {
       const defaultSettings: SettingsData = {
         defaultStoragePath: './gait_data',
         dataRetentionDays: 90,
         autoBackup: false,
         exportFormat: 'csv',
-        sampleRate: 100
+        sampleRate: 100,
       }
       setSettings(defaultSettings)
       setRetentionInputValue('90')
@@ -172,7 +158,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
   const handleChooseStoragePath = async () => {
     try {
-      const result = await protectedOperations.chooseStorageDirectory() as string | null
+      const result = (await protectedOperations.chooseStorageDirectory()) as string | null
       if (result) {
         handleSettingChange('defaultStoragePath', result)
         setStoragePathInputValue(result)
@@ -187,33 +173,38 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
   const handleClearAllData = async () => {
     const firstConfirmed = await showConfirmation({
       title: 'Clear All Data',
-      message: 'Are you sure you want to clear all data? This action cannot be undone and will permanently delete all saved sessions and logs.',
+      message:
+        'Are you sure you want to clear all data? This action cannot be undone and will permanently delete all saved sessions and logs.',
       confirmText: 'Continue',
       cancelText: 'Cancel',
-      type: 'danger'
+      type: 'danger',
     })
-    
+
     if (firstConfirmed) {
       const finalConfirmed = await showTypedConfirmation({
         title: 'Final Confirmation - Type to Confirm',
-        message: 'This will permanently delete ALL saved sessions and logs. This action cannot be undone.',
+        message:
+          'This will permanently delete ALL saved sessions and logs. This action cannot be undone.',
         requiredPhrase: 'DELETE ALL DATA',
         confirmText: 'Delete All Data',
         cancelText: 'Cancel',
-        type: 'danger'
+        type: 'danger',
       })
-      
+
       if (finalConfirmed) {
         try {
           // Get all sessions first
           const sessions = await invoke<SessionMetadata[]>('get_sessions')
-          
+
           // Delete each session using CSRF protection
           for (const session of sessions) {
             await protectedOperations.deleteSession(session.id)
           }
-          
-          showSuccess('Data Cleared', `Successfully deleted ${sessions.length} session(s) and their data files.`)
+
+          showSuccess(
+            'Data Cleared',
+            `Successfully deleted ${sessions.length} session(s) and their data files.`,
+          )
         } catch (error) {
           console.error('Failed to clear data:', error)
           showError('Clear Data Failed', `Failed to clear data: ${error}`)
@@ -230,7 +221,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
       </div>
 
       <div className="settings-grid">
-        {/* Appearance Settings */}
         <div className="card">
           <h2>Appearance</h2>
           <div className="setting-group">
@@ -251,7 +241,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                 Enable dark mode for better viewing in low-light conditions
               </p>
             </div>
-            
+
             <div className="setting-item">
               <label className="setting-label">
                 <span>High Contrast Mode</span>
@@ -272,7 +262,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Data Collection Settings */}
         <div className="card">
           <h2>Data Collection</h2>
           <div className="setting-group">
@@ -282,7 +271,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                 <select
                   data-testid="sample-rate"
                   value={settings.sampleRate}
-                  onChange={e => handleSettingChange('sampleRate', Number(e.target.value))}
+                  onChange={(e) => handleSettingChange('sampleRate', Number(e.target.value))}
                   aria-label="Sample rate in Hz"
                   aria-describedby="sample-rate-description"
                 >
@@ -303,7 +292,9 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                 <select
                   data-testid="export-format"
                   value={settings.exportFormat}
-                  onChange={e => handleSettingChange('exportFormat', e.target.value as 'csv' | 'json')}
+                  onChange={(e) =>
+                    handleSettingChange('exportFormat', e.target.value as 'csv' | 'json')
+                  }
                   aria-label="Export format"
                   aria-describedby="export-format-description"
                 >
@@ -318,7 +309,6 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Storage Settings */}
         <div className="card">
           <h2>Storage</h2>
           <div className="setting-group">
@@ -347,16 +337,17 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
             <div className="setting-item">
               <label className="setting-label">
-                Data Retention (days)                  <input
-                    data-testid="retention-days"
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={retentionInputValue}
-                    onChange={handleRetentionDaysChange}
-                    aria-label="Data retention days"
-                    aria-describedby="retention-days-description"
-                  />
+                Data Retention (days){' '}
+                <input
+                  data-testid="retention-days"
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={retentionInputValue}
+                  onChange={handleRetentionDaysChange}
+                  aria-label="Data retention days"
+                  aria-describedby="retention-days-description"
+                />
               </label>
               <p className="setting-description" id="retention-days-description">
                 Automatically delete data older than this many days (0 = never delete)
@@ -371,7 +362,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
                     data-testid="auto-backup"
                     type="checkbox"
                     checked={settings.autoBackup}
-                    onChange={e => handleSettingChange('autoBackup', e.target.checked)}
+                    onChange={(e) => handleSettingChange('autoBackup', e.target.checked)}
                     aria-label="Toggle auto backup"
                   />
                   <span className="toggle-slider"></span>
@@ -384,22 +375,17 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
 
-        {/* Storage Information */}
         <div className="card">
           <h2>Storage Information</h2>
           <StorageInfo />
         </div>
 
-        {/* Advanced Settings */}
         <div className="card">
           <h2>Advanced</h2>
           <div className="setting-group">
             <div className="setting-item">
               <div className="setting-actions">
-                <button 
-                  className="btn btn-danger"
-                  onClick={handleClearAllData}
-                >
+                <button className="btn btn-danger" onClick={handleClearAllData}>
                   Clear All Data
                 </button>
                 <p className="setting-description">
@@ -410,29 +396,23 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
             <div className="setting-item">
               <div className="setting-actions">
-                <button 
-                  className="btn btn-secondary"
-                  onClick={handleResetSettings}
-                >
+                <button className="btn btn-secondary" onClick={handleResetSettings}>
                   Reset to Defaults
                 </button>
-                <p className="setting-description">
-                  Reset all settings to their default values
-                </p>
+                <p className="setting-description">Reset all settings to their default values</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Save Settings */}
       {isModified && (
         <div className="settings-actions">
           <div className="unsaved-indicator">
             <p className="unsaved-changes">You have unsaved changes</p>
           </div>
           <div className="action-buttons">
-            <button 
+            <button
               className="btn btn-primary"
               onClick={handleSaveSettings}
               aria-describedby="unsaved-changes-text"
@@ -442,8 +422,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
           </div>
         </div>
       )}
-      
-      {/* Confirmation Modal */}
+
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}
@@ -454,8 +433,7 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
         onCancel={confirmationState.onCancel}
         type={confirmationState.type}
       />
-      
-      {/* Typed Confirmation Modal */}
+
       <TypedConfirmationModal
         isOpen={typedConfirmationState.isOpen}
         title={typedConfirmationState.title}
@@ -482,15 +460,13 @@ function StorageInfo() {
     const loadStorageInfo = async () => {
       try {
         setLoading(true)
-        
-        // Get storage path
+
         const path = await invoke<string>('get_storage_path')
         setStoragePath(path)
-        
+
         // Get session count
         const sessions = await invoke<SessionMetadata[]>('get_sessions')
         setSessionCount(sessions.length)
-        
       } catch (error) {
         // Don't log cleanup errors during testing
         if (error instanceof Error && error.message !== 'Cleanup failed') {
@@ -502,7 +478,7 @@ function StorageInfo() {
       }
     }
 
-    loadStorageInfo().catch(error => {
+    loadStorageInfo().catch((error) => {
       console.error('Storage info loading failed:', error)
       setLoading(false)
     })

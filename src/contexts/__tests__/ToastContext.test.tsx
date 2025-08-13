@@ -7,44 +7,68 @@ import { ToastProvider, useToast } from '../ToastContext'
 const mockRandomUUID = jest.fn()
 Object.defineProperty(global.crypto, 'randomUUID', {
   value: mockRandomUUID,
-  writable: true
+  writable: true,
 })
 
 // Test component that uses the ToastContext
 const TestToastComponent: React.FC = () => {
   const toast = useToast()
-  
+
   return React.createElement('div', { 'data-testid': 'test-component' }, [
     React.createElement('div', { key: 'content' }, 'Test Content'),
-    React.createElement('button', {
-      key: 'add-success',
-      'data-testid': 'add-success-button',
-      onClick: () => toast.showSuccess('Success Title', 'Success message')
-    }, 'Add Success Toast'),
-    React.createElement('button', {
-      key: 'add-error',
-      'data-testid': 'add-error-button',
-      onClick: () => toast.showError('Error Title', 'Error message')
-    }, 'Add Error Toast'),
-    React.createElement('button', {
-      key: 'add-warning',
-      'data-testid': 'add-warning-button',
-      onClick: () => toast.showWarning('Warning Title', 'Warning message')
-    }, 'Add Warning Toast'),
-    React.createElement('button', {
-      key: 'add-info',
-      'data-testid': 'add-info-button',
-      onClick: () => toast.showInfo('Info Title', 'Info message')
-    }, 'Add Info Toast'),
-    React.createElement('button', {
-      key: 'add-custom',
-      'data-testid': 'add-custom-button',
-      onClick: () => toast.addToast({ type: 'success', title: 'Custom Toast', duration: 1000 })
-    }, 'Add Custom Toast'),
-    React.createElement('div', {
-      key: 'toast-count',
-      'data-testid': 'toast-count'
-    }, toast.toasts.length.toString())
+    React.createElement(
+      'button',
+      {
+        key: 'add-success',
+        'data-testid': 'add-success-button',
+        onClick: () => toast.showSuccess('Success Title', 'Success message'),
+      },
+      'Add Success Toast',
+    ),
+    React.createElement(
+      'button',
+      {
+        key: 'add-error',
+        'data-testid': 'add-error-button',
+        onClick: () => toast.showError('Error Title', 'Error message'),
+      },
+      'Add Error Toast',
+    ),
+    React.createElement(
+      'button',
+      {
+        key: 'add-warning',
+        'data-testid': 'add-warning-button',
+        onClick: () => toast.showWarning('Warning Title', 'Warning message'),
+      },
+      'Add Warning Toast',
+    ),
+    React.createElement(
+      'button',
+      {
+        key: 'add-info',
+        'data-testid': 'add-info-button',
+        onClick: () => toast.showInfo('Info Title', 'Info message'),
+      },
+      'Add Info Toast',
+    ),
+    React.createElement(
+      'button',
+      {
+        key: 'add-custom',
+        'data-testid': 'add-custom-button',
+        onClick: () => toast.addToast({ type: 'success', title: 'Custom Toast', duration: 1000 }),
+      },
+      'Add Custom Toast',
+    ),
+    React.createElement(
+      'div',
+      {
+        key: 'toast-count',
+        'data-testid': 'toast-count',
+      },
+      toast.toasts.length.toString(),
+    ),
   ])
 }
 
@@ -69,7 +93,7 @@ describe('ToastContext', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    
+
     // Setup mock UUID
     let idCounter = 0
     mockRandomUUID.mockImplementation(() => `test-id-${++idCounter}`)
@@ -84,9 +108,7 @@ describe('ToastContext', () => {
 
   const renderWithProvider = (component: React.ReactElement) => {
     flushSync(() => {
-      root.render(
-        React.createElement(ToastProvider, { children: component })
-      )
+      root.render(React.createElement(ToastProvider, { children: component }))
     })
     return Promise.resolve()
   }
@@ -117,7 +139,9 @@ describe('ToastContext', () => {
   it('should add success toast', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -138,7 +162,9 @@ describe('ToastContext', () => {
   it('should add error toast with longer duration', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-error-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-error-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -156,7 +182,9 @@ describe('ToastContext', () => {
   it('should add warning toast', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-warning-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-warning-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -173,7 +201,9 @@ describe('ToastContext', () => {
   it('should add info toast', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-info-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-info-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -190,7 +220,9 @@ describe('ToastContext', () => {
   it('should add custom toast', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-custom-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-custom-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -204,7 +236,9 @@ describe('ToastContext', () => {
   it('should remove toast manually', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -227,10 +261,12 @@ describe('ToastContext', () => {
   it('should auto-remove toast after timeout', async () => {
     // For this test, let's use real timers and just test the removeToast function directly
     jest.useRealTimers()
-    
+
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-custom-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-custom-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -240,12 +276,12 @@ describe('ToastContext', () => {
     expect(container.querySelector('.toast')).toBeTruthy()
 
     // Wait for the actual timeout (1000ms) with a small buffer
-    await new Promise(resolve => setTimeout(resolve, 1100))
+    await new Promise((resolve) => setTimeout(resolve, 1100))
 
     // Check both count and DOM
     expect(container.querySelector('[data-testid="toast-count"]')?.textContent).toBe('0')
     expect(container.querySelector('.toast')).toBeFalsy()
-    
+
     // Reset fake timers for other tests
     jest.useFakeTimers({ legacyFakeTimers: true })
   }, 10000)
@@ -253,9 +289,15 @@ describe('ToastContext', () => {
   it('should handle multiple toasts', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const successButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
-    const errorButton = container.querySelector('[data-testid="add-error-button"]') as HTMLButtonElement
-    const warningButton = container.querySelector('[data-testid="add-warning-button"]') as HTMLButtonElement
+    const successButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
+    const errorButton = container.querySelector(
+      '[data-testid="add-error-button"]',
+    ) as HTMLButtonElement
+    const warningButton = container.querySelector(
+      '[data-testid="add-warning-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       successButton.click()
@@ -272,10 +314,12 @@ describe('ToastContext', () => {
 
   it('should clean up timeouts on unmount', async () => {
     const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout')
-    
+
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -291,7 +335,9 @@ describe('ToastContext', () => {
   it('should generate unique IDs for toasts', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -305,16 +351,22 @@ describe('ToastContext', () => {
   it('should handle toast without message', async () => {
     const TestNoMessageComponent: React.FC = () => {
       const toast = useToast()
-      
-      return React.createElement('button', {
-        'data-testid': 'add-no-message-button',
-        onClick: () => toast.showSuccess('Title Only')
-      }, 'Add Toast Without Message')
+
+      return React.createElement(
+        'button',
+        {
+          'data-testid': 'add-no-message-button',
+          onClick: () => toast.showSuccess('Title Only'),
+        },
+        'Add Toast Without Message',
+      )
     }
 
     await renderWithProvider(React.createElement(TestNoMessageComponent))
 
-    const addButton = container.querySelector('[data-testid="add-no-message-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-no-message-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -330,7 +382,9 @@ describe('ToastContext', () => {
   it('should prevent timeout cleanup for removed toasts', async () => {
     await renderWithProvider(React.createElement(TestToastComponent))
 
-    const addButton = container.querySelector('[data-testid="add-success-button"]') as HTMLButtonElement
+    const addButton = container.querySelector(
+      '[data-testid="add-success-button"]',
+    ) as HTMLButtonElement
 
     flushSync(() => {
       addButton.click()
@@ -350,5 +404,4 @@ describe('ToastContext', () => {
     // Should still be 0 toasts (no errors or duplicate removals)
     expect(container.querySelector('[data-testid="toast-count"]')?.textContent).toBe('0')
   })
-
 })

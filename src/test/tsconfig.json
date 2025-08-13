@@ -3,8 +3,5 @@
   "compilerOptions": {
     "types": ["jest", "@testing-library/jest-dom"]
   },
-  "include": [
-    "../src/**/*",
-    "../src/test/**/*"
-  ]
+  "include": ["../src/**/*", "../src/test/**/*"]
 }

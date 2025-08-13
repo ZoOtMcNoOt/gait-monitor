@@ -1,109 +1,129 @@
-import { useRef, useCallback, useEffect } from 'react';
-import { TimestampManager, type TimestampConfig, type CachedTimestamp } from '../utils/TimestampManager';
+import { useRef, useCallback, useEffect } from 'react'
+import {
+  TimestampManager,
+  type TimestampConfig,
+  type CachedTimestamp,
+} from '../utils/TimestampManager'
 
 interface UseTimestampManagerOptions extends Partial<TimestampConfig> {
   /** Whether to use global instance or create new one */
-  useGlobalInstance?: boolean;
+  useGlobalInstance?: boolean
   /** Auto-set base timestamp on first data point */
-  autoSetBase?: boolean;
+  autoSetBase?: boolean
 }
 
 interface TimestampManagerHook {
   /** The timestamp manager instance */
-  manager: TimestampManager;
+  manager: TimestampManager
   /** Set base timestamp for relative calculations */
-  setBaseTimestamp: (timestamp: number) => void;
+  setBaseTimestamp: (timestamp: number) => void
   /** Normalize backend timestamp to frontend format */
-  normalizeTimestamp: (timestamp: number) => CachedTimestamp;
+  normalizeTimestamp: (timestamp: number) => CachedTimestamp
   /** Get timestamp formatted for Chart.js */
-  getChartTimestamp: (timestamp: number) => number;
+  getChartTimestamp: (timestamp: number) => number
   /** Format timestamp for display */
-  formatTimestamp: (timestamp: number, format?: 'absolute' | 'relative' | 'duration' | 'full') => string;
+  formatTimestamp: (
+    timestamp: number,
+    format?: 'absolute' | 'relative' | 'duration' | 'full',
+  ) => string
   /** Calculate time difference between timestamps */
-  getTimeDifference: (timestamp1: number, timestamp2: number) => number;
+  getTimeDifference: (timestamp1: number, timestamp2: number) => number
   /** Get cache statistics */
-  getCacheStats: () => { size: number; baseTimestamp: number | null; useRelativeTime: boolean };
+  getCacheStats: () => { size: number; baseTimestamp: number | null; useRelativeTime: boolean }
   /** Clear timestamp cache */
-  clearCache: () => void;
+  clearCache: () => void
 }
 
 /**
  * React hook for efficient timestamp management with caching
- * 
+ *
  * Provides a consistent interface for timestamp operations across components
  * and automatically handles cleanup on unmount.
  */
-export const useTimestampManager = (options: UseTimestampManagerOptions = {}): TimestampManagerHook => {
-  const {
-    useGlobalInstance = true,
-    autoSetBase = true,
-    ...timestampConfig
-  } = options;
+export const useTimestampManager = (
+  options: UseTimestampManagerOptions = {},
+): TimestampManagerHook => {
+  const { useGlobalInstance = true, autoSetBase = true, ...timestampConfig } = options
 
   // Get or create timestamp manager
-  const managerRef = useRef<TimestampManager | null>(null);
-  
+  const managerRef = useRef<TimestampManager | null>(null)
+
   if (!managerRef.current) {
-    managerRef.current = useGlobalInstance 
+    managerRef.current = useGlobalInstance
       ? TimestampManager.getInstance(timestampConfig)
-      : new TimestampManager(timestampConfig);
+      : new TimestampManager(timestampConfig)
   }
 
-  const manager = managerRef.current;
+  const manager = managerRef.current
 
   // Track if base timestamp has been set
-  const baseTimestampSetRef = useRef(false);
+  const baseTimestampSetRef = useRef(false)
 
-  const setBaseTimestamp = useCallback((timestamp: number) => {
-    manager.setBaseTimestamp(timestamp);
-    baseTimestampSetRef.current = true;
-  }, [manager]);
+  const setBaseTimestamp = useCallback(
+    (timestamp: number) => {
+      manager.setBaseTimestamp(timestamp)
+      baseTimestampSetRef.current = true
+    },
+    [manager],
+  )
 
-  const normalizeTimestamp = useCallback((timestamp: number): CachedTimestamp => {
-    // Auto-set base timestamp on first call if enabled
-    if (autoSetBase && !baseTimestampSetRef.current) {
-      setBaseTimestamp(timestamp);
-    }
-    
-    return manager.normalizeTimestamp(timestamp);
-  }, [manager, autoSetBase, setBaseTimestamp]);
+  const normalizeTimestamp = useCallback(
+    (timestamp: number): CachedTimestamp => {
+      // Auto-set base timestamp on first call if enabled
+      if (autoSetBase && !baseTimestampSetRef.current) {
+        setBaseTimestamp(timestamp)
+      }
 
-  const getChartTimestamp = useCallback((timestamp: number): number => {
-    // Auto-set base if needed
-    if (autoSetBase && !baseTimestampSetRef.current) {
-      setBaseTimestamp(timestamp);
-    }
-    
-    return manager.getChartTimestamp(timestamp);
-  }, [manager, autoSetBase, setBaseTimestamp]);
+      return manager.normalizeTimestamp(timestamp)
+    },
+    [manager, autoSetBase, setBaseTimestamp],
+  )
 
-  const formatTimestamp = useCallback((
-    timestamp: number, 
-    format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative'
-  ): string => {
-    return manager.formatTimestamp(timestamp, format);
-  }, [manager]);
+  const getChartTimestamp = useCallback(
+    (timestamp: number): number => {
+      // Auto-set base if needed
+      if (autoSetBase && !baseTimestampSetRef.current) {
+        setBaseTimestamp(timestamp)
+      }
 
-  const getTimeDifference = useCallback((timestamp1: number, timestamp2: number): number => {
-    return manager.getTimeDifference(timestamp1, timestamp2);
-  }, [manager]);
+      return manager.getChartTimestamp(timestamp)
+    },
+    [manager, autoSetBase, setBaseTimestamp],
+  )
+
+  const formatTimestamp = useCallback(
+    (
+      timestamp: number,
+      format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative',
+    ): string => {
+      return manager.formatTimestamp(timestamp, format)
+    },
+    [manager],
+  )
+
+  const getTimeDifference = useCallback(
+    (timestamp1: number, timestamp2: number): number => {
+      return manager.getTimeDifference(timestamp1, timestamp2)
+    },
+    [manager],
+  )
 
   const getCacheStats = useCallback(() => {
-    return manager.getCacheStats();
-  }, [manager]);
+    return manager.getCacheStats()
+  }, [manager])
 
   const clearCache = useCallback(() => {
-    manager.clearCache();
-  }, [manager]);
+    manager.clearCache()
+  }, [manager])
 
   // Cleanup on unmount (only for non-global instances)
   useEffect(() => {
     return () => {
       if (!useGlobalInstance) {
-        manager.clearCache();
+        manager.clearCache()
       }
-    };
-  }, [manager, useGlobalInstance]);
+    }
+  }, [manager, useGlobalInstance])
 
   return {
     manager,
@@ -113,9 +133,9 @@ export const useTimestampManager = (options: UseTimestampManagerOptions = {}): T
     formatTimestamp,
     getTimeDifference,
     getCacheStats,
-    clearCache
-  };
-};
+    clearCache,
+  }
+}
 
 /**
  * Hook for simple timestamp formatting without caching
@@ -124,29 +144,29 @@ export const useTimestampManager = (options: UseTimestampManagerOptions = {}): T
 export const useTimestampFormatter = () => {
   const formatRelativeTime = useCallback((timestamp: number, baseTimestamp: number): string => {
     // Backend always provides milliseconds - use directly
-    const relativeSeconds = (timestamp - baseTimestamp) / 1000;
-    return `${relativeSeconds.toFixed(2)}s`;
-  }, []);
+    const relativeSeconds = (timestamp - baseTimestamp) / 1000
+    return `${relativeSeconds.toFixed(2)}s`
+  }, [])
 
   const formatAbsoluteTime = useCallback((timestamp: number): string => {
     // Backend always provides milliseconds - use directly
-    return new Date(timestamp).toLocaleTimeString();
-  }, []);
+    return new Date(timestamp).toLocaleTimeString()
+  }, [])
 
   const formatDuration = useCallback((timestamp: number, baseTimestamp: number): string => {
     // Backend always provides milliseconds - use directly
-    const relativeSeconds = (timestamp - baseTimestamp) / 1000;
-    
-    const minutes = Math.floor(relativeSeconds / 60);
-    const seconds = (relativeSeconds % 60).toFixed(1);
-    return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-  }, []);
+    const relativeSeconds = (timestamp - baseTimestamp) / 1000
+
+    const minutes = Math.floor(relativeSeconds / 60)
+    const seconds = (relativeSeconds % 60).toFixed(1)
+    return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
+  }, [])
 
   return {
     formatRelativeTime,
     formatAbsoluteTime,
-    formatDuration
-  };
-};
+    formatDuration,
+  }
+}
 
-export default useTimestampManager;
+export default useTimestampManager

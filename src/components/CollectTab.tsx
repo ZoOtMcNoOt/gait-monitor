@@ -24,7 +24,7 @@ interface GaitDataPoint {
   y: number
   z: number
   timestamp: number
-  sample_rate?: number  // Add optional sample rate field
+  sample_rate?: number
 }
 
 interface CollectedData {
@@ -49,13 +49,12 @@ interface WorkflowState extends Record<string, unknown> {
 }
 
 export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
-  // Use persistent workflow state
   const {
     state: workflowState,
     updateField: updateWorkflowField,
     hasSavedData,
     isInitialized,
-    completeWorkflow
+    completeWorkflow,
   } = usePersistentWorkflow<WorkflowState>(
     {
       currentStep: 'metadata' as CollectStep,
@@ -63,30 +62,28 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       isCollecting: false,
       isUsingRealData: false,
       isSaving: false,
-      isStopping: false
+      isStopping: false,
     },
     {
       storageKey: 'gait-monitor-collect-workflow',
       debounceMs: 300,
-      clearOnComplete: true
-    }
+      clearOnComplete: true,
+    },
   )
 
-  // Extract state for easier access
-  const { currentStep, collectedData, isCollecting, isUsingRealData, isSaving, isStopping } = workflowState
+  const { currentStep, collectedData, isCollecting, isUsingRealData, isSaving, isStopping } =
+    workflowState
 
-  // Create setter functions that use the persistent workflow
   const setCurrentStep = (step: CollectStep) => updateWorkflowField('currentStep', step)
-  const setCollectedData = (data: CollectedData | null) => updateWorkflowField('collectedData', data)
+  const setCollectedData = (data: CollectedData | null) =>
+    updateWorkflowField('collectedData', data)
   const setIsCollecting = (collecting: boolean) => updateWorkflowField('isCollecting', collecting)
   const setIsUsingRealData = (useReal: boolean) => updateWorkflowField('isUsingRealData', useReal)
   const setIsSaving = (saving: boolean) => updateWorkflowField('isSaving', saving)
   const setIsStopping = (stopping: boolean) => updateWorkflowField('isStopping', stopping)
 
-  // Handle workflow restoration - reset any active states that shouldn't persist
   const restorationAppliedRef = useRef(false)
   useEffect(() => {
-    // Only attempt restoration reset once per mount to avoid clobbering new sessions
     if (restorationAppliedRef.current) return
     if (isInitialized && hasSavedData()) {
       const currentState = workflowState
@@ -100,64 +97,52 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
     }
   }, [isInitialized, hasSavedData, workflowState, updateWorkflowField])
 
-  // Data collection buffer
   const dataBuffer = useRef<GaitDataPoint[]>([])
 
-  // Metadata form clear function ref
   const metadataFormClearRef = useRef<(() => void) | null>(null)
 
-  // Confirmation modal for stop collection
   const { confirmationState, showConfirmation } = useConfirmation()
 
-  // Toast notifications
   const { showError, showWarning, showSuccess } = useToast()
 
-  // Initialize security monitoring
   useEffect(() => {
-  console.log('[Security] Starting monitoring for file operations')
+    console.log('[Security] Starting monitoring for file operations')
     securityMonitor.startMonitoring(30000) // Check every 30 seconds
-    
+
     return () => {
-  console.log('[Security] Stopping monitoring')
+      console.log('[Security] Stopping monitoring')
       securityMonitor.stopMonitoring()
     }
   }, [])
 
-  // Use global device connection context
-  const { 
-    connectedDevices, 
-    startDeviceCollection,
-    stopDeviceCollection,
-    subscribeToGaitData
-  } = useDeviceConnection()
+  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData } =
+    useDeviceConnection()
 
-  // Subscribe to gait data during collection
   useEffect(() => {
     if (isCollecting) {
-  console.log('[Collect] Setting up gait data subscription')
-      const lastReceiveTimes = new Map<string, number>() // Track frontend receive times
-      const packetCounts = new Map<string, number>() // Track packet counts per device
-      
+      console.log('[Collect] Setting up gait data subscription')
+      const lastReceiveTimes = new Map<string, number>()
+      const packetCounts = new Map<string, number>()
+
       const unsubscribe = subscribeToGaitData((data) => {
         const receiveTime = performance.now()
-        
-        // Calculate intervals for performance monitoring
+
         const lastReceiveTime = lastReceiveTimes.get(data.device_id) || receiveTime
         const interval = receiveTime - lastReceiveTime
         lastReceiveTimes.set(data.device_id, receiveTime)
-        
-        // Log timing every 100th packet
+
         packetCounts.set(data.device_id, (packetCounts.get(data.device_id) || 0) + 1)
         const count = packetCounts.get(data.device_id) || 0
-        
+
         if (count % 100 === 0) {
           const avgInterval = interval > 0 ? interval : 0
           const estimatedHz = avgInterval > 0 ? 1000 / avgInterval : 0
-          console.log(`[Collect][Timing] [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`)
+          console.log(
+            `[Collect][Timing] [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`,
+          )
         }
-        
-        // Add data to buffer
-  console.log('[Collect] Received gait data:', data.device_id, data.timestamp)
+
+        console.log('[Collect] Received gait data:', data.device_id, data.timestamp)
         dataBuffer.current.push({
           device_id: data.device_id,
           r1: data.r1,
@@ -166,12 +151,12 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
           x: data.x,
           y: data.y,
           z: data.z,
-          timestamp: data.timestamp
+          timestamp: data.timestamp,
         })
       })
 
       return () => {
-  console.log('[Collect] Cleaning up gait data subscription')
+        console.log('[Collect] Cleaning up gait data subscription')
         unsubscribe()
       }
     }
@@ -180,36 +165,37 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   const steps = [
     { id: 'metadata', label: 'Metadata', number: 1 },
     { id: 'live', label: 'Live Collection', number: 2 },
-    { id: 'review', label: 'Review & Save', number: 3 }
+    { id: 'review', label: 'Review & Save', number: 3 },
   ] as const
 
-  const handleMetadataSubmit = (metadata: { sessionName: string; subjectId: string; notes: string }) => {
-    // Clear previous data buffer
+  const handleMetadataSubmit = (metadata: {
+    sessionName: string
+    subjectId: string
+    notes: string
+  }) => {
     dataBuffer.current = []
-    
+
     setCollectedData({
       ...metadata,
       dataPoints: [],
-      timestamp: new Date()
+      timestamp: new Date(),
     })
     setCurrentStep('live')
   }
 
   const handleStartCollection = async () => {
     try {
-  console.log('[Collect] Starting synchronized collection for all connected devices')
+      console.log('[Collect] Starting synchronized collection for all connected devices')
       console.log('Connected devices:', connectedDevices)
-      
+
       if (connectedDevices.length === 0) {
         showError('No Devices Connected', 'Please connect to devices first in the Connect tab.')
         return
       }
 
-      // Clear any previous data before starting new collection
       dataBuffer.current = []
-  console.log('[Collect] Cleared data buffer for new collection')
+      console.log('[Collect] Cleared data buffer for new collection')
 
-      // Start collection on ALL connected devices simultaneously
       const startPromises = connectedDevices.map(async (deviceId) => {
         try {
           console.log(`[Collect] Starting collection for device: ${deviceId}`)
@@ -217,33 +203,49 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
           console.log(`[Collect] Successfully started collection for device: ${deviceId}`)
           return { deviceId, success: true }
         } catch (error) {
-          console.error(`[Collect][Error] Failed to start collection for device ${deviceId}:`, error)
+          console.error(
+            `[Collect][Error] Failed to start collection for device ${deviceId}:`,
+            error,
+          )
           return { deviceId, success: false, error }
         }
       })
-      
-      // Wait for all devices to start (or fail)
+
       const results = await Promise.allSettled(startPromises)
       const successfulDevices = results
-        .filter(result => result.status === 'fulfilled' && result.value.success)
-        .map(result => (result as PromiseFulfilledResult<{deviceId: string, success: boolean}>).value.deviceId)
-      
-      const failedDevices = results
-        .filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success))
-        
-  console.log(`[Collect] Start results: ${successfulDevices.length} successful, ${failedDevices.length} failed`)
-      
+        .filter((result) => result.status === 'fulfilled' && result.value.success)
+        .map(
+          (result) =>
+            (result as PromiseFulfilledResult<{ deviceId: string; success: boolean }>).value
+              .deviceId,
+        )
+
+      const failedDevices = results.filter(
+        (result) =>
+          result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success),
+      )
+
+      console.log(
+        `[Collect] Start results: ${successfulDevices.length} successful, ${failedDevices.length} failed`,
+      )
+
       if (successfulDevices.length > 0) {
-  console.log('[Collect] Successfully started synchronized data collection')
+        console.log('[Collect] Successfully started synchronized data collection')
         setIsUsingRealData(true)
         setIsCollecting(true)
-        
+
         if (failedDevices.length > 0) {
-          showWarning('Partial Success', `Started collection on ${successfulDevices.length} devices, but ${failedDevices.length} devices failed to start. Collection will continue with available devices.`)
+          showWarning(
+            'Partial Success',
+            `Started collection on ${successfulDevices.length} devices, but ${failedDevices.length} devices failed to start. Collection will continue with available devices.`,
+          )
         }
       } else {
-  console.error('[Collect][Error] Failed to start collection on any devices')
-        showError('Collection Failed', 'Failed to start collection on any connected devices. Please check device connections and try again.')
+        console.error('[Collect][Error] Failed to start collection on any devices')
+        showError(
+          'Collection Failed',
+          'Failed to start collection on any connected devices. Please check device connections and try again.',
+        )
       }
     } catch (error) {
       console.error('Failed to start synchronized collection:', error)
@@ -252,14 +254,11 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   }
 
   const handleStopCollectionRequest = async () => {
-    // Prevent multiple stop requests
     if (isStopping) {
-  console.log('[Collect][Warn] Stop collection already in progress, ignoring request')
+      console.log('[Collect][Warn] Stop collection already in progress, ignoring request')
       return
     }
 
-    // Show confirmation modal with collection details
-    // Safely derive session start time (timestamp may be Date, string, or number after persistence)
     let sessionStartMs: number | undefined
     if (collectedData?.timestamp) {
       const rawTs: unknown = collectedData.timestamp as unknown
@@ -275,13 +274,15 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
         console.warn('[Collect][Warn] Unable to parse collectedData.timestamp, raw value:', rawTs)
       }
     }
-    const collectionTimeText = dataBuffer.current.length > 0 && sessionStartMs !== undefined
-      ? `${Math.round((Date.now() - sessionStartMs) / 1000)}s`
-      : 'N/A'
+    const collectionTimeText =
+      dataBuffer.current.length > 0 && sessionStartMs !== undefined
+        ? `${Math.round((Date.now() - sessionStartMs) / 1000)}s`
+        : 'N/A'
 
-    const warningText = dataBuffer.current.length > 0 
-      ? "Your collected data will be saved and you can review it in the next step."
-  : "No data has been collected yet. You may want to continue collecting before stopping."
+    const warningText =
+      dataBuffer.current.length > 0
+        ? 'Your collected data will be saved and you can review it in the next step.'
+        : 'No data has been collected yet. You may want to continue collecting before stopping.'
 
     const confirmed = await showConfirmation({
       title: 'Stop Data Collection?',
@@ -294,7 +295,7 @@ Collection Time: ${collectionTimeText}
 ${warningText}`,
       confirmText: 'Yes, Stop Collection',
       cancelText: 'No, Continue Collecting',
-      type: 'warning'
+      type: 'warning',
     })
 
     if (confirmed) {
@@ -303,33 +304,29 @@ ${warningText}`,
   }
 
   const handleConfirmStopCollection = async () => {
-    // Prevent multiple stop calls
     if (isStopping) {
-  console.log('[Collect][Warn] Stop collection already in progress, ignoring confirmation')
+      console.log('[Collect][Warn] Stop collection already in progress, ignoring confirmation')
       return
     }
-    
-  console.log('[Collect] User confirmed stop collection')
+
+    console.log('[Collect] User confirmed stop collection')
     setIsStopping(true)
-    
+
     try {
-  console.log('[Collect] Stopping data collection...')
-      console.log('Current state:', { 
-        isCollecting, 
-        isUsingRealData, 
+      console.log('[Collect] Stopping data collection...')
+      console.log('Current state:', {
+        isCollecting,
+        isUsingRealData,
         connectedDevices: connectedDevices.length,
-        dataBufferLength: dataBuffer.current.length 
+        dataBufferLength: dataBuffer.current.length,
       })
-      
-      // Capture data BEFORE stopping to avoid race conditions
+
       const finalDataPoints = [...dataBuffer.current]
-  console.log(`[Collect] Captured ${finalDataPoints.length} data points before stopping`)
-      
-      // Stop BLE notifications on ALL connected devices if using real data
+      console.log(`[Collect] Captured ${finalDataPoints.length} data points before stopping`)
+
       if (isUsingRealData && connectedDevices.length > 0) {
-  console.log('[Collect] Stopping BLE notifications for all connected devices')
-        
-        // Stop collection on ALL connected devices simultaneously
+        console.log('[Collect] Stopping BLE notifications for all connected devices')
+
         const stopPromises = connectedDevices.map(async (deviceId) => {
           try {
             console.log(`� Stopping collection for device: ${deviceId}`)
@@ -337,133 +334,138 @@ ${warningText}`,
             console.log(`[Collect] Successfully stopped collection for device: ${deviceId}`)
             return { deviceId, success: true }
           } catch (error) {
-            console.error(`[Collect][Error] Failed to stop collection for device ${deviceId}:`, error)
+            console.error(
+              `[Collect][Error] Failed to stop collection for device ${deviceId}:`,
+              error,
+            )
             return { deviceId, success: false, error }
           }
         })
-        
-        // Wait for all devices to stop (or fail)
+
         const results = await Promise.allSettled(stopPromises)
-        const successfulStops = results.filter(result => result.status === 'fulfilled' && result.value.success).length
-        const failedStops = results.filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success)).length
-        
-  console.log(`[Collect] Stop results: ${successfulStops} successful, ${failedStops} failed`)
-        
+        const successfulStops = results.filter(
+          (result) => result.status === 'fulfilled' && result.value.success,
+        ).length
+        const failedStops = results.filter(
+          (result) =>
+            result.status === 'rejected' ||
+            (result.status === 'fulfilled' && !result.value.success),
+        ).length
+
+        console.log(`[Collect] Stop results: ${successfulStops} successful, ${failedStops} failed`)
+
         if (failedStops > 0) {
           console.warn(`[Collect][Warn] Failed to stop collection on ${failedStops} devices`)
         }
-        
-  console.log('[Collect] Successfully stopped synchronized data collection')
+
+        console.log('[Collect] Successfully stopped synchronized data collection')
         setIsUsingRealData(false)
       }
-      
-      // Update UI state
+
       setIsCollecting(false)
-  console.log('[Collect] Set isCollecting to false')
-      
-      // Update collected data with captured points
+      console.log('[Collect] Set isCollecting to false')
+
       if (collectedData) {
         const updatedData = {
           ...collectedData,
-          dataPoints: finalDataPoints
+          dataPoints: finalDataPoints,
         }
         setCollectedData(updatedData)
-  console.log('[Collect] Updated collected data:', {
+        console.log('[Collect] Updated collected data:', {
           sessionName: updatedData.sessionName,
           dataPointsLength: updatedData.dataPoints.length,
-          sampleDataPoints: updatedData.dataPoints.slice(0, 2)
+          sampleDataPoints: updatedData.dataPoints.slice(0, 2),
         })
       } else {
-  console.warn('[Collect][Warn] No collectedData state found')
+        console.warn('[Collect][Warn] No collectedData state found')
       }
-      
-  console.log('[Collect] Moving to review step')
+
+      console.log('[Collect] Moving to review step')
       setCurrentStep('review')
-      
     } catch (error) {
-  console.error('[Collect][Error] Failed to stop collection:', error)
-      
-      // Show detailed error to user
+      console.error('[Collect][Error] Failed to stop collection:', error)
+
       const errorMessage = error instanceof Error ? error.message : String(error)
-      alert(`Failed to stop collection properly: ${errorMessage}\n\nData has been captured but device may still be streaming. Please check the device connection.`)
-      
-      // Force stop the UI state even if device stopping failed
+      alert(
+        `Failed to stop collection properly: ${errorMessage}\n\nData has been captured but device may still be streaming. Please check the device connection.`,
+      )
+
       setIsCollecting(false)
       setIsUsingRealData(false)
-      
-      // Still capture data even if stopping failed
+
       const finalDataPoints = [...dataBuffer.current]
       if (collectedData) {
         setCollectedData({
           ...collectedData,
-          dataPoints: finalDataPoints
+          dataPoints: finalDataPoints,
         })
-  console.log('[Collect] Force-saved data points despite error:', finalDataPoints.length)
+        console.log('[Collect] Force-saved data points despite error:', finalDataPoints.length)
       }
-      
+
       setCurrentStep('review')
     } finally {
-      // Always reset the stopping state
       setIsStopping(false)
     }
   }
 
   const handleSaveData = async () => {
     if (!collectedData) {
-  console.error('[Collect][Error] No collected data to save')
+      console.error('[Collect][Error] No collected data to save')
       alert('No data to save!')
       return
     }
 
     if (collectedData.dataPoints.length === 0) {
-  console.error('[Collect][Error] No data points to save')
+      console.error('[Collect][Error] No data points to save')
       alert('No data points collected. Please collect some data before saving.')
       return
     }
 
-  console.log('[Collect] Starting to save session...')
+    console.log('[Collect] Starting to save session...')
     console.log('Session data to save:', {
       sessionName: collectedData.sessionName,
       subjectId: collectedData.subjectId,
       dataPointsLength: collectedData.dataPoints.length,
-      sampleDataPoints: collectedData.dataPoints.slice(0, 3)
+      sampleDataPoints: collectedData.dataPoints.slice(0, 3),
     })
 
     setIsSaving(true)
-    
-    try {
-  console.log('[Collect] Saving session with enhanced CSRF protection...')
 
-      // Use enhanced CSRF protection with automatic retry
+    try {
+      console.log('[Collect] Saving session with enhanced CSRF protection...')
+
       const filePath = await protectedOperations.saveSessionData(
         collectedData.sessionName,
         collectedData.subjectId,
         collectedData.notes,
-        collectedData.dataPoints
+        collectedData.dataPoints,
       )
 
-  console.log('[Collect] Session saved successfully to:', filePath)
-      showSuccess('Session Saved', `File: ${filePath}\nData points: ${collectedData.dataPoints.length}`)
-      
-      // Reset workflow using persistent workflow hook
+      console.log('[Collect] Session saved successfully to:', filePath)
+      showSuccess(
+        'Session Saved',
+        `File: ${filePath}\nData points: ${collectedData.dataPoints.length}`,
+      )
+
       completeWorkflow()
       dataBuffer.current = []
-      
-      // Clear metadata form data
+
       metadataFormClearRef.current?.()
-      
     } catch (error) {
-  console.error('[Collect][Error] Failed to save session:', error)
+      console.error('[Collect][Error] Failed to save session:', error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      
-      // Enhanced error handling for CSRF-related errors
+
       if (errorMessage.includes('CSRF')) {
-        alert(`Security Error: ${errorMessage}\n\nThis might be due to an expired session. The page will refresh to get a new security token.`)
+        alert(
+          `Security Error: ${errorMessage}\n\nThis might be due to an expired session. The page will refresh to get a new security token.`,
+        )
         window.location.reload()
       } else if (errorMessage.includes('rate limit')) {
         alert(`Rate Limit Exceeded: ${errorMessage}\n\nPlease wait a moment before trying again.`)
       } else {
-        alert(`Failed to save session: ${errorMessage}\n\nPlease check the console for more details and try again.`)
+        alert(
+          `Failed to save session: ${errorMessage}\n\nPlease check the console for more details and try again.`,
+        )
       }
     } finally {
       setIsSaving(false)
@@ -473,8 +475,7 @@ ${warningText}`,
   const handleDiscardData = () => {
     completeWorkflow()
     dataBuffer.current = []
-    
-    // Clear metadata form data
+
     metadataFormClearRef.current?.()
   }
 
@@ -493,7 +494,6 @@ ${warningText}`,
           overflow: hidden;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           
-          /* Default hidden state */
           opacity: 0;
           max-height: 0;
           padding: 0 0.75rem;
@@ -530,25 +530,23 @@ ${warningText}`,
           color: #999;
         }
       `}</style>
-      
+
       <div className="tab-header">
         <h1>Data Collection</h1>
         <p>Follow the 3-step process to collect and save gait data.</p>
       </div>
 
-      {/* Step Progress Indicator */}
       <div className="wizard-progress">
         {steps.map((step, index) => {
-          const currentStepIndex = steps.findIndex(s => s.id === currentStep)
+          const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
           const isCompleted = currentStepIndex > index
           const isActive = currentStep === step.id
-          
+
           return (
-            <div 
-              key={step.id} 
-              className={`wizard-step ${isCompleted ? 'completed' : ''}`}
-            >
-              <div className={`step-indicator ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+            <div key={step.id} className={`wizard-step ${isCompleted ? 'completed' : ''}`}>
+              <div
+                className={`step-indicator ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+              >
                 {isCompleted ? '✓' : step.number}
               </div>
               <span className="step-label">{step.label}</span>
@@ -557,13 +555,12 @@ ${warningText}`,
         })}
       </div>
 
-      {/* Step Content */}
       <div className="wizard-content">
         {currentStep === 'metadata' && (
           <div className="wizard-step-content">
             <h2>Step 1: Enter Session Metadata</h2>
-            <MetadataForm 
-              onSubmit={handleMetadataSubmit} 
+            <MetadataForm
+              onSubmit={handleMetadataSubmit}
               onRegisterClearFunction={(clearFn) => {
                 metadataFormClearRef.current = clearFn
               }}
@@ -576,8 +573,12 @@ ${warningText}`,
             <h2>Step 2: Live Data Collection</h2>
             <div className="collection-controls">
               <div className="collection-info">
-                <p><strong>Session:</strong> {collectedData?.sessionName}</p>
-                <p><strong>Subject:</strong> {collectedData?.subjectId}</p>
+                <p>
+                  <strong>Session:</strong> {collectedData?.sessionName}
+                </p>
+                <p>
+                  <strong>Subject:</strong> {collectedData?.subjectId}
+                </p>
               </div>
               <div className="collection-buttons">
                 {!isCollecting ? (
@@ -585,8 +586,8 @@ ${warningText}`,
                     Start All Connected Devices
                   </button>
                 ) : (
-                  <button 
-                    className="btn-secondary" 
+                  <button
+                    className="btn-secondary"
                     onClick={handleStopCollectionRequest}
                     disabled={isStopping}
                   >
@@ -598,28 +599,29 @@ ${warningText}`,
                 </button>
               </div>
             </div>
-            
-            {/* Two-column layout for live collection */}
+
             <div className="collection-layout">
               <div className="main-collection-area">
-                <ErrorBoundary fallback={
-                  <div className="chart-error-fallback">
-                    <h3>Chart Error</h3>
-                    <p>The live chart component encountered an error. Please refresh the page.</p>
-                  </div>
-                }>
-                  <LiveChart 
-                    isCollecting={isCollecting} 
-                  />
+                <ErrorBoundary
+                  fallback={
+                    <div className="chart-error-fallback">
+                      <h3>Chart Error</h3>
+                      <p>The live chart component encountered an error. Please refresh the page.</p>
+                    </div>
+                  }
+                >
+                  <LiveChart isCollecting={isCollecting} />
                 </ErrorBoundary>
               </div>
               <div className="collection-sidebar">
-                <ErrorBoundary fallback={
-                  <div className="device-selector-error-fallback">
-                    <h3>Device Selector Error</h3>
-                    <p>The device selector encountered an error. Please refresh the page.</p>
-                  </div>
-                }>
+                <ErrorBoundary
+                  fallback={
+                    <div className="device-selector-error-fallback">
+                      <h3>Device Selector Error</h3>
+                      <p>The device selector encountered an error. Please refresh the page.</p>
+                    </div>
+                  }
+                >
                   <DeviceStatusViewer onNavigateToConnect={onNavigateToConnect} />
                 </ErrorBoundary>
               </div>
@@ -633,40 +635,46 @@ ${warningText}`,
             <div className="data-review">
               <div className="review-metadata">
                 <h3>Session Information</h3>
-                <p><strong>Session Name:</strong> {collectedData?.sessionName}</p>
-                <p><strong>Subject ID:</strong> {collectedData?.subjectId}</p>
-                <p><strong>Notes:</strong> {collectedData?.notes}</p>
-                <p><strong>Collected:</strong> {collectedData?.timestamp.toLocaleString()}</p>
-                <p><strong>Data Points:</strong> {collectedData?.dataPoints.length || 0}</p>
+                <p>
+                  <strong>Session Name:</strong> {collectedData?.sessionName}
+                </p>
+                <p>
+                  <strong>Subject ID:</strong> {collectedData?.subjectId}
+                </p>
+                <p>
+                  <strong>Notes:</strong> {collectedData?.notes}
+                </p>
+                <p>
+                  <strong>Collected:</strong> {collectedData?.timestamp.toLocaleString()}
+                </p>
+                <p>
+                  <strong>Data Points:</strong> {collectedData?.dataPoints.length || 0}
+                </p>
                 {collectedData && collectedData.dataPoints.length > 0 && (
                   <div className="data-summary">
-                    <p><strong>Devices:</strong> {[...new Set(collectedData.dataPoints.map(d => d.device_id))].join(', ')}</p>
-                    <p><strong>Collection Duration:</strong> {
-                      collectedData.dataPoints.length > 0 ? 
-                        `${Math.round((collectedData.dataPoints[collectedData.dataPoints.length - 1].timestamp - collectedData.dataPoints[0].timestamp) / 1000)}s` : 
-                        'N/A'
-                    }</p>
+                    <p>
+                      <strong>Devices:</strong>{' '}
+                      {[...new Set(collectedData.dataPoints.map((d) => d.device_id))].join(', ')}
+                    </p>
+                    <p>
+                      <strong>Collection Duration:</strong>{' '}
+                      {collectedData.dataPoints.length > 0
+                        ? `${Math.round((collectedData.dataPoints[collectedData.dataPoints.length - 1].timestamp - collectedData.dataPoints[0].timestamp) / 1000)}s`
+                        : 'N/A'}
+                    </p>
                   </div>
                 )}
               </div>
-              
+
               <div className="review-actions">
-                <button 
-                  className="btn-primary" 
-                  onClick={handleSaveData}
-                  disabled={isSaving}
-                >
+                <button className="btn-primary" onClick={handleSaveData} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Session'}
                 </button>
-                <button 
-                  className="btn-danger" 
-                  onClick={handleDiscardData}
-                  disabled={isSaving}
-                >
+                <button className="btn-danger" onClick={handleDiscardData} disabled={isSaving}>
                   Discard Data
                 </button>
-                <button 
-                  className="btn-tertiary" 
+                <button
+                  className="btn-tertiary"
                   onClick={() => setCurrentStep('live')}
                   disabled={isSaving}
                 >
@@ -678,7 +686,6 @@ ${warningText}`,
         )}
       </div>
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationState.isOpen}
         title={confirmationState.title}

@@ -16,36 +16,56 @@ const TestScrollableComponent: React.FC<{ id: string }> = ({ id }) => {
     }
   }, [id, scrollContext])
 
-  return React.createElement('div', {
-    ref: elementRef,
-    'data-testid': `scrollable-${id}`,
-    style: { height: '200px', overflow: 'auto' }
-  }, [
-    React.createElement('div', { 
-      key: 'content',
-      style: { height: '1000px' } 
-    }, `Content for ${id}`)
-  ])
+  return React.createElement(
+    'div',
+    {
+      ref: elementRef,
+      'data-testid': `scrollable-${id}`,
+      style: { height: '200px', overflow: 'auto' },
+    },
+    [
+      React.createElement(
+        'div',
+        {
+          key: 'content',
+          style: { height: '1000px' },
+        },
+        `Content for ${id}`,
+      ),
+    ],
+  )
 }
 
 const TestControllerComponent: React.FC = () => {
   const scrollContext = React.useContext(ScrollContext)
-  
+
   return React.createElement('div', null, [
-    React.createElement('button', {
-      key: 'scroll-all-btn',
-      'data-testid': 'scroll-all-button',
-      onClick: () => scrollContext?.scrollAllToTop()
-    }, 'Scroll All'),
-    React.createElement('button', {
-      key: 'scroll-one-btn',
-      'data-testid': 'scroll-one-button',
-      onClick: () => scrollContext?.scrollToTop('test-1')
-    }, 'Scroll Test-1'),
-    React.createElement('div', {
-      key: 'status',
-      'data-testid': 'context-available'
-    }, scrollContext ? 'available' : 'not-available')
+    React.createElement(
+      'button',
+      {
+        key: 'scroll-all-btn',
+        'data-testid': 'scroll-all-button',
+        onClick: () => scrollContext?.scrollAllToTop(),
+      },
+      'Scroll All',
+    ),
+    React.createElement(
+      'button',
+      {
+        key: 'scroll-one-btn',
+        'data-testid': 'scroll-one-button',
+        onClick: () => scrollContext?.scrollToTop('test-1'),
+      },
+      'Scroll Test-1',
+    ),
+    React.createElement(
+      'div',
+      {
+        key: 'status',
+        'data-testid': 'context-available',
+      },
+      scrollContext ? 'available' : 'not-available',
+    ),
   ])
 }
 
@@ -62,14 +82,14 @@ describe('ScrollContext', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    
+
     // Mock scrollTo for elements
     HTMLElement.prototype.scrollTo = mockScrollTo
-    
+
     // Mock window.scrollTo
     Object.defineProperty(window, 'scrollTo', {
       value: jest.fn(),
-      writable: true
+      writable: true,
     })
   })
 
@@ -81,9 +101,7 @@ describe('ScrollContext', () => {
 
   const renderWithProvider = (component: React.ReactElement) => {
     flushSync(() => {
-      root.render(
-        React.createElement(ScrollProvider, { children: component })
-      )
+      root.render(React.createElement(ScrollProvider, { children: component }))
     })
     return Promise.resolve()
   }
@@ -120,28 +138,42 @@ describe('ScrollContext', () => {
           key: 'element',
           ref: elementRef,
           'data-testid': 'scrollable-element',
-          style: { height: '100px', overflow: 'auto' }
+          style: { height: '100px', overflow: 'auto' },
         }),
-        React.createElement('button', {
-          key: 'register-btn',
-          'data-testid': 'register-button',
-          onClick: handleRegister
-        }, 'Register'),
-        React.createElement('button', {
-          key: 'unregister-btn',
-          'data-testid': 'unregister-button',
-          onClick: handleUnregister
-        }, 'Unregister'),
-        React.createElement('div', {
-          key: 'status',
-          'data-testid': 'registration-status'
-        }, isRegistered ? 'registered' : 'not-registered')
+        React.createElement(
+          'button',
+          {
+            key: 'register-btn',
+            'data-testid': 'register-button',
+            onClick: handleRegister,
+          },
+          'Register',
+        ),
+        React.createElement(
+          'button',
+          {
+            key: 'unregister-btn',
+            'data-testid': 'unregister-button',
+            onClick: handleUnregister,
+          },
+          'Unregister',
+        ),
+        React.createElement(
+          'div',
+          {
+            key: 'status',
+            'data-testid': 'registration-status',
+          },
+          isRegistered ? 'registered' : 'not-registered',
+        ),
       ])
     }
 
     await renderWithProvider(React.createElement(TestComponent))
 
-    const registerButton = container.querySelector('[data-testid="register-button"]') as HTMLButtonElement
+    const registerButton = container.querySelector(
+      '[data-testid="register-button"]',
+    ) as HTMLButtonElement
     const statusElement = container.querySelector('[data-testid="registration-status"]')
 
     expect(statusElement?.textContent).toBe('not-registered')
@@ -150,18 +182,24 @@ describe('ScrollContext', () => {
     flushSync(() => {
       registerButton.click()
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(container.querySelector('[data-testid="registration-status"]')?.textContent).toBe('registered')
+    expect(container.querySelector('[data-testid="registration-status"]')?.textContent).toBe(
+      'registered',
+    )
 
     // Test unregistration
-    const unregisterButton = container.querySelector('[data-testid="unregister-button"]') as HTMLButtonElement
+    const unregisterButton = container.querySelector(
+      '[data-testid="unregister-button"]',
+    ) as HTMLButtonElement
     flushSync(() => {
       unregisterButton.click()
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(container.querySelector('[data-testid="registration-status"]')?.textContent).toBe('not-registered')
+    expect(container.querySelector('[data-testid="registration-status"]')?.textContent).toBe(
+      'not-registered',
+    )
   })
 
   it('should scroll specific element to top', async () => {
@@ -169,14 +207,16 @@ describe('ScrollContext', () => {
       return React.createElement('div', null, [
         React.createElement(TestScrollableComponent, { key: 'scrollable-1', id: 'test-1' }),
         React.createElement(TestScrollableComponent, { key: 'scrollable-2', id: 'test-2' }),
-        React.createElement(TestControllerComponent, { key: 'controller' })
+        React.createElement(TestControllerComponent, { key: 'controller' }),
       ])
     }
 
     await renderWithProvider(React.createElement(TestComponent))
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
-    const scrollOneButton = container.querySelector('[data-testid="scroll-one-button"]') as HTMLButtonElement
+    const scrollOneButton = container.querySelector(
+      '[data-testid="scroll-one-button"]',
+    ) as HTMLButtonElement
 
     // Simulate click to scroll specific element
     flushSync(() => {
@@ -192,14 +232,16 @@ describe('ScrollContext', () => {
       return React.createElement('div', null, [
         React.createElement(TestScrollableComponent, { key: 'scrollable-1', id: 'test-1' }),
         React.createElement(TestScrollableComponent, { key: 'scrollable-2', id: 'test-2' }),
-        React.createElement(TestControllerComponent, { key: 'controller' })
+        React.createElement(TestControllerComponent, { key: 'controller' }),
       ])
     }
 
     await renderWithProvider(React.createElement(TestComponent))
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10))
 
-    const scrollAllButton = container.querySelector('[data-testid="scroll-all-button"]') as HTMLButtonElement
+    const scrollAllButton = container.querySelector(
+      '[data-testid="scroll-all-button"]',
+    ) as HTMLButtonElement
 
     // Simulate click to scroll all elements
     flushSync(() => {
@@ -224,21 +266,31 @@ describe('ScrollContext', () => {
       }
 
       return React.createElement('div', null, [
-        React.createElement('button', {
-          key: 'register-null-btn',
-          'data-testid': 'register-null-button',
-          onClick: handleRegisterNull
-        }, 'Register Null'),
-        React.createElement('div', {
-          key: 'status',
-          'data-testid': 'null-registration-status'
-        }, isRegistered ? 'attempted' : 'not-attempted')
+        React.createElement(
+          'button',
+          {
+            key: 'register-null-btn',
+            'data-testid': 'register-null-button',
+            onClick: handleRegisterNull,
+          },
+          'Register Null',
+        ),
+        React.createElement(
+          'div',
+          {
+            key: 'status',
+            'data-testid': 'null-registration-status',
+          },
+          isRegistered ? 'attempted' : 'not-attempted',
+        ),
       ])
     }
 
     await renderWithProvider(React.createElement(TestComponent))
 
-    const registerButton = container.querySelector('[data-testid="register-null-button"]') as HTMLButtonElement
+    const registerButton = container.querySelector(
+      '[data-testid="register-null-button"]',
+    ) as HTMLButtonElement
 
     // Should not throw error when registering null element
     expect(() => {
@@ -247,8 +299,10 @@ describe('ScrollContext', () => {
       })
     }).not.toThrow()
 
-    await new Promise(resolve => setTimeout(resolve, 0))
-    expect(container.querySelector('[data-testid="null-registration-status"]')?.textContent).toBe('attempted')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(container.querySelector('[data-testid="null-registration-status"]')?.textContent).toBe(
+      'attempted',
+    )
   })
 
   it('should handle scrollToTop for non-existent element', async () => {
@@ -261,15 +315,21 @@ describe('ScrollContext', () => {
         }
       }
 
-      return React.createElement('button', {
-        'data-testid': 'scroll-nonexistent-button',
-        onClick: handleScrollNonExistent
-      }, 'Scroll Non-existent')
+      return React.createElement(
+        'button',
+        {
+          'data-testid': 'scroll-nonexistent-button',
+          onClick: handleScrollNonExistent,
+        },
+        'Scroll Non-existent',
+      )
     }
 
     await renderWithProvider(React.createElement(TestComponent))
 
-    const scrollButton = container.querySelector('[data-testid="scroll-nonexistent-button"]') as HTMLButtonElement
+    const scrollButton = container.querySelector(
+      '[data-testid="scroll-nonexistent-button"]',
+    ) as HTMLButtonElement
 
     // Should not throw error when trying to scroll non-existent element
     expect(() => {
@@ -291,14 +351,14 @@ describe('ScrollContext', () => {
       const handleRegisterElement = () => {
         if (scrollContext && elementRef.current) {
           scrollContext.registerScrollable('test-cleanup', elementRef.current)
-          setRegistrationCount(prev => prev + 1)
+          setRegistrationCount((prev) => prev + 1)
         }
       }
 
       const handleRegisterNull = () => {
         if (scrollContext) {
           scrollContext.registerScrollable('test-cleanup', null)
-          setRegistrationCount(prev => prev + 1)
+          setRegistrationCount((prev) => prev + 1)
         }
       }
 
@@ -307,35 +367,51 @@ describe('ScrollContext', () => {
           key: 'element',
           ref: elementRef,
           'data-testid': 'cleanup-element',
-          style: { height: '100px', overflow: 'auto' }
+          style: { height: '100px', overflow: 'auto' },
         }),
-        React.createElement('button', {
-          key: 'register-element-btn',
-          'data-testid': 'register-element-button',
-          onClick: handleRegisterElement
-        }, 'Register Element'),
-        React.createElement('button', {
-          key: 'register-null-btn',
-          'data-testid': 'cleanup-register-null-button',
-          onClick: handleRegisterNull
-        }, 'Register Null'),
-        React.createElement('div', {
-          key: 'count',
-          'data-testid': 'registration-count'
-        }, registrationCount.toString())
+        React.createElement(
+          'button',
+          {
+            key: 'register-element-btn',
+            'data-testid': 'register-element-button',
+            onClick: handleRegisterElement,
+          },
+          'Register Element',
+        ),
+        React.createElement(
+          'button',
+          {
+            key: 'register-null-btn',
+            'data-testid': 'cleanup-register-null-button',
+            onClick: handleRegisterNull,
+          },
+          'Register Null',
+        ),
+        React.createElement(
+          'div',
+          {
+            key: 'count',
+            'data-testid': 'registration-count',
+          },
+          registrationCount.toString(),
+        ),
       ])
     }
 
     await renderWithProvider(React.createElement(TestComponent))
 
-    const registerElementButton = container.querySelector('[data-testid="register-element-button"]') as HTMLButtonElement
-    const registerNullButton = container.querySelector('[data-testid="cleanup-register-null-button"]') as HTMLButtonElement
+    const registerElementButton = container.querySelector(
+      '[data-testid="register-element-button"]',
+    ) as HTMLButtonElement
+    const registerNullButton = container.querySelector(
+      '[data-testid="cleanup-register-null-button"]',
+    ) as HTMLButtonElement
 
     // Register element first
     flushSync(() => {
       registerElementButton.click()
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(container.querySelector('[data-testid="registration-count"]')?.textContent).toBe('1')
 
@@ -343,7 +419,7 @@ describe('ScrollContext', () => {
     flushSync(() => {
       registerNullButton.click()
     })
-    await new Promise(resolve => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(container.querySelector('[data-testid="registration-count"]')?.textContent).toBe('2')
 

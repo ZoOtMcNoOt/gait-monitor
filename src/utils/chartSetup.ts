@@ -26,7 +26,7 @@ export const registerChartComponents = () => {
       Tooltip,
       Legend,
       TimeScale,
-      LineController
+      LineController,
     )
     isRegistered = true
   }

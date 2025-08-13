@@ -24,8 +24,8 @@ describe('BufferManager', () => {
 
     it('should add multiple data points for the same device', () => {
       const dataArray = createMockGaitDataArray(5)
-      
-      dataArray.forEach(data => bufferManager.addData(data))
+
+      dataArray.forEach((data) => bufferManager.addData(data))
 
       const deviceData = bufferManager.getDeviceData('test-device-1')
       expect(deviceData).toHaveLength(5)
@@ -51,11 +51,11 @@ describe('BufferManager', () => {
       })
 
       const dataArray = createMockGaitDataArray(5)
-      dataArray.forEach(data => smallBufferManager.addData(data))
+      dataArray.forEach((data) => smallBufferManager.addData(data))
 
       const deviceData = smallBufferManager.getDeviceData('test-device-1')
       expect(deviceData).toHaveLength(3)
-      
+
       // Should contain the last 3 items (circular buffer behavior)
       expect(deviceData[0]).toEqual(dataArray[2])
       expect(deviceData[1]).toEqual(dataArray[3])
@@ -78,12 +78,12 @@ describe('BufferManager', () => {
         createMockGaitData({ timestamp: baseTimestamp + 3000 }),
       ]
 
-      dataArray.forEach(data => bufferManager.addData(data))
+      dataArray.forEach((data) => bufferManager.addData(data))
 
       const filteredData = bufferManager.getDeviceData(
         'test-device-1',
         baseTimestamp + 500,
-        baseTimestamp + 2500
+        baseTimestamp + 2500,
       )
 
       expect(filteredData).toHaveLength(2)
@@ -95,7 +95,7 @@ describe('BufferManager', () => {
   describe('getBufferStats', () => {
     it('should return correct statistics for empty buffer', () => {
       const stats = bufferManager.getBufferStats()
-      
+
       expect(stats.totalDevices).toBe(0)
       expect(stats.totalDataPoints).toBe(0)
       expect(stats.memoryUsageMB).toBe(0)
@@ -104,10 +104,10 @@ describe('BufferManager', () => {
 
     it('should return correct statistics with data', () => {
       const dataArray = createMockGaitDataArray(10)
-      dataArray.forEach(data => bufferManager.addData(data))
+      dataArray.forEach((data) => bufferManager.addData(data))
 
       const stats = bufferManager.getBufferStats()
-      
+
       expect(stats.totalDevices).toBe(1)
       expect(stats.totalDataPoints).toBe(10)
       expect(stats.memoryUsageMB).toBeGreaterThan(0)
@@ -122,12 +122,12 @@ describe('BufferManager', () => {
   describe('clear', () => {
     it('should clear all data', () => {
       const dataArray = createMockGaitDataArray(5)
-      dataArray.forEach(data => bufferManager.addData(data))
+      dataArray.forEach((data) => bufferManager.addData(data))
 
       expect(bufferManager.getTotalDevices()).toBe(1)
-      
+
       bufferManager.clear()
-      
+
       expect(bufferManager.getTotalDevices()).toBe(0)
       expect(bufferManager.getDeviceData('test-device-1')).toHaveLength(0)
     })
@@ -154,23 +154,23 @@ describe('BufferManager', () => {
         ...mockConfig.bufferConfig,
         maxDeviceBufferPoints: 1500, // Ensure we can store 1000+ points
       })
-      
+
       const startTime = performance.now()
-      
+
       // Add 1000 data points
       for (let i = 0; i < 1000; i++) {
         largeBufferManager.addData(createMockGaitData({ timestamp: Date.now() + i }))
       }
-      
+
       const endTime = performance.now()
       const duration = endTime - startTime
-      
+
       // Should complete within reasonable time (adjust threshold as needed)
       expect(duration).toBeLessThan(2000) // 2000ms threshold - more realistic for Jest CI environment
-      
+
       const stats = largeBufferManager.getBufferStats()
       expect(stats.totalDataPoints).toBe(1000)
-      
+
       // Clean up
       largeBufferManager.destroy()
     })

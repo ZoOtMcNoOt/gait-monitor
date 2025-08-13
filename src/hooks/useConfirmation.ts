@@ -1,27 +1,27 @@
 import { useState, useCallback } from 'react'
 
 export interface ConfirmationOptions {
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  type?: 'warning' | 'danger' | 'info';
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  type?: 'warning' | 'danger' | 'info'
 }
 
 export interface TypedConfirmationOptions extends ConfirmationOptions {
-  requiredPhrase: string;
+  requiredPhrase: string
 }
 
 export interface ConfirmationState extends ConfirmationOptions {
-  isOpen: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  isOpen: boolean
+  onConfirm: () => void
+  onCancel: () => void
 }
 
 export interface TypedConfirmationState extends TypedConfirmationOptions {
-  isOpen: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  isOpen: boolean
+  onConfirm: () => void
+  onCancel: () => void
 }
 
 export const useConfirmation = () => {
@@ -30,8 +30,8 @@ export const useConfirmation = () => {
     title: '',
     message: '',
     onConfirm: () => {},
-    onCancel: () => {}
-  });
+    onCancel: () => {},
+  })
 
   const [typedConfirmationState, setTypedConfirmationState] = useState<TypedConfirmationState>({
     isOpen: false,
@@ -39,54 +39,53 @@ export const useConfirmation = () => {
     message: '',
     requiredPhrase: '',
     onConfirm: () => {},
-    onCancel: () => {}
-  });
+    onCancel: () => {},
+  })
 
-  const showConfirmation = useCallback((
-    options: ConfirmationOptions
-  ): Promise<boolean> => {
+  const showConfirmation = useCallback((options: ConfirmationOptions): Promise<boolean> => {
     return new Promise((resolve) => {
       setConfirmationState({
         ...options,
         isOpen: true,
         onConfirm: () => {
-          setConfirmationState(prev => ({ ...prev, isOpen: false }));
-          resolve(true);
+          setConfirmationState((prev) => ({ ...prev, isOpen: false }))
+          resolve(true)
         },
         onCancel: () => {
-          setConfirmationState(prev => ({ ...prev, isOpen: false }));
-          resolve(false);
-        }
-      });
-    });
-  }, []);
+          setConfirmationState((prev) => ({ ...prev, isOpen: false }))
+          resolve(false)
+        },
+      })
+    })
+  }, [])
 
-  const showTypedConfirmation = useCallback((
-    options: TypedConfirmationOptions
-  ): Promise<boolean> => {
-    return new Promise((resolve) => {
-      setTypedConfirmationState({
-        ...options,
-        isOpen: true,
-        onConfirm: () => {
-          setTypedConfirmationState(prev => ({ ...prev, isOpen: false }));
-          resolve(true);
-        },
-        onCancel: () => {
-          setTypedConfirmationState(prev => ({ ...prev, isOpen: false }));
-          resolve(false);
-        }
-      });
-    });
-  }, []);
+  const showTypedConfirmation = useCallback(
+    (options: TypedConfirmationOptions): Promise<boolean> => {
+      return new Promise((resolve) => {
+        setTypedConfirmationState({
+          ...options,
+          isOpen: true,
+          onConfirm: () => {
+            setTypedConfirmationState((prev) => ({ ...prev, isOpen: false }))
+            resolve(true)
+          },
+          onCancel: () => {
+            setTypedConfirmationState((prev) => ({ ...prev, isOpen: false }))
+            resolve(false)
+          },
+        })
+      })
+    },
+    [],
+  )
 
   const closeConfirmation = useCallback(() => {
-    setConfirmationState(prev => ({ ...prev, isOpen: false }));
-  }, []);
+    setConfirmationState((prev) => ({ ...prev, isOpen: false }))
+  }, [])
 
   const closeTypedConfirmation = useCallback(() => {
-    setTypedConfirmationState(prev => ({ ...prev, isOpen: false }));
-  }, []);
+    setTypedConfirmationState((prev) => ({ ...prev, isOpen: false }))
+  }, [])
 
   return {
     confirmationState,
@@ -94,6 +93,6 @@ export const useConfirmation = () => {
     showConfirmation,
     showTypedConfirmation,
     closeConfirmation,
-    closeTypedConfirmation
-  };
-};
+    closeTypedConfirmation,
+  }
+}

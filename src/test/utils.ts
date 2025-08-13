@@ -15,9 +15,12 @@ export function createMockGaitData(overrides: Partial<GaitDataPoint> = {}): Gait
   }
 }
 
-export function createMockGaitDataArray(count: number, deviceId = 'test-device-1'): GaitDataPoint[] {
+export function createMockGaitDataArray(
+  count: number,
+  deviceId = 'test-device-1',
+): GaitDataPoint[] {
   const baseTimestamp = Date.now()
-  return Array.from({ length: count }, (_, index) => 
+  return Array.from({ length: count }, (_, index) =>
     createMockGaitData({
       device_id: deviceId,
       timestamp: baseTimestamp + index * 100, // 100ms intervals to avoid time-based cleanup
@@ -27,11 +30,13 @@ export function createMockGaitDataArray(count: number, deviceId = 'test-device-1
       X: Math.random() * 0.5,
       Y: Math.random() * 0.5,
       Z: Math.random() * 0.5,
-    })
+    }),
   )
 }
 
-export function createMockDevice(overrides: Partial<{ id: string; name: string; rssi: number }> = {}) {
+export function createMockDevice(
+  overrides: Partial<{ id: string; name: string; rssi: number }> = {},
+) {
   return {
     id: 'test-device-1',
     name: 'Test Gait Device',
@@ -57,7 +62,7 @@ export const mockConfig = {
 }
 
 // Helper to wait for async operations in tests
-export const waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+export const waitFor = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Helper to mock console methods
 export function mockConsole() {
@@ -69,15 +74,15 @@ export function mockConsole() {
     info: jest.fn(),
     debug: jest.fn(),
   }
-  
+
   beforeEach(() => {
     global.console = { ...originalConsole, ...mockConsole }
   })
-  
+
   afterEach(() => {
     global.console = originalConsole
-    Object.values(mockConsole).forEach(mock => mock.mockClear())
+    Object.values(mockConsole).forEach((mock) => mock.mockClear())
   })
-  
+
   return mockConsole
 }

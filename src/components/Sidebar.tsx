@@ -1,27 +1,26 @@
-// Sidebar Component
 import '../styles/sidebar.css'
 import { Icon } from './icons'
 
-interface Props { 
+interface Props {
   page: 'connect' | 'collect' | 'logs' | 'settings'
-  onChange: (p: 'connect' | 'collect' | 'logs' | 'settings') => void 
+  onChange: (p: 'connect' | 'collect' | 'logs' | 'settings') => void
 }
 
 const tabs = [
   { id: 'connect', label: 'Connect', icon: <Icon.Link title="Connect" />, shortcut: 'Ctrl+1' },
   { id: 'collect', label: 'Collect', icon: <Icon.Chart title="Collect" />, shortcut: 'Ctrl+2' },
   { id: 'logs', label: 'Logs', icon: <Icon.Clipboard title="Logs" />, shortcut: 'Ctrl+3' },
-  { id: 'settings', label: 'Settings', icon: <Icon.Gear title="Settings" />, shortcut: 'Ctrl+4' }
+  { id: 'settings', label: 'Settings', icon: <Icon.Gear title="Settings" />, shortcut: 'Ctrl+4' },
 ] as const
 
 export default function Sidebar({ page, onChange }: Props) {
   const handleKeyDown = (e: React.KeyboardEvent, tabId: string) => {
     // Handle Enter and Space keys for accessibility
     if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onChange(tabId as 'connect' | 'collect' | 'logs' | 'settings');
+      e.preventDefault()
+      onChange(tabId as 'connect' | 'collect' | 'logs' | 'settings')
     }
-  };
+  }
 
   return (
     <nav className="sidebar" role="navigation" aria-label="Main navigation">
@@ -39,9 +38,13 @@ export default function Sidebar({ page, onChange }: Props) {
           tabIndex={0}
           data-tab-index={index + 1}
         >
-          <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
+          <span className="tab-icon" aria-hidden="true">
+            {tab.icon}
+          </span>
           <span className="tab-label">{tab.label}</span>
-          <span className="tab-shortcut" aria-hidden="true">{tab.shortcut}</span>
+          <span className="tab-shortcut" aria-hidden="true">
+            {tab.shortcut}
+          </span>
         </button>
       ))}
     </nav>

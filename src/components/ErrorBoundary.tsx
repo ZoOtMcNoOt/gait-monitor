@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error boundary caught an error:', error, errorInfo)
-    
+
     // You could send this to an error reporting service
     // reportError(error, errorInfo)
   }
@@ -48,9 +48,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <button onClick={() => this.setState({ hasError: false, error: undefined })}>
               Try again
             </button>
-            <button onClick={() => window.location.reload()}>
-              Reload page
-            </button>
+            <button onClick={() => window.location.reload()}>Reload page</button>
           </div>
         </div>
       )

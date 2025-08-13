@@ -1,6 +1,6 @@
 /**
  * Timestamp Conversion Utilities
- * 
+ *
  * Centralizes all timestamp operations to eliminate conversion overhead
  * and provide consistent timing throughout the application.
  */
@@ -10,34 +10,34 @@
 
 export interface TimestampConfig {
   /** Base timestamp for relative time calculations (ms) */
-  baseTimestamp: number | null;
+  baseTimestamp: number | null
   /** Whether to use relative time (true) or absolute time (false) */
-  useRelativeTime: boolean;
+  useRelativeTime: boolean
   /** Cache duration for timestamp calculations (ms) */
-  cacheExpiration: number;
+  cacheExpiration: number
 }
 
 export interface CachedTimestamp {
-  absolute: number; // milliseconds since epoch
-  relative: number; // seconds since base
-  computed: number; // when this was computed
+  absolute: number // milliseconds since epoch
+  relative: number // seconds since base
+  computed: number // when this was computed
 }
 
 /**
  * High-performance timestamp manager with caching
  */
 export class TimestampManager {
-  private config: TimestampConfig;
-  private cache = new Map<number, CachedTimestamp>();
-  private static instance: TimestampManager | null = null;
+  private config: TimestampConfig
+  private cache = new Map<number, CachedTimestamp>()
+  private static instance: TimestampManager | null = null
 
   constructor(config: Partial<TimestampConfig> = {}) {
     this.config = {
       baseTimestamp: null,
       useRelativeTime: true,
       cacheExpiration: 1000, // 1 second cache
-      ...config
-    };
+      ...config,
+    }
   }
 
   /**
@@ -45,9 +45,9 @@ export class TimestampManager {
    */
   static getInstance(config?: Partial<TimestampConfig>): TimestampManager {
     if (!TimestampManager.instance) {
-      TimestampManager.instance = new TimestampManager(config);
+      TimestampManager.instance = new TimestampManager(config)
     }
-    return TimestampManager.instance;
+    return TimestampManager.instance
   }
 
   /**
@@ -56,15 +56,15 @@ export class TimestampManager {
    */
   setBaseTimestamp(timestamp: number): void {
     // Backend always provides millisecond timestamps - use directly
-    this.config.baseTimestamp = timestamp;
-    this.clearCache(); // Clear cache when base changes
+    this.config.baseTimestamp = timestamp
+    this.clearCache() // Clear cache when base changes
   }
 
   /**
    * Get current timestamp in consistent format (milliseconds)
    */
   getCurrentTimestamp(): number {
-    return Date.now();
+    return Date.now()
   }
 
   /**
@@ -76,61 +76,64 @@ export class TimestampManager {
    */
   normalizeTimestamp(backendTimestamp: number): CachedTimestamp {
     // Check cache first
-    const cached = this.cache.get(backendTimestamp);
-    if (cached && (Date.now() - cached.computed) < this.config.cacheExpiration) {
-      return cached;
+    const cached = this.cache.get(backendTimestamp)
+    if (cached && Date.now() - cached.computed < this.config.cacheExpiration) {
+      return cached
     }
 
     // Backend always provides millisecond timestamps - use directly
-    const absoluteMs = backendTimestamp;
-    
+    const absoluteMs = backendTimestamp
+
     // Calculate relative time in seconds if base is set
-    let relativeSeconds = 0;
+    let relativeSeconds = 0
     if (this.config.baseTimestamp !== null && this.config.useRelativeTime) {
-      relativeSeconds = (absoluteMs - this.config.baseTimestamp) / 1000;
+      relativeSeconds = (absoluteMs - this.config.baseTimestamp) / 1000
     }
 
     const result: CachedTimestamp = {
       absolute: absoluteMs,
       relative: relativeSeconds,
-      computed: Date.now()
-    };
-
-    // Cache the result
-    this.cache.set(backendTimestamp, result);
-    
-    // Clean up old cache entries periodically
-    if (this.cache.size > 1000) {
-      this.cleanupCache();
+      computed: Date.now(),
     }
 
-    return result;
+    // Cache the result
+    this.cache.set(backendTimestamp, result)
+
+    // Clean up old cache entries periodically
+    if (this.cache.size > 1000) {
+      this.cleanupCache()
+    }
+
+    return result
   }
 
   /**
    * Format timestamp for display
    */
-  formatTimestamp(timestamp: number, format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative'): string {
-    const normalized = this.normalizeTimestamp(timestamp);
+  formatTimestamp(
+    timestamp: number,
+    format: 'absolute' | 'relative' | 'duration' | 'full' = 'relative',
+  ): string {
+    const normalized = this.normalizeTimestamp(timestamp)
 
     switch (format) {
       case 'absolute':
-        return new Date(normalized.absolute).toLocaleTimeString();
-      
+        return new Date(normalized.absolute).toLocaleTimeString()
+
       case 'full':
-        return new Date(normalized.absolute).toLocaleString();
-      
+        return new Date(normalized.absolute).toLocaleString()
+
       case 'relative':
-        return `${normalized.relative.toFixed(2)}s`;
-      
+        return `${normalized.relative.toFixed(2)}s`
+
       case 'duration': {
-        const minutes = Math.floor(normalized.relative / 60);
-        const seconds = (normalized.relative % 60).toFixed(1);
-        return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+        const minutes = Math.floor(normalized.relative / 60)
+        const seconds = (normalized.relative % 60).toFixed(1)
+        return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`
       }
-      
+
       default:
-        return normalized.relative.toFixed(2);
+        return normalized.relative.toFixed(2)
     }
   }
 
@@ -138,33 +141,33 @@ export class TimestampManager {
    * Calculate time difference efficiently
    */
   getTimeDifference(timestamp1: number, timestamp2: number): number {
-    const ts1 = this.normalizeTimestamp(timestamp1);
-    const ts2 = this.normalizeTimestamp(timestamp2);
-    return Math.abs(ts1.absolute - ts2.absolute);
+    const ts1 = this.normalizeTimestamp(timestamp1)
+    const ts2 = this.normalizeTimestamp(timestamp2)
+    return Math.abs(ts1.absolute - ts2.absolute)
   }
 
   /**
    * Get timestamp for Chart.js (relative time in seconds)
    */
   getChartTimestamp(backendTimestamp: number): number {
-    const normalized = this.normalizeTimestamp(backendTimestamp);
-    
+    const normalized = this.normalizeTimestamp(backendTimestamp)
+
     // If no base timestamp is set, return absolute timestamp
     if (this.config.baseTimestamp === null) {
-      return normalized.absolute;
+      return normalized.absolute
     }
-    
-    return this.config.useRelativeTime ? normalized.relative : normalized.absolute;
+
+    return this.config.useRelativeTime ? normalized.relative : normalized.absolute
   }
 
   /**
    * Clean up expired cache entries
    */
   private cleanupCache(): void {
-    const now = Date.now();
+    const now = Date.now()
     for (const [key, value] of this.cache.entries()) {
       if (now - value.computed > this.config.cacheExpiration) {
-        this.cache.delete(key);
+        this.cache.delete(key)
       }
     }
   }
@@ -173,7 +176,7 @@ export class TimestampManager {
    * Clear all cached timestamps
    */
   clearCache(): void {
-    this.cache.clear();
+    this.cache.clear()
   }
 
   /**
@@ -183,8 +186,8 @@ export class TimestampManager {
     return {
       size: this.cache.size,
       baseTimestamp: this.config.baseTimestamp,
-      useRelativeTime: this.config.useRelativeTime
-    };
+      useRelativeTime: this.config.useRelativeTime,
+    }
   }
 }
 
@@ -204,7 +207,7 @@ export const timestampUtils = {
    * Convert milliseconds to seconds for Chart.js
    */
   milliToSeconds: (milliseconds: number): number => {
-    return milliseconds / 1000;
+    return milliseconds / 1000
   },
 
   /**
@@ -212,8 +215,8 @@ export const timestampUtils = {
    */
   getRelativeTime: (timestamp: number, baseTimestamp: number): number => {
     // Backend always provides milliseconds - use directly
-    return (timestamp - baseTimestamp) / 1000;
-  }
-};
+    return (timestamp - baseTimestamp) / 1000
+  },
+}
 
-export default TimestampManager;
+export default TimestampManager

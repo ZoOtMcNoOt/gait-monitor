@@ -19,44 +19,44 @@ const mockRemoveScannedDevice = jest.fn()
 
 const mockDeviceConnection = {
   scannedDevices: [
-    { 
-      id: 'device1', 
-      name: 'GaitBLE_Left', 
-      rssi: -45, 
+    {
+      id: 'device1',
+      name: 'GaitBLE_Left',
+      rssi: -45,
       connected: false,
       address_type: 'random',
       connectable: true,
       services: ['180A', '180F'],
-      manufacturer_data: ['Apple']
+      manufacturer_data: ['Apple'],
     },
-    { 
-      id: 'device2', 
-      name: 'GaitBLE_Right', 
-      rssi: -50, 
+    {
+      id: 'device2',
+      name: 'GaitBLE_Right',
+      rssi: -50,
       connected: true,
       address_type: 'public',
       connectable: true,
       services: ['180A'],
-      manufacturer_data: []
+      manufacturer_data: [],
     },
-    { 
-      id: 'device3', 
-      name: 'Unknown Device', 
-      rssi: -60, 
+    {
+      id: 'device3',
+      name: 'Unknown Device',
+      rssi: -60,
       connected: false,
       address_type: 'random',
       connectable: true,
       services: [],
-      manufacturer_data: ['Samsung']
-    }
+      manufacturer_data: ['Samsung'],
+    },
   ],
   connectedDevices: [
-    'device2' // Just IDs, not objects
+    'device2', // Just IDs, not objects
   ],
   connectionStatus: new Map([
     ['device1', 'disconnected'],
     ['device2', 'connected'],
-    ['device3', 'disconnected']
+    ['device3', 'disconnected'],
   ]),
   isScanning: false,
   isConnecting: null as string | null,
@@ -64,13 +64,13 @@ const mockDeviceConnection = {
   connectDevice: mockConnectDevice,
   disconnectDevice: mockDisconnectDevice,
   refreshConnectedDevices: mockRefreshConnectedDevices,
-  removeScannedDevice: mockRemoveScannedDevice
+  removeScannedDevice: mockRemoveScannedDevice,
 }
 
 const mockToast = {
   showSuccess: jest.fn(),
   showError: jest.fn(),
-  showInfo: jest.fn()
+  showInfo: jest.fn(),
 }
 
 const mockConfirmation = {
@@ -81,14 +81,14 @@ const mockConfirmation = {
     confirmText: 'Confirm',
     cancelText: 'Cancel',
     onConfirm: jest.fn(),
-    onCancel: jest.fn()
+    onCancel: jest.fn(),
   },
-  showConfirmation: jest.fn()
+  showConfirmation: jest.fn(),
 }
 
 const mockKeyboardShortcuts = {
   registerShortcut: jest.fn(),
-  unregisterShortcut: jest.fn()
+  unregisterShortcut: jest.fn(),
 }
 
 // Mock the useKeyboardShortcuts hook to accept a config parameter
@@ -100,7 +100,7 @@ jest.mock('../../hooks/useKeyboardShortcuts', () => ({
       })
     }
     return mockKeyboardShortcuts
-  })
+  }),
 }))
 
 describe('DeviceList', () => {
@@ -147,9 +147,10 @@ describe('DeviceList', () => {
         root.render(<DeviceList />)
       })
 
-      const scanButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Scan'))
-      
+      const scanButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Scan'),
+      )
+
       expect(scanButton).toBeInTheDocument()
     })
 
@@ -180,15 +181,16 @@ describe('DeviceList', () => {
         root.render(<DeviceList />)
       })
 
-      const hasSignalStrength = container.textContent?.includes('-45') || 
-                               container.textContent?.includes('-50') || 
-                               container.textContent?.includes('-60')
+      const hasSignalStrength =
+        container.textContent?.includes('-45') ||
+        container.textContent?.includes('-50') ||
+        container.textContent?.includes('-60')
       expect(hasSignalStrength).toBe(true)
     })
 
     it('should prioritize GaitBLE devices', () => {
       const deviceElements = container.querySelectorAll('[data-testid="device-item"]')
-      
+
       if (deviceElements.length > 0) {
         // First devices should be GaitBLE devices
         const firstDeviceText = deviceElements[0].textContent
@@ -201,8 +203,9 @@ describe('DeviceList', () => {
         root.render(<DeviceList />)
       })
 
-      const hasConnectionStatus = container.textContent?.includes('Connected') || 
-                                  container.textContent?.includes('Disconnected')
+      const hasConnectionStatus =
+        container.textContent?.includes('Connected') ||
+        container.textContent?.includes('Disconnected')
       expect(hasConnectionStatus).toBe(true)
     })
   })
@@ -215,12 +218,13 @@ describe('DeviceList', () => {
     })
 
     it('should handle device connection', () => {
-      const connectButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Connect'))
-      
+      const connectButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Connect'),
+      )
+
       if (connectButton) {
         flushSync(() => {
-          (connectButton as HTMLButtonElement).click()
+          ;(connectButton as HTMLButtonElement).click()
         })
 
         expect(mockDeviceConnection.connectDevice).toHaveBeenCalled()
@@ -228,12 +232,13 @@ describe('DeviceList', () => {
     })
 
     it('should handle device disconnection', () => {
-      const disconnectButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Disconnect'))
-      
+      const disconnectButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Disconnect'),
+      )
+
       if (disconnectButton) {
         flushSync(() => {
-          (disconnectButton as HTMLButtonElement).click()
+          ;(disconnectButton as HTMLButtonElement).click()
         })
 
         expect(mockDeviceConnection.disconnectDevice).toHaveBeenCalled()
@@ -242,19 +247,20 @@ describe('DeviceList', () => {
 
     it('should show loading state during connection', () => {
       mockDeviceConnection.isConnecting = 'device1'
-      
+
       flushSync(() => {
         root.render(<DeviceList />)
       })
 
-      const hasLoadingState = container.textContent?.includes('Connecting...') || 
-                              container.querySelector('[data-testid="loading"]') !== null
+      const hasLoadingState =
+        container.textContent?.includes('Connecting...') ||
+        container.querySelector('[data-testid="loading"]') !== null
       expect(hasLoadingState).toBe(true)
     })
 
     it('should disable buttons during connection', () => {
       mockDeviceConnection.isConnecting = 'device1'
-      
+
       flushSync(() => {
         root.render(<DeviceList />)
       })
@@ -273,12 +279,13 @@ describe('DeviceList', () => {
     })
 
     it('should trigger device scan', () => {
-      const scanButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Scan'))
-      
+      const scanButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Scan'),
+      )
+
       if (scanButton) {
         flushSync(() => {
-          (scanButton as HTMLButtonElement).click()
+          ;(scanButton as HTMLButtonElement).click()
         })
 
         expect(mockDeviceConnection.scanDevices).toHaveBeenCalled()
@@ -287,23 +294,25 @@ describe('DeviceList', () => {
 
     it('should show scanning state', () => {
       mockDeviceConnection.isScanning = true
-      
+
       flushSync(() => {
         root.render(<DeviceList />)
       })
 
-      const hasScanningState = container.textContent?.includes('Scanning') || 
-                               container.querySelector('[data-testid="scanning"]') !== null
+      const hasScanningState =
+        container.textContent?.includes('Scanning') ||
+        container.querySelector('[data-testid="scanning"]') !== null
       expect(hasScanningState).toBe(true)
     })
 
     it('should refresh connected devices', () => {
-      const refreshButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Refresh'))
-      
+      const refreshButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Refresh'),
+      )
+
       if (refreshButton) {
         flushSync(() => {
-          (refreshButton as HTMLButtonElement).click()
+          ;(refreshButton as HTMLButtonElement).click()
         })
 
         expect(mockDeviceConnection.refreshConnectedDevices).toHaveBeenCalled()
@@ -321,30 +330,32 @@ describe('DeviceList', () => {
     it('should allow device removal', async () => {
       // Mock showConfirmation to return a resolved promise (user confirms)
       mockConfirmation.showConfirmation.mockResolvedValue(true)
-      
-      const removeButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Remove') || btn.textContent?.includes('×'))
-      
+
+      const removeButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Remove') || btn.textContent?.includes('×'),
+      )
+
       if (removeButton) {
         flushSync(() => {
-          (removeButton as HTMLButtonElement).click()
+          ;(removeButton as HTMLButtonElement).click()
         })
 
         // Wait for async operations to complete
-        await new Promise(resolve => setTimeout(resolve, 0))
-        
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
         expect(mockConfirmation.showConfirmation).toHaveBeenCalled()
         expect(mockDeviceConnection.removeScannedDevice).toHaveBeenCalled()
       }
     })
 
     it('should show confirmation for device removal', () => {
-      const removeButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Remove'))
-      
+      const removeButton = Array.from(container.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Remove'),
+      )
+
       if (removeButton) {
         flushSync(() => {
-          (removeButton as HTMLButtonElement).click()
+          ;(removeButton as HTMLButtonElement).click()
         })
 
         expect(mockConfirmation.showConfirmation).toHaveBeenCalled()
@@ -360,10 +371,10 @@ describe('DeviceList', () => {
     })
 
     it('should handle pagination controls', () => {
-      const nextButton = Array.from(container.querySelectorAll('button')).find(btn => 
-        btn.textContent?.includes('Next') || btn.textContent?.includes('>')
+      const nextButton = Array.from(container.querySelectorAll('button')).find(
+        (btn) => btn.textContent?.includes('Next') || btn.textContent?.includes('>'),
       )
-      
+
       if (nextButton) {
         expect(nextButton).toBeInTheDocument()
       }
@@ -371,7 +382,7 @@ describe('DeviceList', () => {
 
     it('should allow changing devices per page', () => {
       const selectElement = container.querySelector('select[data-testid="devices-per-page"]')
-      
+
       if (selectElement) {
         expect(selectElement).toBeInTheDocument()
       }
@@ -389,16 +400,16 @@ describe('DeviceList', () => {
           address_type: 'random',
           connectable: true,
           services: [],
-          manufacturer_data: []
-        }))
+          manufacturer_data: [],
+        })),
       ]
-      
+
       flushSync(() => {
         root.render(<DeviceList />)
       })
 
-      const hasPageInfo = container.textContent?.includes('Page') || 
-                          container.textContent?.includes('of')
+      const hasPageInfo =
+        container.textContent?.includes('Page') || container.textContent?.includes('of')
       expect(hasPageInfo).toBe(true)
     })
   })
@@ -416,14 +427,14 @@ describe('DeviceList', () => {
 
     it('should handle arrow key navigation', () => {
       const firstButton = container.querySelector('button')
-      
+
       if (firstButton) {
         firstButton.focus()
-        
+
         // Simulate arrow key press
         const event = new KeyboardEvent('keydown', { key: 'ArrowDown' })
         firstButton.dispatchEvent(event)
-        
+
         // Should handle navigation
         expect(mockKeyboardShortcuts.registerShortcut).toHaveBeenCalled()
       }
@@ -442,9 +453,10 @@ describe('DeviceList', () => {
         root.render(<DeviceList />)
       })
 
-      const hasHeartbeat = container.textContent?.includes('BLE Connected') ||
-                           container.textContent?.includes('Data Live') ||
-                           container.querySelector('[data-testid="heartbeat"]') !== null
+      const hasHeartbeat =
+        container.textContent?.includes('BLE Connected') ||
+        container.textContent?.includes('Data Live') ||
+        container.querySelector('[data-testid="heartbeat"]') !== null
       expect(hasHeartbeat).toBe(true)
     })
 
@@ -453,15 +465,16 @@ describe('DeviceList', () => {
       mockDeviceConnection.connectionStatus = new Map([
         ['device1', 'disconnected'],
         ['device2', 'timeout'], // Set to timeout status
-        ['device3', 'disconnected']
+        ['device3', 'disconnected'],
       ])
-      
+
       flushSync(() => {
         root.render(<DeviceList />)
       })
 
-      const hasStaleHeartbeat = container.textContent?.includes('Data Timeout') ||
-                                container.textContent?.includes('No Data')
+      const hasStaleHeartbeat =
+        container.textContent?.includes('Data Timeout') ||
+        container.textContent?.includes('No Data')
       expect(hasStaleHeartbeat).toBe(true)
     })
   })
@@ -475,7 +488,7 @@ describe('DeviceList', () => {
 
     it('should have proper ARIA labels', () => {
       const buttons = container.querySelectorAll('button')
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button.getAttribute('aria-label') || button.textContent).toBeTruthy()
       })
     })
@@ -492,9 +505,9 @@ describe('DeviceList', () => {
 
     it('should support keyboard navigation', () => {
       const focusableElements = container.querySelectorAll(
-        'button, input, select, [tabindex]:not([tabindex="-1"])'
+        'button, input, select, [tabindex]:not([tabindex="-1"])',
       )
-      
+
       expect(focusableElements.length).toBeGreaterThan(0)
     })
   })
@@ -509,7 +522,7 @@ describe('DeviceList', () => {
         address_type: 'random',
         connectable: true,
         services: ['180A'],
-        manufacturer_data: []
+        manufacturer_data: [],
       }))
 
       mockDeviceConnection.scannedDevices = largeDeviceList
@@ -533,7 +546,7 @@ describe('DeviceList', () => {
         address_type: 'random',
         connectable: true,
         services: ['180A'],
-        manufacturer_data: []
+        manufacturer_data: [],
       }))
 
       mockDeviceConnection.scannedDevices = largeDeviceList

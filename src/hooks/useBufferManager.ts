@@ -12,7 +12,7 @@ export function useBufferManager() {
   useEffect(() => {
     if (!bufferManagerRef.current) {
       bufferManagerRef.current = new BufferManager(config.bufferConfig)
-  console.log('[Buffer] Initialized with config:', config.bufferConfig)
+      console.log('[Buffer] Initialized with config:', config.bufferConfig)
     }
 
     // Cleanup on unmount
@@ -36,12 +36,15 @@ export function useBufferManager() {
   /**
    * Get time window data for a device
    */
-  const getDeviceTimeWindow = useCallback((deviceId: string, windowSeconds?: number): GaitDataPoint[] => {
-    if (bufferManagerRef.current) {
-      return bufferManagerRef.current.getDeviceTimeWindow(deviceId, windowSeconds)
-    }
-    return []
-  }, [])
+  const getDeviceTimeWindow = useCallback(
+    (deviceId: string, windowSeconds?: number): GaitDataPoint[] => {
+      if (bufferManagerRef.current) {
+        return bufferManagerRef.current.getDeviceTimeWindow(deviceId, windowSeconds)
+      }
+      return []
+    },
+    [],
+  )
 
   /**
    * Get recent data points for a device
@@ -129,21 +132,37 @@ export function useBufferManager() {
     }
   }, [])
 
-  return useMemo(() => ({
-    addDataPoint,
-    getDeviceTimeWindow,
-    getDeviceRecent,
-    removeDevice,
-    clearAll,
-    getBufferStats,
-    getMemoryUsage,
-    performCleanup,
-    // Legacy methods for backward compatibility with tests
-    addData,
-    getDeviceData,
-    getTotalDevices,
-    clear,
-    // Expose buffer configuration for debugging
-    bufferConfig: config.bufferConfig
-  }), [addDataPoint, getDeviceTimeWindow, getDeviceRecent, removeDevice, clearAll, getBufferStats, getMemoryUsage, performCleanup, addData, getDeviceData, getTotalDevices, clear])
+  return useMemo(
+    () => ({
+      addDataPoint,
+      getDeviceTimeWindow,
+      getDeviceRecent,
+      removeDevice,
+      clearAll,
+      getBufferStats,
+      getMemoryUsage,
+      performCleanup,
+      // Legacy methods for backward compatibility with tests
+      addData,
+      getDeviceData,
+      getTotalDevices,
+      clear,
+      // Expose buffer configuration for debugging
+      bufferConfig: config.bufferConfig,
+    }),
+    [
+      addDataPoint,
+      getDeviceTimeWindow,
+      getDeviceRecent,
+      removeDevice,
+      clearAll,
+      getBufferStats,
+      getMemoryUsage,
+      performCleanup,
+      addData,
+      getDeviceData,
+      getTotalDevices,
+      clear,
+    ],
+  )
 }

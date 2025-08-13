@@ -19,44 +19,39 @@ function AppContent() {
   const [darkMode, setDarkMode] = useState(false)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
 
-  // Use declarative scroll reset when page changes
   useTabScrollReset([page])
 
-  // Create keyboard shortcuts
   const shortcuts = createCommonShortcuts(
     setPage,
     () => setDarkMode(!darkMode),
-    () => setShowKeyboardHelp(true)
-  );
+    () => setShowKeyboardHelp(true),
+  )
 
-  // Enable keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts,
-    enabled: !showKeyboardHelp // Disable when help dialog is open to avoid conflicts
-  });
+    enabled: !showKeyboardHelp, // Disable when help dialog is open to avoid conflicts
+  })
 
-  // Add keyboard navigation indicator
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Tab') {
-        document.body.setAttribute('data-keyboard-navigation', 'true');
+        document.body.setAttribute('data-keyboard-navigation', 'true')
       }
-    };
+    }
 
     const handleMouseDown = () => {
-      document.body.removeAttribute('data-keyboard-navigation');
-    };
+      document.body.removeAttribute('data-keyboard-navigation')
+    }
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleMouseDown)
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, []);
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleMouseDown)
+    }
+  }, [])
 
-  // Load dark mode setting from localStorage on app start
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode')
     if (savedDarkMode !== null) {
@@ -64,7 +59,6 @@ function AppContent() {
     }
   }, [])
 
-  // Apply dark mode class to document
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark')
@@ -81,16 +75,16 @@ function AppContent() {
 
   return (
     <div className="app">
-      {/* Skip link for keyboard navigation */}
       <Sidebar page={page} onChange={setPage} />
       <ScrollableContainer id="main-content" className="content">
         {page === 'connect' && <ConnectTab />}
         {page === 'collect' && <CollectTab onNavigateToConnect={() => setPage('connect')} />}
         {page === 'logs' && <LogsTab />}
-        {page === 'settings' && <SettingsTab darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />}
+        {page === 'settings' && (
+          <SettingsTab darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
+        )}
       </ScrollableContainer>
 
-      {/* Keyboard Help Dialog */}
       <KeyboardHelpDialog
         isOpen={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}

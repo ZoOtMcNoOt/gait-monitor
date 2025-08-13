@@ -1,8 +1,8 @@
-import { 
-  config, 
-  validateConfig, 
-  isDevelopment, 
-  isProduction, 
+import {
+  config,
+  validateConfig,
+  isDevelopment,
+  isProduction,
   isDebugEnabled,
   shouldShowDeviceDebug,
   shouldShowChartDebug,
@@ -10,7 +10,7 @@ import {
   parseNumber,
   parseString,
   loadConfig,
-  type AppConfig
+  type AppConfig,
 } from '../index'
 
 describe('Config Module', () => {
@@ -46,7 +46,7 @@ describe('Config Module', () => {
     process.env.VITE_MOCK_DEVICE_COUNT = '2'
     process.env.VITE_REACT_DEVTOOLS = 'true'
     process.env.VITE_HOT_RELOAD = 'true'
-    
+
     jest.spyOn(console, 'log').mockImplementation(() => {})
     jest.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -66,7 +66,7 @@ describe('Config Module', () => {
 
     it('should have buffer configuration', () => {
       const { bufferConfig } = config
-      
+
       expect(bufferConfig.maxChartPoints).toBeGreaterThan(0)
       expect(bufferConfig.maxDeviceBufferPoints).toBeGreaterThan(0)
       expect(bufferConfig.maxDeviceDatasets).toBeGreaterThan(0)
@@ -108,7 +108,7 @@ describe('Config Module', () => {
         bufferConfig: {
           ...config.bufferConfig,
           maxChartPoints: -1, // Invalid: negative value
-        }
+        },
       }
 
       const errors = validateConfig(invalidConfig)
@@ -256,20 +256,20 @@ describe('Config Module', () => {
       // Test each numeric field that should be > 0
       const numericFields = [
         'maxChartPoints',
-        'dataUpdateInterval', 
+        'dataUpdateInterval',
         'heartbeatTimeout',
         'dataRetentionDays',
         'autoSaveInterval',
         'maxExportSize',
         'maxConcurrentDevices',
-        'chartRenderThrottle'
+        'chartRenderThrottle',
       ] as const
 
-      numericFields.forEach(field => {
+      numericFields.forEach((field) => {
         const testConfig = { ...validConfig }
         testConfig[field] = 0
         const errors = validateConfig(testConfig)
-        expect(errors.some(error => error.includes(field))).toBe(true)
+        expect(errors.some((error) => error.includes(field))).toBe(true)
       })
     })
 
@@ -280,15 +280,15 @@ describe('Config Module', () => {
         'maxDeviceDatasets',
         'memoryThresholdMB',
         'cleanupInterval',
-        'slidingWindowSeconds'
+        'slidingWindowSeconds',
       ] as const
 
-      bufferFields.forEach(field => {
+      bufferFields.forEach((field) => {
         const testConfig = { ...validConfig }
         testConfig.bufferConfig = { ...validConfig.bufferConfig }
         testConfig.bufferConfig[field] = 0
         const errors = validateConfig(testConfig)
-        expect(errors.some(error => error.includes(`bufferConfig.${field}`))).toBe(true)
+        expect(errors.some((error) => error.includes(`bufferConfig.${field}`))).toBe(true)
       })
     })
 
@@ -306,7 +306,7 @@ describe('Config Module', () => {
       // Test valid range
       validConfig.chartSmoothing = 0.5
       errors = validateConfig(validConfig)
-      expect(errors.filter(e => e.includes('chartSmoothing'))).toHaveLength(0)
+      expect(errors.filter((e) => e.includes('chartSmoothing'))).toHaveLength(0)
     })
 
     it('should validate connectionTimeout vs heartbeatTimeout relationship', () => {
@@ -321,7 +321,7 @@ describe('Config Module', () => {
       validConfig.dataUpdateInterval = -1
       validConfig.chartSmoothing = 2
       validConfig.bufferConfig.maxChartPoints = 0
-      
+
       const errors = validateConfig(validConfig)
       expect(errors.length).toBeGreaterThanOrEqual(4)
     })

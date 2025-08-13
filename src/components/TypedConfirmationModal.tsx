@@ -3,15 +3,15 @@ import '../styles/modal.css'
 import { Icon } from './icons'
 
 interface TypedConfirmationModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  requiredPhrase: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  type?: 'warning' | 'danger' | 'info';
+  isOpen: boolean
+  title: string
+  message: string
+  requiredPhrase: string
+  confirmText?: string
+  cancelText?: string
+  onConfirm: () => void
+  onCancel: () => void
+  type?: 'warning' | 'danger' | 'info'
 }
 
 export const TypedConfirmationModal = ({
@@ -23,7 +23,7 @@ export const TypedConfirmationModal = ({
   cancelText = 'Cancel',
   onConfirm,
   onCancel,
-  type = 'danger'
+  type = 'danger',
 }: TypedConfirmationModalProps) => {
   const [inputValue, setInputValue] = useState('')
   const [showMismatchError, setShowMismatchError] = useState(false)
@@ -94,16 +94,16 @@ export const TypedConfirmationModal = ({
   const typeStyles = {
     warning: {
       icon: <Icon.Warning title="Warning" />,
-      confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+      confirmButton: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
     },
     danger: {
       icon: <Icon.Error title="Danger" />,
-      confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+      confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
     },
     info: {
       icon: <Icon.Info title="Information" />,
-      confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-    }
+      confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    },
   } as const
 
   const currentStyle = typeStyles[type]
@@ -125,17 +125,16 @@ export const TypedConfirmationModal = ({
             {title}
           </h3>
         </div>
-        
+
         <div className="confirmation-modal-body">
-          <p id="modal-description">
-            {message}
-          </p>
-          
+          <p id="modal-description">{message}</p>
+
           <div className="typed-confirmation-section">
             <p className="confirmation-instruction">
-              To confirm this action, type: <strong className="required-phrase">"{requiredPhrase}"</strong>
+              To confirm this action, type:{' '}
+              <strong className="required-phrase">"{requiredPhrase}"</strong>
             </p>
-            
+
             <div className="input-group">
               <input
                 ref={inputRef}
@@ -157,13 +156,9 @@ export const TypedConfirmationModal = ({
             </div>
           </div>
         </div>
-        
+
         <div className="confirmation-modal-footer">
-          <button
-            ref={cancelButtonRef}
-            onClick={onCancel}
-            className="btn-secondary"
-          >
+          <button ref={cancelButtonRef} onClick={onCancel} className="btn-secondary">
             {cancelText}
           </button>
           <button
