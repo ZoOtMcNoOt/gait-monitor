@@ -543,15 +543,6 @@ impl CSRFTokenState {
     }
 }
 
-// Enhanced macro to validate CSRF token for protected commands
-macro_rules! validate_csrf {
-    ($csrf_state:expr, $token:expr) => {
-        if !$csrf_state.validate_token($token).await {
-            return Err("Invalid or expired CSRF token. Please refresh and try again.".to_string());
-        }
-    };
-}
-
 // Enhanced macro to validate CSRF token AND rate limiting for file operations
 macro_rules! validate_file_operation {
     ($csrf_state:expr, $token:expr, $operation_name:expr) => {
@@ -1970,13 +1961,6 @@ struct OptimizedChartData {
     metadata: OptimizedMetadata,
 }
 
-#[derive(Serialize)]
-struct ChartDataset {
-    label: String,
-    device_id: String,
-    data_type: String,
-    data: Vec<ChartPoint>,
-}
 
 #[derive(Serialize, Clone)]
 struct ChartPoint {
