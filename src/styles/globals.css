@@ -106,7 +106,6 @@ html,
 
 .content {
   flex: 1;
-  padding: var(--spacing);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--spacing);
