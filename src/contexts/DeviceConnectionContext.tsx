@@ -13,7 +13,9 @@ interface GaitDataPayload {
   x: number
   y: number
   z: number
-  timestamp: number
+  timestamp: number          // legacy ms
+  timestamp_us?: number      // high-res absolute (microseconds)
+  monotonic_s?: number       // high-res relative seconds
   sample_rate?: number
 }
 

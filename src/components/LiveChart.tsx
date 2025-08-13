@@ -58,7 +58,9 @@ interface GaitDataPayload {
   x: number
   y: number
   z: number
-  timestamp: number
+  timestamp: number          // legacy ms timestamp
+  timestamp_us?: number      // high-res absolute microseconds
+  monotonic_s?: number       // high-res relative seconds (preferred)
   sample_rate?: number
 }
 
@@ -153,6 +155,16 @@ export default function LiveChart({ isCollecting = false }: Props) {
   }, [activeCollectingDevices, getCurrentSampleRate])
 
   const convertPayloadToGaitData = useCallback((payload: GaitDataPayload): GaitData => {
+    // Prefer provided high-res relative seconds; fallback to legacy timestamp via timestamp manager
+    let tsSeconds: number
+    if (typeof payload.monotonic_s === 'number') {
+      tsSeconds = payload.monotonic_s
+    } else if (typeof payload.timestamp_us === 'number') {
+      // convert microseconds absolute to milliseconds then let manager derive relative base
+      tsSeconds = getChartTimestamp(Math.floor(payload.timestamp_us / 1000))
+    } else {
+      tsSeconds = getChartTimestamp(payload.timestamp)
+    }
     return {
       device_id: payload.device_id,
       R1: payload.r1,
@@ -161,9 +173,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
       X: payload.x,
       Y: payload.y,
       Z: payload.z,
-      timestamp: payload.timestamp,
+      timestamp: tsSeconds, // store relative/high-res seconds for chart
     }
-  }, [])
+  }, [getChartTimestamp])
 
   const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
     // Optimize state updates by batching them - use callback form to avoid excessive re-renders
@@ -230,9 +242,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     (gaitData: GaitData) => {
       const deviceId = gaitData.device_id
 
-      const absoluteTimestampMs = gaitData.timestamp
-      const relativeSeconds = getChartTimestamp(absoluteTimestampMs)
-
+      // Buffer manager expects ms-like increasing numbers; derive from seconds
+      const syntheticMs = Math.floor(gaitData.timestamp * 1000)
       bufferManager.addDataPoint(deviceId, {
         device_id: deviceId,
         R1: gaitData.R1,
@@ -241,13 +252,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
         X: gaitData.X,
         Y: gaitData.Y,
         Z: gaitData.Z,
-        timestamp: absoluteTimestampMs,
+        timestamp: syntheticMs,
       })
 
-      const chartPoint: GaitData = {
-        ...gaitData,
-        timestamp: relativeSeconds,
-      }
+      const chartPoint: GaitData = gaitData // already in seconds
 
       if (chartRef.current) {
         updateChartForDevice(deviceId, chartPoint)
@@ -468,14 +476,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
       // Subscribe to real BLE data
       unsubscribeRef.current = subscribeToGaitData((payload: GaitDataPayload) => {
-        const gaitData = convertPayloadToGaitData(payload)
-        console.log(
-          '[LiveChart] Received BLE data:',
-          payload.device_id,
-          'at timestamp:',
-          payload.timestamp,
-        )
-        addBLEDataToChart(gaitData)
+  const gaitData = convertPayloadToGaitData(payload)
+  addBLEDataToChart(gaitData)
       })
 
       // Schedule simulation fallback (cancelled if real devices stream first)
