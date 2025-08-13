@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
@@ -67,6 +67,21 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [useDownsampling, setUseDownsampling] = useState<boolean>(true)
   const [enableAnimations] = useState<boolean>(false) // Disabled by default for performance
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false)
+  // Track chart width for adaptive decimation / thinning
+  const chartContainerRef = useRef<HTMLDivElement | null>(null)
+  const [chartWidth, setChartWidth] = useState<number>(800)
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (chartContainerRef.current) {
+        const w = chartContainerRef.current.clientWidth
+        if (w && Math.abs(w - chartWidth) > 10) setChartWidth(w)
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [chartWidth])
 
   const [deviceColors, setDeviceColors] = useState<
     Map<
@@ -295,9 +310,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   useEffect(() => {
     if (!optimizedData) return
-    const dataDuration = optimizedData.metadata.duration
     const effectiveWindow = getEffectiveTimeWindow()
-    const windowDuration = effectiveWindow.end - effectiveWindow.start
     
     setTimeRange(effectiveWindow)
     console.log(
@@ -387,7 +400,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
     const rangeStart = timeRange?.start ?? 0
     const rangeEnd = timeRange?.end ?? optimizedData.metadata.duration
-    const lowerBound = (arr: Float32Array, target: number) => {
+    const lowerBound = (arr: Float32Array, target: number) => { // tight loop binary search
       let lo = 0, hi = arr.length
       while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
       return lo
@@ -398,15 +411,25 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       return lo
     }
 
-  const datasets: any[] = []
+    // --- Precompute loop constants (perf improvement #6) ---
+    // Total series count (sum of data types per device) so we can derive a single per-series target.
+    let totalSeries = 0
+    for (const deviceData of Object.values(processedRef.current)) {
+      totalSeries += Object.keys(deviceData).length
+    }
+    if (totalSeries === 0) {
+      return { chartData: { datasets: [], totalDataPoints: 0 } }
+    }
+  const perSeriesBaseTarget = Math.max(100, Math.floor(maxDataPoints / totalSeries))
+  const pixelCap = Math.max(300, chartWidth || 800) // approximate distinguishable points per series
+
+    const datasets: any[] = []
     let totalDataPoints = 0
-    const deviceCount = Object.keys(processedRef.current).length || 1
 
     for (const [device, deviceData] of Object.entries(processedRef.current)) {
       const baseLabel = getDeviceLabel(device)
       const side = deviceSides.get(device)
       const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
-      const dataTypeCount = Object.keys(deviceData).length || 1
       for (const [dataType, arrays] of Object.entries(deviceData)) {
         const xs = arrays.xs
         const ys = arrays.ys
@@ -423,9 +446,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           const idx = startIdx + i
           tuplePoints[i] = [xs[idx], ys[idx]]
         }
-        // Lightweight pre-decimation thinning (optional) to reduce cost for huge slices
-        if (useDownsampling && sliceLen > maxDataPoints / deviceCount / dataTypeCount * 2) {
-          const target = Math.max(100, Math.floor(maxDataPoints / deviceCount / dataTypeCount))
+        // Adaptive thinning strategy (mutually aware of Chart.js decimation):
+        // If extremely large relative to pixel capacity, first stride-thin down to ~pixelCap*2 to reduce pre-decimation load.
+        if (useDownsampling && sliceLen > pixelCap * 3) {
+          const target = Math.min(perSeriesBaseTarget, pixelCap * 2)
           const stride = Math.max(1, Math.floor(sliceLen / target))
           if (stride > 1) {
             const thinned: ChartTuple[] = []
@@ -1098,7 +1122,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                               decimation: {
                                 enabled: true,
                                 algorithm: 'lttb',
-                                samples: Math.min(maxDataPoints, 5000),
+                                // Dynamic sample target based on current chart width & user cap
+                                samples: Math.min(maxDataPoints, Math.floor((chartWidth || 800) * 1.25)),
                               },
                               legend: {
                                 position: 'top',
