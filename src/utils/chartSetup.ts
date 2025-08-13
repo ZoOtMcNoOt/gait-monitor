@@ -28,7 +28,7 @@ export const registerChartComponents = () => {
       Legend,
       TimeScale,
       LineController,
-  Decimation,
+      Decimation,
     )
     isRegistered = true
   }

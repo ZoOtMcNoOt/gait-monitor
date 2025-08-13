@@ -87,13 +87,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         const w = chartContainerRef.current.clientWidth
         if (w && Math.abs(w - chartWidth) > 10) setChartWidth(w)
       }
-  const ww = window.innerWidth
-  const compact = ww < 600
-  const tabletCondensed = ww >= 600 && ww < 950
-  setIsCompact(compact)
-  setIsTabletCondensed(tabletCondensed)
-  // Auto-collapse advanced settings on compact screens / tablet condensed
-  if ((compact || tabletCondensed) && showAdvancedSettings) setShowAdvancedSettings(false)
+      const ww = window.innerWidth
+      const compact = ww < 600
+      const tabletCondensed = ww >= 600 && ww < 950
+      setIsCompact(compact)
+      setIsTabletCondensed(tabletCondensed)
+      // Auto-collapse advanced settings on compact screens / tablet condensed
+      if ((compact || tabletCondensed) && showAdvancedSettings) setShowAdvancedSettings(false)
     }
     update()
     window.addEventListener('resize', update)
@@ -318,14 +318,35 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           // Prepare colors (all devices known from metadata)
           if (allDevices.length > 0) {
             const deviceColorPalettes = generateMultiDeviceColors(allDevices)
-            const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+            const colorMap = new Map<
+              string,
+              Record<string, { primary: string; light: string; dark: string; background: string }>
+            >()
             const dataTypes = metaOnly.metadata.data_types
-            const channelMapping: Record<string, ChannelType> = { r1: 'R1', r2: 'R2', r3: 'R3', x: 'X', y: 'Y', z: 'Z', R1: 'R1', R2: 'R2', R3: 'R3', X: 'X', Y: 'Y', Z: 'Z' }
+            const channelMapping: Record<string, ChannelType> = {
+              r1: 'R1',
+              r2: 'R2',
+              r3: 'R3',
+              x: 'X',
+              y: 'Y',
+              z: 'Z',
+              R1: 'R1',
+              R2: 'R2',
+              R3: 'R3',
+              X: 'X',
+              Y: 'Y',
+              Z: 'Z',
+            }
             allDevices.forEach((device) => {
               const palette = deviceColorPalettes.get(device)!
-              const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
+              const dataTypeColors: Record<
+                string,
+                { primary: string; light: string; dark: string; background: string }
+              > = {}
               dataTypes.forEach((dt, idx) => {
-                const ch = channelMapping[dt] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
+                const ch =
+                  channelMapping[dt] ||
+                  (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
                 dataTypeColors[dt] = palette[ch]
               })
               colorMap.set(device, dataTypeColors)
@@ -376,7 +397,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   useEffect(() => {
     if (!optimizedData) return
     const effectiveWindow = getEffectiveTimeWindow()
-    
+
     setTimeRange(effectiveWindow)
     console.log(
       `Time range updated: ${effectiveWindow.start.toFixed(2)}s - ${effectiveWindow.end.toFixed(2)}s (zoom: ${zoomLevel}x)`,
@@ -464,14 +485,25 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     }
     const rangeStart = timeRange?.start ?? 0
     const rangeEnd = timeRange?.end ?? optimizedData.metadata.duration
-    const lowerBound = (arr: Float32Array, target: number) => { // tight loop binary search
-      let lo = 0, hi = arr.length
-      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+    const lowerBound = (arr: Float32Array, target: number) => {
+      // tight loop binary search
+      let lo = 0,
+        hi = arr.length
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1
+        if (arr[mid] < target) lo = mid + 1
+        else hi = mid
+      }
       return lo
     }
     const upperBound = (arr: Float32Array, target: number) => {
-      let lo = 0, hi = arr.length
-      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+      let lo = 0,
+        hi = arr.length
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1
+        if (arr[mid] <= target) lo = mid + 1
+        else hi = mid
+      }
       return lo
     }
 
@@ -484,8 +516,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     if (totalSeries === 0) {
       return { chartData: { datasets: [], totalDataPoints: 0 } }
     }
-  const perSeriesBaseTarget = Math.max(100, Math.floor(maxDataPoints / totalSeries))
-  const pixelCap = Math.max(300, chartWidth || 800) // approximate distinguishable points per series
+    const perSeriesBaseTarget = Math.max(100, Math.floor(maxDataPoints / totalSeries))
+    const pixelCap = Math.max(300, chartWidth || 800) // approximate distinguishable points per series
 
     const datasets: any[] = []
     let totalDataPoints = 0
@@ -502,7 +534,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         const endExclusive = upperBound(xs, rangeEnd)
         const sliceLen = endExclusive - startIdx
         if (sliceLen <= 0) continue
-  // (Export rows no longer accumulated each render; export builds on demand.)
+        // (Export rows no longer accumulated each render; export builds on demand.)
         // Direct allocate tuple slice (fast path). Potential future: reuse preallocated shared buffers.
         let pointCount = sliceLen
         let tuplePoints: ChartTuple[] = new Array(sliceLen)
@@ -541,8 +573,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         })
       }
     }
-  // Logging suppressed for performance
-  return { chartData: { datasets, totalDataPoints } }
+    // Logging suppressed for performance
+    return { chartData: { datasets, totalDataPoints } }
   }, [
     optimizedData,
     processedRef,
@@ -610,20 +642,31 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       const rangeStart = timeRange?.start ?? 0
       const rangeEnd = timeRange?.end ?? duration
       const lowerBound = (arr: Float32Array, target: number) => {
-        let lo = 0, hi = arr.length
-        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+        let lo = 0,
+          hi = arr.length
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1
+          if (arr[mid] < target) lo = mid + 1
+          else hi = mid
+        }
         return lo
       }
       const upperBound = (arr: Float32Array, target: number) => {
-        let lo = 0, hi = arr.length
-        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+        let lo = 0,
+          hi = arr.length
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1
+          if (arr[mid] <= target) lo = mid + 1
+          else hi = mid
+        }
         return lo
       }
-      let lines: string[] = [['Timestamp','Device','Data Type','Value','Unit'].join(',')]
+      let lines: string[] = [['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(',')]
       let rowCount = 0
       for (const [device, deviceData] of Object.entries(processedRef.current)) {
         for (const [dataType, arrays] of Object.entries(deviceData)) {
-          const xs = arrays.xs; const ys = arrays.ys
+          const xs = arrays.xs
+          const ys = arrays.ys
           if (!xs.length) continue
           const startIdx = lowerBound(xs, rangeStart)
           const endEx = upperBound(xs, rangeEnd)
@@ -640,7 +683,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         const result = await protectedOperations.copyFileToDownloads(savedPath, fileName)
         showSuccess('File Exported Successfully', `Exported ${rowCount} rows: ${result}`)
       } catch {
-        showInfo('Export Completed - Manual Copy Available', `Exported ${rowCount} rows to: ${savedPath}`)
+        showInfo(
+          'Export Completed - Manual Copy Available',
+          `Exported ${rowCount} rows to: ${savedPath}`,
+        )
       }
     } catch (err) {
       console.error('Failed to export data slice:', err)
@@ -884,14 +930,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   {optimizedData.metadata.devices.length} device
                   {optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
-                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-separator" aria-hidden="true">
+                  •
+                </span>
                 <span className="metadata-item" title="Total data points in current view">
                   <span className="metadata-icon" aria-hidden="true">
                     <Icon.Chart />
                   </span>
                   {chartData ? chartData.totalDataPoints.toLocaleString() : '0'} pts
                 </span>
-                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-separator" aria-hidden="true">
+                  •
+                </span>
                 <span className="metadata-item" title="Number of data types">
                   <span className="metadata-icon" aria-hidden="true">
                     <Icon.Gear />
@@ -900,8 +950,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 </span>
                 {fullDataLoading && (
                   <>
-                    <span className="metadata-separator" aria-hidden="true">•</span>
-                    <span className="metadata-item" title="Loading full datasets">Loading full data…</span>
+                    <span className="metadata-separator" aria-hidden="true">
+                      •
+                    </span>
+                    <span className="metadata-item" title="Loading full datasets">
+                      Loading full data…
+                    </span>
                   </>
                 )}
               </div>
@@ -910,7 +964,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         </header>
 
         <nav className="data-viewer-toolbar">
-          <div className="dv-toolbar-grid" data-condensed={isCompact || isTabletCondensed || undefined}>
+          <div
+            className="dv-toolbar-grid"
+            data-condensed={isCompact || isTabletCondensed || undefined}
+          >
             {!isCompact && (
               <div className="dv-zoom-group" aria-label="Zoom controls">
                 <div className="zoom-presets">
@@ -1323,9 +1380,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 enabled: true,
                                 algorithm: 'lttb',
                                 // Dynamic sample target based on current chart width & user cap
-                                samples: Math.min(maxDataPoints, Math.floor((chartWidth || 800) * 1.25)),
+                                samples: Math.min(
+                                  maxDataPoints,
+                                  Math.floor((chartWidth || 800) * 1.25),
+                                ),
                               },
-          legend: {
+                              legend: {
                                 position: 'top',
                                 labels: {
                                   boxWidth: 12,
@@ -1334,8 +1394,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                     size: 12,
                                   },
                                   generateLabels: function (chart: any) {
-            const baseGen = ChartJS?.defaults?.plugins?.legend?.labels?.generateLabels
-            const original = baseGen ? baseGen(chart) : []
+                                    const baseGen =
+                                      ChartJS?.defaults?.plugins?.legend?.labels?.generateLabels
+                                    const original = baseGen ? baseGen(chart) : []
                                     return original.map((item: any) => {
                                       if (item.text) {
                                         const match = item.text.match(/^Device (\w+) - (.+)$/)
@@ -1581,7 +1642,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       aria-label="Export data"
                       title="Export"
                     >
-                      <span className="mt-icon"><Icon.Export /></span>
+                      <span className="mt-icon">
+                        <Icon.Export />
+                      </span>
                       <span className="mt-label">Export</span>
                     </button>
                     <button
@@ -1590,7 +1653,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       aria-label="Toggle settings"
                       title="Settings"
                     >
-                      <span className="mt-icon"><Icon.Gear /></span>
+                      <span className="mt-icon">
+                        <Icon.Gear />
+                      </span>
                       <span className="mt-label">Settings</span>
                     </button>
                   </nav>

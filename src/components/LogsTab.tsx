@@ -292,19 +292,21 @@ function LogsTabContent() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                    <tr key={log.id}>
-                      <td className="session-name" data-label="Session Name">{log.session_name}</td>
-                      <td data-label="Subject ID">{log.subject_id}</td>
-                      <td data-label="Date & Time">{formatTimestamp(log.timestamp, 'full')}</td>
-                      <td data-label="Data Points">{log.data_points.toLocaleString()}</td>
-                      <td data-label="File Size">
+                  <tr key={log.id}>
+                    <td className="session-name" data-label="Session Name">
+                      {log.session_name}
+                    </td>
+                    <td data-label="Subject ID">{log.subject_id}</td>
+                    <td data-label="Date & Time">{formatTimestamp(log.timestamp, 'full')}</td>
+                    <td data-label="Data Points">{log.data_points.toLocaleString()}</td>
+                    <td data-label="File Size">
                       {(() => {
                         const size = fileSizeCache.get(log.file_path)
                         if (size === undefined) return '…'
                         return humanFileSize(size)
                       })()}
                     </td>
-                      <td className="notes-cell" data-label="Notes">
+                    <td className="notes-cell" data-label="Notes">
                       {log.notes ? (
                         <span title={log.notes}>
                           {log.notes.length > 30 ? `${log.notes.substring(0, 30)}...` : log.notes}
@@ -313,7 +315,7 @@ function LogsTabContent() {
                         <span className="no-notes">—</span>
                       )}
                     </td>
-                      <td className="actions-cell" data-label="Actions">
+                    <td className="actions-cell" data-label="Actions">
                       <button
                         className="btn-small btn-primary"
                         onClick={() => handleViewLog(log)}

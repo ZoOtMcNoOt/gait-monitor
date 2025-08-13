@@ -127,8 +127,13 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       </div>
     )
   }
-  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData, deviceSides } =
-    optionalCtx
+  const {
+    connectedDevices,
+    startDeviceCollection,
+    stopDeviceCollection,
+    subscribeToGaitData,
+    deviceSides,
+  } = optionalCtx
 
   useEffect(() => {
     if (isCollecting) {
@@ -450,9 +455,11 @@ ${warningText}`,
       let notes = collectedData.notes || ''
       try {
         if (deviceSides && deviceSides.size) {
-          const uniqueDeviceIds = Array.from(new Set(collectedData.dataPoints.map(d => d.device_id)))
+          const uniqueDeviceIds = Array.from(
+            new Set(collectedData.dataPoints.map((d) => d.device_id)),
+          )
           const sidePairs = uniqueDeviceIds
-            .map(id => {
+            .map((id) => {
               const side = deviceSides.get(id)
               return side ? `${id}=${side}` : null
             })

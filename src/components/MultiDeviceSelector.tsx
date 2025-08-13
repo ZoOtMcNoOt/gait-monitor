@@ -29,9 +29,9 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
     lastGaitDataTime,
     deviceSampleRates,
     connectionStatus,
-  deviceSides,
-  setDeviceSide,
-  activeCollectingDevices,
+    deviceSides,
+    setDeviceSide,
+    activeCollectingDevices,
   } = useDeviceConnection()
 
   // Derive active collecting devices (async function returns and updates state internally).

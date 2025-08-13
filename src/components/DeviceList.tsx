@@ -27,8 +27,8 @@ export default function DeviceList() {
     disconnectDevice,
     refreshConnectedDevices,
     removeScannedDevice, // Add manual device removal
-  deviceSides,
-  setDeviceSide,
+    deviceSides,
+    setDeviceSide,
   } = useDeviceConnection()
 
   const getSortedDevices = useCallback(() => {
@@ -242,7 +242,10 @@ export default function DeviceList() {
 
                 const isGaitBLE = (deviceInfo?.name || '').toLowerCase().startsWith('gaitble')
                 return (
-                  <li key={deviceId} className={`device-card connected ${isGaitBLE ? 'gaitble-device' : ''}`}>
+                  <li
+                    key={deviceId}
+                    className={`device-card connected ${isGaitBLE ? 'gaitble-device' : ''}`}
+                  >
                     <div className="device-header">
                       <div className="device-name-section">
                         <h4 className="device-name" title={deviceInfo?.name || 'Unknown Device'}>
