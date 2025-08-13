@@ -78,7 +78,6 @@
   align-items: center;
   padding: 1rem 1.5rem;
   gap: 1rem;
-  width: 100%;
 }
 
 .main-collection-area .chart-title-area {
@@ -115,9 +114,6 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-left: auto; /* push controls to right */
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 /* Chart status area */
