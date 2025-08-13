@@ -12,7 +12,6 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
-import { Icon } from './icons'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useBufferManager } from '../hooks/useBufferManager'
 import { config } from '../config'
