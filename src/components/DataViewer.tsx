@@ -884,6 +884,20 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   {optimizedData.metadata.devices.length} device
                   {optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-item" title="Total data points in current view">
+                  <span className="metadata-icon" aria-hidden="true">
+                    <Icon.Chart />
+                  </span>
+                  {chartData ? chartData.totalDataPoints.toLocaleString() : '0'} pts
+                </span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-item" title="Number of data types">
+                  <span className="metadata-icon" aria-hidden="true">
+                    <Icon.Gear />
+                  </span>
+                  {optimizedData.metadata.data_types.length} types
+                </span>
                 {fullDataLoading && (
                   <>
                     <span className="metadata-separator" aria-hidden="true">•</span>
@@ -896,59 +910,151 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         </header>
 
         <nav className="data-viewer-toolbar">
-          <div
-            className="dv-toolbar-grid"
-            data-condensed={isCompact || isTabletCondensed || undefined}
-          >
-            <div className="dv-metrics" aria-label="Session metrics">
-              <div className="metric-pill" title="Total data points">
-                <span className="metric-label">Pts</span>
-                <span className="metric-value">
-                  {chartData ? chartData.totalDataPoints.toLocaleString() : '0'}
-                </span>
-              </div>
-              <div className="metric-pill" title="Data types">
-                <span className="metric-label">Types</span>
-                <span className="metric-value">
-                  {optimizedData ? optimizedData.metadata.data_types.length : 0}
-                </span>
-              </div>
-              <div className="metric-pill hide-when-tight" title="Devices">
-                <span className="metric-label">Dev</span>
-                <span className="metric-value">
-                  {optimizedData ? optimizedData.metadata.devices.length : 0}
-                </span>
-              </div>
-              <div className="metric-pill hide-when-tight" title="Sample rate">
-                <span className="metric-label">Hz</span>
-                <span className="metric-value">
-                  {optimizedData
-                    ? (Math.round(optimizedData.metadata.sample_rate * 10) / 10).toFixed(1)
-                    : '0.0'}
-                </span>
-              </div>
-              {fullDataLoading && (
-                <div className="metric-pill loading" title="Loading remaining devices">
-                  <span className="metric-label">Loading…</span>
+          <div className="dv-toolbar-grid" data-condensed={isCompact || isTabletCondensed || undefined}>
+            {!isCompact && (
+              <div className="dv-zoom-group" aria-label="Zoom controls">
+                <div className="zoom-presets">
+                  {[
+                    { span: null, label: 'All', isAll: true },
+                    { span: 30, label: '30s' },
+                    { span: 10, label: '10s' },
+                    { span: 5, label: '5s' },
+                    { span: 2, label: '2s' },
+                  ].map((preset) => {
+                    const totalDuration = optimizedData?.metadata.duration || 30
+                    let isActive: boolean
+                    let requiredZoom: number
+                    if (preset.isAll) {
+                      isActive = Math.abs(zoomLevel - 1) < 0.1
+                      requiredZoom = 1
+                    } else if (preset.span != null) {
+                      requiredZoom = totalDuration / preset.span
+                      isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                    } else {
+                      requiredZoom = 1
+                      isActive = Math.abs(zoomLevel - 1) < 0.1
+                    }
+                    const spanValue = (preset as any).span ?? undefined
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => {
+                          if (preset.isAll) {
+                            setZoomLevel(1)
+                            setCurrentTimePosition(0)
+                          } else if (spanValue) {
+                            const newZoom = Math.min(10, Math.max(1, totalDuration / spanValue))
+                            setZoomLevel(newZoom)
+                            setCurrentTimePosition(0)
+                          }
+                        }}
+                        className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
+                        disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
+                        title={
+                          preset.isAll
+                            ? 'View all data'
+                            : spanValue
+                              ? `View ${spanValue} second window`
+                              : 'View all data'
+                        }
+                        aria-label={
+                          preset.isAll
+                            ? 'Fit all data'
+                            : spanValue
+                              ? `Set view to ${spanValue} seconds`
+                              : 'Fit all data'
+                        }
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
-            <div className="dv-actions">
-              <button
-                className="btn-action btn-fit"
-                onClick={() => {
-                  setZoomLevel(1)
-                  setCurrentTimePosition(0)
-                  setTimeRange(null)
-                }}
-                title="Fit all data to view"
-                aria-label="Fit all data"
-              >
-                <span className="btn-icon" aria-hidden="true">
-                  <Icon.Fit />
-                </span>
-                <span className="btn-label">Fit</span>
-              </button>
+                <div className="zoom-fine-controls">
+                  <button
+                    onClick={() => handleZoomChange('out')}
+                    className="btn-zoom btn-zoom-out"
+                    disabled={zoomLevel <= 1.0}
+                    title="Zoom out (-)"
+                    aria-label="Zoom out"
+                  >
+                    <span className="zoom-icon">−</span>
+                  </button>
+                  <div className="zoom-display-enhanced">
+                    <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
+                    <div className="zoom-indicator">
+                      <div
+                        className="zoom-level-bar"
+                        data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleZoomChange('in')}
+                    className="btn-zoom btn-zoom-in"
+                    disabled={zoomLevel >= 10.0}
+                    title="Zoom in (+)"
+                    aria-label="Zoom in"
+                  >
+                    <span className="zoom-icon">+</span>
+                  </button>
+                  <button
+                    onClick={() => handleZoomChange('reset')}
+                    className="btn-zoom btn-reset"
+                    title="Reset view (Fit all data)"
+                    aria-label="Reset zoom and position"
+                  >
+                    <span className="reset-icon" aria-hidden="true">
+                      <Icon.Home />
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {!isCompact && (
+              <div className="dv-time-group" aria-label="Time navigation">
+                <div className="time-navigation">
+                  <button
+                    onClick={() => {
+                      const step = (timeWindowSize / zoomLevel) * 0.1
+                      setCurrentTimePosition(Math.max(0, currentTimePosition - step))
+                    }}
+                    className="btn-time-nav"
+                    disabled={currentTimePosition <= 0}
+                    title="Jump backward"
+                  >
+                    <span aria-hidden="true">
+                      <Icon.StepBack />
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const step = (timeWindowSize / zoomLevel) * 0.1
+                      const maxPos = Math.max(
+                        0,
+                        (optimizedData?.metadata.duration || 0) - timeWindowSize / zoomLevel,
+                      )
+                      setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
+                    }}
+                    className="btn-time-nav"
+                    disabled={(() => {
+                      const maxPos = Math.max(
+                        0,
+                        (optimizedData?.metadata.duration || 0) - timeWindowSize / zoomLevel,
+                      )
+                      return currentTimePosition >= maxPos
+                    })()}
+                    title="Jump forward"
+                  >
+                    <span aria-hidden="true">
+                      <Icon.StepForward />
+                    </span>
+                  </button>
+                </div>
+                {/* time-display removed as requested */}
+              </div>
+            )}
+            <div className="dv-actions" aria-label="Viewer actions">
               {selectionBox && (
                 <button
                   className="btn-action btn-zoom-selection"
@@ -1432,179 +1538,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     </div>
 
-                    <div className="controls-row">
-                      <div className="zoom-group">
-                        <span className="control-label">
-                          <span aria-hidden="true">
-                            <Icon.Zoom />
-                          </span>{' '}
-                          Zoom
-                        </span>
-
-                        <div className="zoom-presets">
-                          {[
-                            { span: null, label: 'All', isAll: true },
-                            { span: 30, label: '30s' },
-                            { span: 10, label: '10s' },
-                            { span: 5, label: '5s' },
-                            { span: 2, label: '2s' },
-                          ].map((preset) => {
-                            const totalDuration = optimizedData?.metadata.duration || 30
-                            let isActive: boolean
-                            let requiredZoom: number
-
-                            if (preset.isAll) {
-                              // 'All' corresponds to a zoom level of 1, showing the base `timeWindowSize`
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
-                            } else if (preset.span != null) {
-                              // The required zoom to achieve the target span
-                              requiredZoom = timeWindowSize / preset.span
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
-                            } else {
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - 1) < 0.01
-                            }
-
-                            const spanValue = preset.span ?? undefined
-                            return (
-                              <button
-                                key={preset.label}
-                                onClick={() => {
-                                  if (preset.isAll) {
-                                    setZoomLevel(1)
-                                    setCurrentTimePosition(0)
-                                  } else if (spanValue) {
-                                    // Calculate zoom based on the desired span vs the base window size
-                                    const newZoom = timeWindowSize / spanValue
-                                    setZoomLevel(Math.min(10, Math.max(1, newZoom)))
-                                    setCurrentTimePosition(0)
-                                  }
-                                }}
-                                className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
-                                disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
-                                title={
-                                  preset.isAll
-                                    ? 'View all data'
-                                    : spanValue
-                                      ? `View ${spanValue} second window`
-                                      : 'View all data'
-                                }
-                                aria-label={
-                                  preset.isAll
-                                    ? 'Fit all data'
-                                    : spanValue
-                                      ? `Set view to ${spanValue} seconds`
-                                      : 'Fit all data'
-                                }
-                              >
-                                {preset.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        <div className="zoom-fine-controls">
-                          <button
-                            onClick={() => handleZoomChange('out')}
-                            className="btn-zoom btn-zoom-out"
-                            disabled={zoomLevel <= 1.0}
-                            title="Zoom out (-)"
-                            aria-label="Zoom out"
-                          >
-                            <span className="zoom-icon">−</span>
-                          </button>
-                          <div className="zoom-display-enhanced">
-                            <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
-                            <div className="zoom-indicator">
-                              <div
-                                className="zoom-level-bar"
-                                data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleZoomChange('in')}
-                            className="btn-zoom btn-zoom-in"
-                            disabled={zoomLevel >= 10.0}
-                            title="Zoom in (+)"
-                            aria-label="Zoom in"
-                          >
-                            <span className="zoom-icon">+</span>
-                          </button>
-                          <button
-                            onClick={() => handleZoomChange('reset')}
-                            className="btn-zoom btn-reset"
-                            title="Reset view (Fit all data)"
-                            aria-label="Reset zoom and position"
-                          >
-                            <span className="reset-icon" aria-hidden="true">
-                              <Icon.Home />
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="time-info-enhanced">
-                        <div className="time-navigation">
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              setCurrentTimePosition(Math.max(0, currentTimePosition - step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={currentTimePosition <= 0}
-                            title="Jump backward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepBack />
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={(() => {
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              return currentTimePosition >= maxPos
-                            })()}
-                            title="Jump forward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepForward />
-                            </span>
-                          </button>
-                        </div>
-
-                        <div className="time-display">
-                          <span className="info-label" aria-hidden="true">
-                            <Icon.Chart />
-                          </span>
-                          <span className="info-value">
-                            {(() => {
-                              const effectiveWindow = getEffectiveTimeWindow()
-                              const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                              const percentage = (
-                                (viewingDuration / optimizedData.metadata.duration) *
-                                100
-                              ).toFixed(1)
-                              return `${viewingDuration.toFixed(1)}s (${percentage}%)`
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* duplicate zoom controls row removed */}
 
                     {selectionBox && (
                       <div className="selection-info">
@@ -1621,17 +1555,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                 )}
                 {isCompact && (
                   <nav className="mobile-toolbar" aria-label="Mobile chart controls">
-                    <button
-                      className="mt-btn"
-                      onClick={() => {
-                        setZoomLevel(1); setCurrentTimePosition(0); setTimeRange(null)
-                      }}
-                      aria-label="Fit all data"
-                      title="Fit all"
-                    >
-                      <span className="mt-icon"><Icon.Fit /></span>
-                      <span className="mt-label">Fit</span>
-                    </button>
                     <button
                       className="mt-btn"
                       onClick={() => handleZoomChange('out')}
@@ -1754,176 +1677,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     </div>
 
-                    <div className="controls-row">
-                      <div className="zoom-group">
-                        <span className="control-label">
-                          <span aria-hidden="true">
-                            <Icon.Zoom />
-                          </span>{' '}
-                          Zoom
-                        </span>
-                        <div className="zoom-presets">
-                          {[
-                            { span: null, label: 'All', isAll: true },
-                            { span: 30, label: '30s' },
-                            { span: 10, label: '10s' },
-                            { span: 5, label: '5s' },
-                            { span: 2, label: '2s' },
-                          ].map((preset) => {
-                            const totalDuration = optimizedData?.metadata.duration || 30
-                            let isActive: boolean
-                            let requiredZoom: number
-                            if (preset.isAll) {
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
-                              requiredZoom = 1
-                            } else if (preset.span != null) {
-                              requiredZoom = totalDuration / preset.span
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
-                            } else {
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
-                            }
-                            const spanValue = preset.span ?? undefined
-                            return (
-                              <button
-                                key={preset.label}
-                                onClick={() => {
-                                  if (preset.isAll) {
-                                    setZoomLevel(1)
-                                    setCurrentTimePosition(0)
-                                  } else if (spanValue) {
-                                    const newZoom = Math.min(
-                                      10,
-                                      Math.max(1, totalDuration / spanValue),
-                                    )
-                                    setZoomLevel(newZoom)
-                                    setCurrentTimePosition(0)
-                                  }
-                                }}
-                                className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
-                                disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
-                                title={
-                                  preset.isAll
-                                    ? 'View all data'
-                                    : spanValue
-                                      ? `View ${spanValue} second window`
-                                      : 'View all data'
-                                }
-                                aria-label={
-                                  preset.isAll
-                                    ? 'Fit all data'
-                                    : spanValue
-                                      ? `Set view to ${spanValue} seconds`
-                                      : 'Fit all data'
-                                }
-                              >
-                                {preset.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        <div className="zoom-fine-controls">
-                          <button
-                            onClick={() => handleZoomChange('out')}
-                            className="btn-zoom btn-zoom-out"
-                            disabled={zoomLevel <= 1.0}
-                            title="Zoom out (-)"
-                            aria-label="Zoom out"
-                          >
-                            <span className="zoom-icon">−</span>
-                          </button>
-                          <div className="zoom-display-enhanced">
-                            <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
-                            <div className="zoom-indicator">
-                              <div
-                                className="zoom-level-bar"
-                                data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleZoomChange('in')}
-                            className="btn-zoom btn-zoom-in"
-                            disabled={zoomLevel >= 10.0}
-                            title="Zoom in (+)"
-                            aria-label="Zoom in"
-                          >
-                            <span className="zoom-icon">+</span>
-                          </button>
-                          <button
-                            onClick={() => handleZoomChange('reset')}
-                            className="btn-zoom btn-reset"
-                            title="Reset view (Fit all data)"
-                            aria-label="Reset zoom and position"
-                          >
-                            <span className="reset-icon" aria-hidden="true">
-                              <Icon.Home />
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="time-info-enhanced">
-                        <div className="time-navigation">
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              setCurrentTimePosition(Math.max(0, currentTimePosition - step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={currentTimePosition <= 0}
-                            title="Jump backward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepBack />
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={(() => {
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              return currentTimePosition >= maxPos
-                            })()}
-                            title="Jump forward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepForward />
-                            </span>
-                          </button>
-                        </div>
-
-                        <div className="time-display">
-                          <span className="info-label" aria-hidden="true">
-                            <Icon.Chart />
-                          </span>
-                          <span className="info-value">
-                            {(() => {
-                              const effectiveWindow = getEffectiveTimeWindow()
-                              const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                              const percentage = (
-                                (viewingDuration / optimizedData.metadata.duration) *
-                                100
-                              ).toFixed(1)
-                              return `${viewingDuration.toFixed(1)}s (${percentage}%)`
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* duplicate zoom controls row removed */}
 
                     {selectionBox && (
                       <div className="selection-info">
