@@ -96,6 +96,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
   const chartUpdateBatchRef = useRef<NodeJS.Timeout | null>(null)
   const pendingUpdatesRef = useRef<Set<string>>(new Set())
+  // Per-session time baseline so each recording starts near 0s
+  const sessionBaseRef = useRef<number | null>(null)
 
   useEffect(() => {
     return () => {
@@ -115,11 +117,13 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
   const bufferManager = useBufferManager()
 
-  const { getChartTimestamp } = useTimestampManager({
-    useRelativeTime: true,
-    autoSetBase: true,
-    cacheExpiration: 1000, // 1 second cache for high-frequency data
-  })
+  const { getChartTimestamp, clearCache, setBaseTimestamp } =
+    useTimestampManager({
+      useRelativeTime: true,
+      autoSetBase: false, // we'll manually control base per session
+      cacheExpiration: 1000,
+      useGlobalInstance: false, // isolate from other sessions
+    })
 
   // Update device colors when connected devices change
   useEffect(() => {
@@ -172,6 +176,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
       } else {
         tsSeconds = getChartTimestamp(payload.timestamp)
       }
+      // Initialize session baseline on first point of a recording
+      if (sessionBaseRef.current === null) {
+        sessionBaseRef.current = tsSeconds
+      }
+      const relativeSeconds = tsSeconds - sessionBaseRef.current
       return {
         device_id: payload.device_id,
         R1: payload.r1,
@@ -180,7 +189,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
         X: payload.x,
         Y: payload.y,
         Z: payload.z,
-        timestamp: tsSeconds, // store relative/high-res seconds for chart
+        timestamp: relativeSeconds, // session-relative seconds
       }
     },
     [getChartTimestamp],
@@ -298,7 +307,18 @@ export default function LiveChart({ isCollecting = false }: Props) {
     if (!chartRef.current) return
 
     const chart = chartRef.current
-    console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
+
+    // Log only when mode actually changes (not every point)
+    const prevModeRef = (useRef as any)._liveChartPrevMode || ((useRef as any)._liveChartPrevMode = { current: chartMode })
+    if (prevModeRef.current !== chartMode) {
+      console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
+      prevModeRef.current = chartMode
+    }
+
+    // Throttle dataset rebuild logging
+    const lastLogRef = (useRef as any)._liveChartLastBuild || ((useRef as any)._liveChartLastBuild = { current: 0 })
+    const nowTs = performance.now()
+    const shouldLogBuild = nowTs - lastLogRef.current > 2000
 
     if (allDataPoints.size === 0) {
       chart.data.datasets = []
@@ -383,9 +403,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
             : 'Sensor Values'
     }
 
-    console.log(
-      `[LiveChart] Created ${chart.data.datasets.length} datasets for ${allDataPoints.size} devices`,
-    )
+    if (shouldLogBuild) {
+      console.log(
+        `[LiveChart] Rebuilt datasets (${chart.data.datasets.length} sets, ${allDataPoints.size} devices)`,
+      )
+      lastLogRef.current = nowTs
+    }
     chart.update('none')
   }, [chartMode, allDataPoints, deviceColors])
 
@@ -490,10 +513,40 @@ export default function LiveChart({ isCollecting = false }: Props) {
     // START (rising edge)
     if (isCollecting && !prev) {
       console.log('[LiveChart] Collection START detected')
-      // Clear buffers only on true transition
+      // Reset session baseline & buffers for fresh recording
+      sessionBaseRef.current = null
       bufferManager.clearAll()
       setAllDataPoints(new Map())
-      console.log('[LiveChart] Buffers cleared for new session')
+      // Reset timestamp manager base & cache so relative time restarts at 0
+      try {
+        clearCache()
+        setBaseTimestamp(Date.now())
+        console.log('[LiveChart] Timestamp manager reset for new session')
+      } catch (e) {
+        console.warn('[LiveChart] Failed to reset timestamp manager', e)
+      }
+      console.log('[LiveChart] Buffers, baseline & timestamp base cleared for new session')
+
+      // Hard reset chart datasets & axis to eliminate residual large time range
+      if (chartRef.current) {
+        try {
+          if (chartUpdateBatchRef.current) {
+            clearTimeout(chartUpdateBatchRef.current)
+            chartUpdateBatchRef.current = null
+            pendingUpdatesRef.current.clear()
+          }
+          chartRef.current.data.datasets = []
+          const xScale = chartRef.current.options.scales?.x as any
+          if (xScale) {
+            xScale.min = 0
+            xScale.max = config.bufferConfig.slidingWindowSeconds
+          }
+          chartRef.current.update('none')
+          console.log('[LiveChart] Chart axis & datasets reset for new session')
+        } catch (e) {
+          console.warn('[LiveChart] Failed to fully reset chart on session start:', e)
+        }
+      }
 
       // Subscribe to real BLE data
       unsubscribeRef.current = subscribeToGaitData((payload: GaitDataPayload) => {
@@ -508,7 +561,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           const simStartTime = Date.now()
           simulationIntervalRef.current = setInterval(() => {
             const now = Date.now()
-            const timeSeconds = (now - simStartTime) / 1000
+            const timeSeconds = (now - simStartTime) / 1000 // session-relative
             const walkCycle = Math.sin(timeSeconds * 2 * Math.PI)
             const noise = () => (Math.random() - 0.5) * 2
             addBLEDataToChart({
@@ -519,7 +572,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
               X: walkCycle * 2 + noise(),
               Y: Math.cos(timeSeconds * 2 * Math.PI) * 1.5 + noise(),
               Z: 9.8 + walkCycle * 0.5 + noise(),
-              timestamp: now,
+              timestamp: timeSeconds, // keep seconds scale consistent
             })
           }, 10)
         }

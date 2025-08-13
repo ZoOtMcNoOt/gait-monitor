@@ -2039,6 +2039,21 @@ tbody tr:hover {
   color: var(--error-color);
 }
 
+/* Timeout (BLE connected but no recent data) */
+.device-status-viewer .status-dot.timeout {
+  color: var(--color-warning, #f59e0b);
+  animation: timeout-pulse 2s infinite;
+}
+
+@keyframes timeout-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.device-status-viewer .summary-stats .stat-number.warning {
+  color: var(--color-warning, #f59e0b);
+}
+
 .device-status-viewer .status-icon.collecting {
   animation: collecting-pulse 1.5s infinite;
 }
