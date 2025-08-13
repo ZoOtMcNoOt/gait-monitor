@@ -28,6 +28,9 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
     lastGaitDataTime,
     deviceSampleRates,
     connectionStatus,
+  deviceSides,
+  setDeviceSide,
+  activeCollectingDevices,
   } = useDeviceConnection()
 
   // Derive active collecting devices (async function returns and updates state internally).
@@ -37,46 +40,57 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
 
   const devices: DeviceStatus[] = useMemo(() => {
     const now = Date.now()
-    const GAIT_STALE_MS = 5_000 // 5s threshold for stale
+    const STALE_THRESHOLD_MS = 5000
 
     return connectedDevices.map((id) => {
       const shortId = id.slice(-6).toUpperCase()
       const lastTime = lastGaitDataTime.get(id)
       const sampleRate = deviceSampleRates.get(id)
       const status = connectionStatus.get(id)
+      const active = activeCollectingDevices.includes(id)
+      const hasData = lastTime !== undefined
+      const age = hasData ? now - (lastTime as number) : Infinity
+      const stale = active && hasData && age > STALE_THRESHOLD_MS
+      const initializing = active && !hasData
+      const isCollecting = active && hasData && !stale
 
       // RSSI from scanned devices list
       const scanInfo = scannedDevices.find((d) => d.id === id)
       const rssi = scanInfo?.rssi
-      // Convert RSSI (~ -100 to -30) to 0-100 strength
-      const signalStrength =
-        rssi !== undefined ? Math.min(100, Math.max(0, ((rssi + 100) / 70) * 100)) : undefined
+      let signalStrength: number | undefined
+      if (rssi !== undefined) {
+        const pct = Math.min(100, Math.max(0, ((rssi + 100) / 70) * 100))
+        signalStrength = Math.round(pct)
+      }
 
-      const isCollecting = sampleRate !== undefined || status === 'connected'
-      const hasData = lastTime !== undefined
-      const age = hasData ? now - lastTime! : Infinity
-      const stale = hasData ? age > GAIT_STALE_MS : false
-      const initializing = isCollecting && !hasData
+      const errorState =
+        status === 'timeout'
+          ? 'Data timeout'
+          : status === 'disconnected'
+            ? 'Disconnected'
+            : undefined
 
       return {
         id,
         name: shortId,
         isConnected: status === 'connected' || status === 'timeout',
-        isCollecting: isCollecting && !stale,
-        signalStrength: signalStrength ? Math.round(signalStrength) : undefined,
+        isCollecting,
+        signalStrength,
         lastDataTime: lastTime,
-        dataRate: sampleRate,
+        dataRate: isCollecting && sampleRate ? sampleRate : undefined,
         stale,
         initializing,
-        errorState:
-          status === 'timeout'
-            ? 'Data timeout'
-            : status === 'disconnected'
-              ? 'Disconnected'
-              : undefined,
+        errorState,
       } as DeviceStatus
     })
-  }, [connectedDevices, lastGaitDataTime, deviceSampleRates, scannedDevices, connectionStatus])
+  }, [
+    connectedDevices,
+    lastGaitDataTime,
+    deviceSampleRates,
+    scannedDevices,
+    connectionStatus,
+    activeCollectingDevices,
+  ])
 
   const collectingCount = devices.filter((d) => d.isCollecting).length
   const connectedCount = devices.filter((d) => d.isConnected).length
@@ -157,9 +171,31 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                   <div className="device-info">
                     <div className="device-name-section">
                       <span className="device-name" title={`Full ID: ${device.id}`}>
-                        {device.name}
+                        {(() => {
+                          const side = deviceSides.get(device.id)
+                          return side ? `${side}:${device.name}` : device.name
+                        })()}
                       </span>
                       <span className="device-label">Device</span>
+                      {!deviceSides.get(device.id) && (
+                        <div className="device-side-select inline">
+                          <label className="sr-only" htmlFor={`mdv-side-${device.id}`}>
+                            Set side for device {device.id}
+                          </label>
+                          <select
+                            id={`mdv-side-${device.id}`}
+                            value={deviceSides.get(device.id) || ''}
+                            onChange={(e) => {
+                              const val = e.target.value as 'L' | 'R' | ''
+                              if (val) setDeviceSide(device.id, val)
+                            }}
+                          >
+                            <option value="">Side?</option>
+                            <option value="L">Left</option>
+                            <option value="R">Right</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     <div className="device-indicators">

@@ -533,6 +533,57 @@ tbody tr:hover {
   text-overflow: ellipsis;
 }
 
+.device-side-badge {
+  display: inline-block;
+  margin-left: 0.5ch;
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+  font-size: 0.65em;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25em 0.4em;
+  border-radius: 0.4em;
+  vertical-align: middle;
+}
+
+.device-side-select { margin-top: 0.25rem; }
+.device-side-select select,
+.btn-side-select {
+  appearance: none;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border, #d1d5db);
+  background: var(--color-card-bg, #ffffff);
+  color: var(--color-text, #111827);
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  padding-right: 1.6rem; /* space for chevron */
+  min-width: 4.5rem;
+}
+.btn-side-select.btn-compact { padding: 0.3rem 0.55rem 0.3rem 0.55rem; font-size: 0.65rem; }
+.device-side-select select:hover,
+.btn-side-select:hover { background: var(--color-bg-secondary, #f3f4f6); border-color: var(--color-border-hover, #cbd5e1); }
+.device-side-select select:focus,
+.btn-side-select:focus { outline: 2px solid var(--color-primary, #3b82f6); outline-offset: 2px; }
+.device-side-select select:disabled,
+.btn-side-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-side-select::after, .device-side-select select::after { content: '\25BE'; position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%); font-size: 0.6rem; pointer-events: none; opacity: 0.7; }
+.btn-side-select:hover::after { opacity: 1; }
+.device-side-select.inline { margin-top: 0.25rem; }
+.device-actions .device-side-select.inline { margin-right: 0.5rem; }
+.dark .device-side-select select,
+.dark .btn-side-select { background: var(--color-bg-secondary, #1f2937); border-color: var(--color-border, #374151); color: var(--color-text, #f9fafb); }
+.dark .device-side-select select:hover,
+.dark .btn-side-select:hover { background: var(--color-bg, #111827); }
+.high-contrast .btn-side-select { border-width: 2px; border-color: var(--color-border, #000); box-shadow: 0 0 0 2px var(--color-bg, #fff); }
+
 .device-id {
   font-size: 0.85rem;
   font-family: 'Courier New', monospace;

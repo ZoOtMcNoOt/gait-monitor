@@ -72,6 +72,10 @@ interface DeviceConnectionState {
 
   // Event subscription for gait data
   subscribeToGaitData: (callback: (data: GaitDataPayload) => void) => () => void
+
+  // Side (Left/Right) mapping
+  deviceSides: Map<string, 'L' | 'R'>
+  setDeviceSide: (deviceId: string, side: 'L' | 'R') => void
 }
 
 const DeviceConnectionContext = createContext<DeviceConnectionState | undefined>(undefined)
@@ -83,6 +87,9 @@ export const useDeviceConnection = () => {
   }
   return context
 }
+
+// Non-throwing variant for conditional usage (e.g., isolated tests / storybook)
+export const useOptionalDeviceConnection = () => useContext(DeviceConnectionContext)
 
 interface DeviceConnectionProviderProps {
   children: ReactNode
@@ -97,6 +104,20 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
   const [connectionStatus, setConnectionStatus] = useState<Map<string, ConnectionStatus>>(new Map())
   const [lastGaitDataTime, setLastGaitDataTime] = useState<Map<string, number>>(new Map())
   const [deviceSampleRates, setDeviceSampleRates] = useState<Map<string, number>>(new Map())
+  const [deviceSides, setDeviceSides] = useState<Map<string, 'L' | 'R'>>(new Map())
+
+  // Load persisted side assignments
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('deviceSides')
+      if (raw) {
+        const entries: [string, 'L' | 'R'][] = JSON.parse(raw)
+        setDeviceSides(new Map(entries))
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   // UI State
   const [isScanning, setIsScanning] = useState(false)
@@ -225,6 +246,21 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
       })
 
       setScannedDevices(sortedDevices)
+      // Attempt side inference from device name patterns
+      setDeviceSides((prev) => {
+        const next = new Map(prev)
+        const leftRegex = /\b(left|foot\s*left|lf)\b|[-_](L)(?:\b|$)/i
+        const rightRegex = /\b(right|foot\s*right|rt)\b|[-_](R)(?:\b|$)/i
+        sortedDevices.forEach((d) => {
+          if (!d.name || next.has(d.id)) return
+          if (leftRegex.test(d.name)) {
+            next.set(d.id, 'L')
+          } else if (rightRegex.test(d.name)) {
+            next.set(d.id, 'R')
+          }
+        })
+        return next
+      })
       await refreshConnectedDevices()
     } catch (error) {
       console.error('Scan failed:', error)
@@ -571,6 +607,17 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
 
     // Event subscription
     subscribeToGaitData,
+    deviceSides,
+    setDeviceSide: (deviceId: string, side: 'L' | 'R') => {
+      setDeviceSides((prev) => {
+        const next = new Map(prev)
+        next.set(deviceId, side)
+        try {
+          localStorage.setItem('deviceSides', JSON.stringify(Array.from(next.entries())))
+        } catch {}
+        return next
+      })
+    },
   }
 
   return (

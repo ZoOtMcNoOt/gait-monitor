@@ -13,6 +13,7 @@ import {
 import { useTimestampManager } from '../hooks/useTimestampManager'
 import { useToast } from '../contexts/ToastContext'
 import { protectedOperations } from '../services/csrfProtection'
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
 // Chart.js components registration
 registerChartComponents()
@@ -73,6 +74,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     useRelativeTime: true, // Match LiveChart configuration
   })
   const { showError, showInfo, showSuccess } = useToast()
+  const { deviceSides } = useDeviceConnection()
 
   const getEffectiveTimeWindow = useCallback(() => {
     if (!optimizedData) return { start: 0, end: timeWindowSize }
@@ -431,7 +433,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
     for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
       for (const [dataType, points] of Object.entries(deviceData)) {
-        const deviceLabel = getDeviceLabel(device)
+  const baseLabel = getDeviceLabel(device)
+  const side = deviceSides.get(device)
+  const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
 
         const processedPoints = points.map((point: ChartPoint) => ({
           ...point,

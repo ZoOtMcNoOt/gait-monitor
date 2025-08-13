@@ -4,7 +4,7 @@ import LiveChart from './LiveChart'
 import DeviceStatusViewer from './MultiDeviceSelector'
 import ScrollableContainer from './ScrollableContainer'
 import ConfirmationModal from './ConfirmationModal'
-import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useOptionalDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import { usePersistentWorkflow } from '../hooks/usePersistentWorkflow'
@@ -115,8 +115,20 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
     }
   }, [])
 
+  const optionalCtx = useOptionalDeviceConnection()
+  if (!optionalCtx) {
+    return (
+      <div className="card">
+        <h2>Collection Unavailable</h2>
+        <p>
+          The DeviceConnectionProvider is not mounted. Ensure the root App component wraps this
+          component.
+        </p>
+      </div>
+    )
+  }
   const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData } =
-    useDeviceConnection()
+    optionalCtx
 
   useEffect(() => {
     if (isCollecting) {

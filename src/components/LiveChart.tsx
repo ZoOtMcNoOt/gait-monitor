@@ -70,6 +70,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const chartRef = useRef<Chart | null>(null)
   const [chartMode, setChartMode] = useState<'all' | 'resistance' | 'acceleration'>('all')
   const [announcementText, setAnnouncementText] = useState('')
+  // Using built-in Chart.js legend (no custom grouping)
 
   const [allDataPoints, setAllDataPoints] = useState<
     Map<
@@ -104,8 +105,13 @@ export default function LiveChart({ isCollecting = false }: Props) {
     }
   }, [])
 
-  const { connectedDevices, activeCollectingDevices, subscribeToGaitData, getCurrentSampleRate } =
-    useDeviceConnection()
+  const {
+    connectedDevices,
+    activeCollectingDevices,
+    subscribeToGaitData,
+    getCurrentSampleRate,
+    deviceSides,
+  } = useDeviceConnection()
 
   const bufferManager = useBufferManager()
 
@@ -300,7 +306,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
       return
     }
 
-    chart.data.datasets = []
+  chart.data.datasets = []
 
     const channelConfigs = {
       all: [
@@ -325,10 +331,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
     const channelsToShow = channelConfigs[chartMode] || channelConfigs.all
 
-    allDataPoints.forEach((deviceData, deviceId) => {
+  allDataPoints.forEach((deviceData, deviceId) => {
       if (deviceData.length === 0) return
 
-      const deviceLabel = getDeviceLabel(deviceId)
+  const baseLabel = getDeviceLabel(deviceId)
+  const side = deviceSides.get(deviceId)
+  const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
       let deviceColorPalette = deviceColors.get(deviceId)
 
       if (!deviceColorPalette) {
@@ -361,7 +369,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           borderWidth: 2,
         }
 
-        chart.data.datasets.push(dataset)
+  chart.data.datasets.push(dataset as any)
       })
     })
 
@@ -426,12 +434,22 @@ export default function LiveChart({ isCollecting = false }: Props) {
           legend: {
             display: true,
             position: 'top',
+            align: 'start',
             labels: {
               usePointStyle: true,
               pointStyle: 'line',
-              padding: 15,
-              font: {
-                size: 12,
+              padding: 12,
+              boxWidth: 42,
+              boxHeight: 8,
+              font: { size: 11, weight: 500 },
+              // Shorten labels by removing parenthetical channel type text
+              generateLabels(chart) {
+                const defaultGen = (Chart as any).defaults.plugins.legend.labels.generateLabels
+                const labels = defaultGen(chart)
+                return labels.map((l: any) => ({
+                  ...l,
+                  text: l.text.replace(/ \(Resistance\)| \(Accel\)/g, ''),
+                }))
               },
             },
           },
@@ -601,6 +619,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     },
     [getChartSummary, getLatestDataSummary],
   )
+
+  // No custom legend side-effects needed
 
   return (
     <section

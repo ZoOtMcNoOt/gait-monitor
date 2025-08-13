@@ -27,6 +27,8 @@ export default function DeviceList() {
     disconnectDevice,
     refreshConnectedDevices,
     removeScannedDevice, // Add manual device removal
+  deviceSides,
+  setDeviceSide,
   } = useDeviceConnection()
 
   const getSortedDevices = useCallback(() => {
@@ -245,6 +247,10 @@ export default function DeviceList() {
                       <div className="device-name-section">
                         <h4 className="device-name" title={deviceInfo?.name || 'Unknown Device'}>
                           {deviceInfo?.name || 'Unknown Device'}
+                          {(() => {
+                            const side = deviceSides.get(deviceId)
+                            return side ? <span className="device-side-badge">{side}</span> : null
+                          })()}
                         </h4>
                         <div className="device-id" title={deviceId}>
                           {deviceId}
@@ -295,6 +301,23 @@ export default function DeviceList() {
 
                       <div className="device-actions">
                         <div className="action-buttons">
+                          <div className="device-side-select inline">
+                            <label className="sr-only" htmlFor={`side-${deviceId}`}>
+                              Set side for device {deviceId}
+                            </label>
+                            <select
+                              id={`side-${deviceId}`}
+                              value={deviceSides.get(deviceId) || ''}
+                              onChange={(e) => {
+                                const val = e.target.value as 'L' | 'R' | ''
+                                if (val) setDeviceSide(deviceId, val)
+                              }}
+                            >
+                              <option value="">Side?</option>
+                              <option value="L">Left</option>
+                              <option value="R">Right</option>
+                            </select>
+                          </div>
                           <button
                             onClick={() => handleDisconnect(deviceId)}
                             disabled={isConnecting === deviceId}
