@@ -1005,7 +1005,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                     aria-label="Reset zoom and position"
                   >
                     <span className="reset-icon" aria-hidden="true">
-                      <Icon.Home />
+                      <Icon.Fit />
                     </span>
                   </button>
                 </div>
