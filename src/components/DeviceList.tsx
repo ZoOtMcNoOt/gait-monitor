@@ -540,7 +540,7 @@ export default function DeviceList() {
                 <button
                   onClick={() => goToPage(1)}
                   disabled={currentPage === 1}
-                  className="pagination-btn"
+                  className="pagination-btn pagination-btn-first"
                 >
                   First
                 </button>
@@ -577,6 +577,22 @@ export default function DeviceList() {
                   })}
                 </div>
 
+                {/* Compact pagination (mobile) */}
+                <div className="pagination-compact" aria-label="Select page">
+                  <label className="pagination-compact-label">
+                    <span className="visually-hidden">Page</span>
+                    <select
+                      value={currentPage}
+                      onChange={(e) => goToPage(Number(e.target.value))}
+                      aria-label={`Current page ${currentPage} of ${totalPages}`}
+                    >
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>{`${i + 1} / ${totalPages}`}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -587,7 +603,7 @@ export default function DeviceList() {
                 <button
                   onClick={() => goToPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="pagination-btn"
+                  className="pagination-btn pagination-btn-last"
                 >
                   Last
                 </button>
