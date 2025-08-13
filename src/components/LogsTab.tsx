@@ -270,12 +270,6 @@ function LogsTabContent() {
       <div className="card">
         <div className="logs-header">
           <h2>Session Logs</h2>
-          <button className="btn-secondary logs-refresh-btn" onClick={loadLogs}>
-            <span aria-hidden="true" className="btn-icon">
-              <Icon.Refresh title="Refresh" />
-            </span>{' '}
-            Refresh
-          </button>
         </div>
         {logs.length === 0 ? (
           <div className="empty-state">
@@ -298,19 +292,19 @@ function LogsTabContent() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="session-name">{log.session_name}</td>
-                    <td>{log.subject_id}</td>
-                    <td>{formatTimestamp(log.timestamp, 'full')}</td>
-                    <td>{log.data_points.toLocaleString()}</td>
-                    <td>
+                    <tr key={log.id}>
+                      <td className="session-name" data-label="Session Name">{log.session_name}</td>
+                      <td data-label="Subject ID">{log.subject_id}</td>
+                      <td data-label="Date & Time">{formatTimestamp(log.timestamp, 'full')}</td>
+                      <td data-label="Data Points">{log.data_points.toLocaleString()}</td>
+                      <td data-label="File Size">
                       {(() => {
                         const size = fileSizeCache.get(log.file_path)
                         if (size === undefined) return '…'
                         return humanFileSize(size)
                       })()}
                     </td>
-                    <td className="notes-cell">
+                      <td className="notes-cell" data-label="Notes">
                       {log.notes ? (
                         <span title={log.notes}>
                           {log.notes.length > 30 ? `${log.notes.substring(0, 30)}...` : log.notes}
@@ -319,7 +313,7 @@ function LogsTabContent() {
                         <span className="no-notes">—</span>
                       )}
                     </td>
-                    <td className="actions-cell">
+                      <td className="actions-cell" data-label="Actions">
                       <button
                         className="btn-small btn-primary"
                         onClick={() => handleViewLog(log)}
@@ -331,7 +325,7 @@ function LogsTabContent() {
                         </span>
                       </button>
                       <button
-                        className="btn-small btn-secondary"
+                        className="btn-small btn-download"
                         onClick={() => handleDownloadLog(log)}
                         title="Download CSV"
                         aria-label={`Download ${log.session_name}`}

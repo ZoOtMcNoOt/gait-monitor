@@ -62,6 +62,8 @@ html,
 /*────────────────────────────────────────────────────────
   2. Layout
 ────────────────────────────────────────────────────────*/
+/* Ensure predictable sizing across all elements */
+*, *::before, *::after { box-sizing: border-box; }
 .app {
   display: flex;
   height: 100vh;
@@ -182,6 +184,39 @@ button:active {
 
 .btn-secondary:hover {
   background: #4b5563;
+}
+
+/* Download button variant: distinct teal tone for differentiation */
+.btn-download {
+  background: #0d9488; /* teal-600 */
+  border-color: #0d9488;
+  color: #fff;
+  min-width: 120px;
+}
+
+.btn-download:hover {
+  background: #0f766e; /* teal-700 */
+  border-color: #0f766e;
+}
+
+.btn-download:focus-visible {
+  outline: 2px solid #14b8a6; /* focus accent */
+  outline-offset: 2px;
+}
+
+/* Dark mode variant for download button (use emerald tone distinct from primary) */
+.dark .btn-download {
+  background: #065f46; /* emerald-800 */
+  border-color: #065f46;
+  color: #ecfdf5;
+}
+.dark .btn-download:hover {
+  background: #047857; /* emerald-700 */
+  border-color: #047857;
+}
+.dark .btn-download:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
 }
 
 .btn-tertiary {
@@ -498,6 +533,57 @@ tbody tr:hover {
   text-overflow: ellipsis;
 }
 
+.device-side-badge {
+  display: inline-block;
+  margin-left: 0.5ch;
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+  font-size: 0.65em;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25em 0.4em;
+  border-radius: 0.4em;
+  vertical-align: middle;
+}
+
+.device-side-select { margin-top: 0.25rem; }
+.device-side-select select,
+.btn-side-select {
+  appearance: none;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border, #d1d5db);
+  background: var(--color-card-bg, #ffffff);
+  color: var(--color-text, #111827);
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  padding-right: 1.6rem; /* space for chevron */
+  min-width: 4.5rem;
+}
+.btn-side-select.btn-compact { padding: 0.3rem 0.55rem 0.3rem 0.55rem; font-size: 0.65rem; }
+.device-side-select select:hover,
+.btn-side-select:hover { background: var(--color-bg-secondary, #f3f4f6); border-color: var(--color-border-hover, #cbd5e1); }
+.device-side-select select:focus,
+.btn-side-select:focus { outline: 2px solid var(--color-primary, #3b82f6); outline-offset: 2px; }
+.device-side-select select:disabled,
+.btn-side-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-side-select::after, .device-side-select select::after { content: '\25BE'; position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%); font-size: 0.6rem; pointer-events: none; opacity: 0.7; }
+.btn-side-select:hover::after { opacity: 1; }
+.device-side-select.inline { margin-top: 0.25rem; }
+.device-actions .device-side-select.inline { margin-right: 0.5rem; }
+.dark .device-side-select select,
+.dark .btn-side-select { background: var(--color-bg-secondary, #1f2937); border-color: var(--color-border, #374151); color: var(--color-text, #f9fafb); }
+.dark .device-side-select select:hover,
+.dark .btn-side-select:hover { background: var(--color-bg, #111827); }
+.high-contrast .btn-side-select { border-width: 2px; border-color: var(--color-border, #000); box-shadow: 0 0 0 2px var(--color-bg, #fff); }
+
 .device-id {
   font-size: 0.85rem;
   font-family: 'Courier New', monospace;
@@ -530,8 +616,11 @@ tbody tr:hover {
 
 .device-info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Use minmax(0,1fr) to allow proper shrinking and prevent content overflow pushing card width */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .device-info-section,
@@ -539,6 +628,31 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0; /* allow flex children to shrink */
+}
+
+/* Keep additional info from overflowing card */
+.device-additional-info {
+  max-width: 100%;
+  /* Allow natural wrapping (no clipping) */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Improve wrapping layout inside additional info rows */
+.device-additional-info .info-row {
+  justify-content: flex-start; /* avoid large space-between gaps when wrapping */
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+.device-additional-info .info-label {
+  flex: 0 0 80px; /* fixed label column */
+  text-align: left;
+}
+.device-additional-info .info-value {
+  flex: 1 1 auto;
+  text-align: left; /* left-align multi-line content */
+  white-space: normal;
 }
 
 .info-row {
@@ -774,6 +888,20 @@ tbody tr:hover {
   margin: 0 auto; /* Center the card */
   padding: clamp(1rem, 3vw, 1.5rem);
   box-sizing: border-box;
+}
+
+/* Fluid, accessible heading scaling within device list context */
+.device-list-card h2 {
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  line-height: 1.2;
+}
+.device-list-card h3 {
+  font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+  line-height: 1.25;
+}
+.device-list-card h4 {
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  line-height: 1.3;
 }
 
 .scanning-message {
@@ -1508,6 +1636,35 @@ tbody tr:hover {
   }
 }
 
+/* Additional pagination & control responsiveness before the 480px micro layout */
+@media (max-width: 560px) {
+  .device-list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .pagination-controls label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  .pagination-navigation {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .pagination-pages {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.35rem;
+  }
+  .pagination-pages .pagination-btn {
+    flex: 0 1 2.5rem;
+  }
+  .pagination-compact { display:block; width:100%; text-align:center; }
+  .pagination-pages { display:none; }
+}
+
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
@@ -1552,6 +1709,68 @@ tbody tr:hover {
     gap: clamp(0.5rem, 1.5vw, 0.75rem);
   }
 }
+
+/* Ultra-small handset optimizations */
+@media (max-width: 400px) {
+  .action-buttons {
+    width: 100%;
+  }
+  .action-buttons .btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px; /* Ensure adequate touch target */
+  }
+  .pagination-pages .pagination-btn {
+    min-width: 2.2rem;
+  }
+  .pagination-navigation {
+    gap: 0.5rem;
+  }
+}
+
+/* Micro width refinements */
+@media (max-width: 340px) {
+  .device-list-card, .device-card { padding: 0.5rem; }
+  .device-card .device-name { font-size: 0.9rem; }
+  .device-id { font-size: 0.7rem; }
+  .data-status .data-text { font-size: 0.7rem; }
+  .action-buttons .btn { padding: 0.45rem 0.6rem; }
+  .more-actions-menu { display: block; }
+  /* Hide inline secondary buttons when More menu present */
+  .action-buttons > .btn.btn-debug,
+  .action-buttons > .btn.btn-remove { display: none; }
+}
+
+/* Ultra-narrow layout: remove 320px min constraint & allow full shrink */
+@media (max-width: 360px) {
+  .content { grid-template-columns: 1fr !important; }
+  .tab-content { padding: clamp(0.4rem, 2vw, 0.6rem); }
+  /* Allow buttons to shrink */
+  .action-buttons, .device-actions { min-width: 0; }
+  /* Only force full width for grouped action buttons; keep global buttons auto */
+  button, .btn, .btn-primary, .btn-secondary, .btn-tertiary, .btn-danger { min-width: 0 !important; width: auto; }
+  .action-buttons .btn, .device-actions .btn { width: 100%; }
+  /* Ensure flexible children can shrink */
+  .device-card, .device-list-card { overflow-wrap: anywhere; }
+  .device-actions, .action-buttons { flex-wrap: nowrap; }
+  /* Stack footer contents to avoid horizontal squeeze */
+  .device-footer { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .device-connection-status, .device-actions { width: 100%; }
+  .device-info-grid { gap: 0.5rem; }
+  /* Hide potential horizontal overflow */
+  .device-list-card, .tab-content { overflow-x: hidden; }
+  /* Hide inline secondary actions & show compact menu */
+  .action-buttons > .btn.btn-debug,
+  .action-buttons > .btn.btn-remove { display: none; }
+  .more-actions-menu { display: block; }
+}
+
+/* More actions dropdown styling */
+.more-actions-menu details { position: relative; }
+.btn.btn-more { background: #6b7280; color:#fff; }
+.btn.btn-more:hover { background:#4b5563; }
+.more-actions-dropdown { position:absolute; top:100%; right:0; z-index:10; background:var(--color-card-bg); border:1px solid var(--color-border); border-radius:6px; padding:0.5rem; display:flex; flex-direction:column; gap:0.25rem; min-width:140px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.more-actions-dropdown .btn { width:100%; min-width:0; }
 
 /*────────────────────────────────────────────────────────
   15. Collection Layout & Device Status Viewer
@@ -1737,6 +1956,40 @@ tbody tr:hover {
     0 0 0 1px rgba(16, 185, 129, 0.15);
 }
 
+/* Compact scaling when many devices */
+.device-status-viewer.compact .device-status-item { padding: 0.85rem 0.9rem; margin-bottom: 0.4rem; }
+.device-status-viewer.compact .device-name { font-size: 0.85rem; padding: 0.3rem 0.55rem; }
+.device-status-viewer.compact .status-label { font-size: 0.7rem; }
+.device-status-viewer.compact .device-label { display:none; }
+.device-status-viewer.compact .data-indicators { gap: 0.4rem; }
+.device-status-viewer.compact .rate-value { font-size: 0.7rem; }
+.device-status-viewer.compact select { font-size: 0.6rem; }
+
+/* Very compact for large fleets */
+.device-status-viewer.very-compact .device-status-item { padding: 0.6rem 0.55rem; margin-bottom: 0.35rem; }
+.device-status-viewer.very-compact .device-name { font-size: 0.75rem; padding: 0.25rem 0.45rem; }
+.device-status-viewer.very-compact .status-label { display:none; }
+.device-status-viewer.very-compact .device-indicators { gap: 0.6rem; }
+.device-status-viewer.very-compact .data-indicators { display:none; }
+.device-status-viewer.very-compact .device-side-select select { font-size: 0.55rem; padding: 0.25rem 0.4rem; }
+.device-status-viewer.very-compact .device-status-item.collecting { border-left-width: 3px; }
+.device-status-viewer.very-compact .activity-indicator { display:none; }
+
+@media (max-height: 750px) {
+  .device-status-viewer.sidebar-style { font-size: 0.9rem; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.85rem 0.9rem; }
+}
+@media (max-height: 650px) {
+  .device-status-viewer.sidebar-style { font-size: 0.85rem; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.7rem 0.75rem; }
+  .device-status-viewer.sidebar-style .status-label { font-size: 0.7rem; }
+  .device-status-viewer.sidebar-style .device-name { font-size: 0.8rem; }
+}
+@media (max-height: 550px) {
+  .device-status-viewer.sidebar-style .data-indicators, .device-status-viewer.sidebar-style .activity-indicator { display:none; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.6rem 0.65rem; }
+}
+
 .device-status-viewer .device-status-item.error {
   background: linear-gradient(to right, rgba(220, 38, 38, 0.03), var(--color-card-bg));
   border-left: 4px solid var(--error-color);
@@ -1818,6 +2071,21 @@ tbody tr:hover {
 
 .device-status-viewer .status-dot.disconnected {
   color: var(--error-color);
+}
+
+/* Timeout (BLE connected but no recent data) */
+.device-status-viewer .status-dot.timeout {
+  color: var(--color-warning, #f59e0b);
+  animation: timeout-pulse 2s infinite;
+}
+
+@keyframes timeout-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.device-status-viewer .summary-stats .stat-number.warning {
+  color: var(--color-warning, #f59e0b);
 }
 
 .device-status-viewer .status-icon.collecting {
@@ -2381,8 +2649,11 @@ tbody tr:hover {
 }
 
 .device-status-viewer .device-status-list {
-  max-height: 300px;
+  /* Fill remaining space in viewer; parent is flex column */
+  flex: 1 1 auto;
+  min-height: 0; /* allow flex child to shrink for scroll */
   overflow-y: auto;
+  max-height: none; /* remove fixed cap */
 }
 
 .device-status-viewer .device-status-item {
@@ -2689,6 +2960,18 @@ tbody tr:hover {
   padding: 0.5rem 0.25rem;
 }
 
+/* Compact pagination (desktop hidden) */
+.pagination-compact { display:none; }
+.pagination-compact select {
+  padding:0.4rem 0.6rem;
+  border:1px solid var(--border-color);
+  border-radius:4px;
+  background:white;
+  font-size:0.85rem;
+}
+
+.visually-hidden { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0 0 0 0)!important; white-space:nowrap!important; border:0!important; }
+
 /* Device Footer - for bottom positioning */
 .device-footer {
   display: flex;
@@ -2715,6 +2998,42 @@ tbody tr:hover {
 
 .device-actions {
   flex: 0 0 auto;
+}
+
+/* Default / larger screens: keep actions to the right */
+.device-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
+
+/* Medium range (retain right alignment but allow wrapping if needed) */
+@media (max-width: 767px) and (min-width: 560px) {
+  .device-actions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* Small screens (501px–559px): keep horizontal, compress spacing to avoid premature wrap */
+@media (max-width: 559px) and (min-width: 501px) {
+  .device-footer { flex-direction: row; align-items: center; }
+  .device-actions { width: auto; }
+  .action-buttons { width: auto; }
+  .device-actions .btn, .action-buttons .btn { padding: 0.45rem 0.55rem; min-width: 80px; }
+  .device-actions { gap: 0.35rem; }
+}
+
+/* Extra-small (<=500px): now stack footer contents */
+@media (max-width: 500px) {
+  .device-footer { flex-direction: column; align-items: stretch; }
+  .device-actions { width: 100%; justify-content: center; }
+  .action-buttons { width: 100%; justify-content: center; }
+}
+
+/* Tablet refinement: keep footer horizontal, push actions right without awkward wrapping */
+@media (min-width: 560px) and (max-width: 899px) {
+  .device-footer { flex-wrap: wrap; align-items: flex-start; }
+  .device-connection-status { flex: 0 0 auto; padding-bottom: 0.25rem; }
+  .device-actions { margin-left: auto; flex: 0 0 auto; justify-content: flex-end; }
+  .device-actions .action-buttons { flex-wrap: nowrap; gap: 0.5rem; }
+  /* Prevent mid-tablet wrapping caused by button min-width */
+  .device-actions .btn { min-width: 90px; }
+  /* Slightly reduce padding to keep on one line when possible */
+  .device-actions .btn { padding: 0.45rem 0.75rem; }
 }
 
 /* Update device-footer to have the border instead */
@@ -3314,4 +3633,12 @@ tbody tr:hover {
 .high-contrast .alert.info {
   background: var(--color-info) !important;
   color: var(--color-bg) !important;
+}
+
+/* Wider layouts for larger screens */
+@media (min-width: 900px) and (max-width: 1200px) {
+  .device-list-card { max-width: 960px; }
+}
+@media (min-width: 1400px) {
+  .device-list-card { max-width: 1040px; }
 }

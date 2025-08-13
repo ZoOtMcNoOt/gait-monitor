@@ -12,6 +12,11 @@
   box-sizing: border-box;
 }
 
+/* Fluid headings inside settings */
+.settings-grid h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; }
+.settings-grid h2 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); line-height: 1.2; }
+.settings-grid h3 { font-size: clamp(1rem, 1.8vw, 1.25rem); line-height: 1.25; }
+
 .setting-group {
   display: flex;
   flex-direction: column;
@@ -242,6 +247,15 @@ input:checked + .toggle-slider:before {
   }
 }
 
+/* Intermediate small breakpoint for better stacking before mobile */
+@media (max-width: 560px) {
+  .settings-grid { gap: 1.25rem; }
+  .settings-actions { flex-direction: column; align-items: stretch; }
+  .settings-actions .action-buttons { width: 100%; }
+  .settings-actions .action-buttons .btn { flex: 1; min-width: 0; }
+  .path-input { flex-direction: column; }
+}
+
 /*────────────────────────────────────────────────────────
   Dark Mode Support
 ────────────────────────────────────────────────────────*/
@@ -442,6 +456,36 @@ input:checked + .toggle-slider:before {
   .settings-actions {
     padding: clamp(0.75rem, 3vw, 1rem);
   }
+}
+
+/* Larger tablet / small desktop multi-column layout */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .settings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    max-width: 960px;
+  }
+}
+
+/* Wide desktop layout */
+@media (min-width: 1200px) {
+  .settings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    max-width: 1040px;
+  }
+}
+
+/* Ultra-wide refinement */
+@media (min-width: 1600px) {
+  .settings-grid { max-width: 1200px; }
+}
+
+/* Ultra-narrow settings adjustments */
+@media (max-width: 360px) {
+  .settings-grid { grid-template-columns: 1fr !important; }
+  .path-input { flex-direction: column; }
+  .path-input input { min-width: 0; width: 100%; }
+  .path-input button { width: 100%; min-width: 0; }
+  .settings-actions .btn, .setting-actions .btn { min-width: 0; width: 100%; }
 }
 
 /*────────────────────────────────────────────────────────

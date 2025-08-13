@@ -27,6 +27,8 @@ export default function DeviceList() {
     disconnectDevice,
     refreshConnectedDevices,
     removeScannedDevice, // Add manual device removal
+  deviceSides,
+  setDeviceSide,
   } = useDeviceConnection()
 
   const getSortedDevices = useCallback(() => {
@@ -238,12 +240,17 @@ export default function DeviceList() {
                 const deviceInfo = scannedDevices.find((d) => d.id === deviceId)
                 const status = connectionStatus.get(deviceId)
 
+                const isGaitBLE = (deviceInfo?.name || '').toLowerCase().startsWith('gaitble')
                 return (
-                  <li key={deviceId} className={`device-card connected gaitble-device`}>
+                  <li key={deviceId} className={`device-card connected ${isGaitBLE ? 'gaitble-device' : ''}`}>
                     <div className="device-header">
                       <div className="device-name-section">
                         <h4 className="device-name" title={deviceInfo?.name || 'Unknown Device'}>
                           {deviceInfo?.name || 'Unknown Device'}
+                          {(() => {
+                            const side = deviceSides.get(deviceId)
+                            return side ? <span className="device-side-badge">{side}</span> : null
+                          })()}
                         </h4>
                         <div className="device-id" title={deviceId}>
                           {deviceId}
@@ -260,12 +267,6 @@ export default function DeviceList() {
                               className={`info-value ${deviceInfo?.rssi !== undefined ? 'rssi-value' : ''}`}
                             >
                               {deviceInfo?.rssi !== undefined ? `${deviceInfo.rssi}dBm` : 'N/A'}
-                            </span>
-                          </div>
-                          <div className="info-row">
-                            <span className="info-label">Status:</span>
-                            <span className="info-value device-connectable connectable">
-                              ✓ Connected
                             </span>
                           </div>
                         </div>
@@ -300,6 +301,23 @@ export default function DeviceList() {
 
                       <div className="device-actions">
                         <div className="action-buttons">
+                          <div className="device-side-select inline">
+                            <label className="sr-only" htmlFor={`side-${deviceId}`}>
+                              Set side for device {deviceId}
+                            </label>
+                            <select
+                              id={`side-${deviceId}`}
+                              value={deviceSides.get(deviceId) || ''}
+                              onChange={(e) => {
+                                const val = e.target.value as 'L' | 'R' | ''
+                                if (val) setDeviceSide(deviceId, val)
+                              }}
+                            >
+                              <option value="">Side?</option>
+                              <option value="L">Left</option>
+                              <option value="R">Right</option>
+                            </select>
+                          </div>
                           <button
                             onClick={() => handleDisconnect(deviceId)}
                             disabled={isConnecting === deviceId}
@@ -313,13 +331,6 @@ export default function DeviceList() {
                             title="Debug: List all services on this device"
                           >
                             Debug Services
-                          </button>
-                          <button
-                            onClick={() => handleRemoveDevice(deviceId)}
-                            className="btn btn-remove"
-                            title="Remove this device from the list"
-                          >
-                            Remove
                           </button>
                         </div>
                       </div>
@@ -399,14 +410,7 @@ export default function DeviceList() {
                             {d.rssi !== undefined ? `${d.rssi}dBm` : 'N/A'}
                           </span>
                         </div>
-                        <div className="info-row">
-                          <span className="info-label">Status:</span>
-                          <span
-                            className={`info-value device-connectable ${d.connectable ? 'connectable' : 'not-connectable'}`}
-                          >
-                            {d.connectable ? '✓ Connectable' : '✗ Not Connectable'}
-                          </span>
-                        </div>
+                        {/* Status row removed per request */}
                         <div className="info-row">
                           <span className="info-label">Type:</span>
                           <span className="info-value device-type">{d.address_type}</span>
@@ -495,14 +499,6 @@ export default function DeviceList() {
                           >
                             Debug Services
                           </button>
-                          <button
-                            onClick={() => handleRemoveDevice(d.id)}
-                            className="btn btn-remove"
-                            title="Remove this device from the list"
-                            aria-label={`Remove ${d.name || 'Unknown Device'} from list`}
-                          >
-                            Remove
-                          </button>
                         </div>
                       ) : (
                         <div className="action-buttons">
@@ -540,7 +536,7 @@ export default function DeviceList() {
                 <button
                   onClick={() => goToPage(1)}
                   disabled={currentPage === 1}
-                  className="pagination-btn"
+                  className="pagination-btn pagination-btn-first"
                 >
                   First
                 </button>
@@ -577,6 +573,22 @@ export default function DeviceList() {
                   })}
                 </div>
 
+                {/* Compact pagination (mobile) */}
+                <div className="pagination-compact" aria-label="Select page">
+                  <label className="pagination-compact-label">
+                    <span className="visually-hidden">Page</span>
+                    <select
+                      value={currentPage}
+                      onChange={(e) => goToPage(Number(e.target.value))}
+                      aria-label={`Current page ${currentPage} of ${totalPages}`}
+                    >
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>{`${i + 1} / ${totalPages}`}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
                 <button
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -587,7 +599,7 @@ export default function DeviceList() {
                 <button
                   onClick={() => goToPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="pagination-btn"
+                  className="pagination-btn pagination-btn-last"
                 >
                   Last
                 </button>

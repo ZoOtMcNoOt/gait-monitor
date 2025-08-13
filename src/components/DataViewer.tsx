@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Line } from 'react-chartjs-2'
-import { Chart } from 'chart.js'
-import { registerChartComponents } from '../utils/chartSetup'
+// Lazy load heavy chart libraries (react-chartjs-2 & chart.js) after metadata fetch
+// to reduce initial bundle parse/execute time.
+// (They will be dynamically imported once we have metadata.)
+// import { Line } from 'react-chartjs-2'
+// import { Chart } from 'chart.js'
+// import { registerChartComponents } from '../utils/chartSetup'
 import { Icon } from './icons'
 import { config } from '../config'
 import {
@@ -13,9 +16,9 @@ import {
 import { useTimestampManager } from '../hooks/useTimestampManager'
 import { useToast } from '../contexts/ToastContext'
 import { protectedOperations } from '../services/csrfProtection'
+import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
-// Chart.js components registration
-registerChartComponents()
+// NOTE: Chart components now registered on-demand after dynamic import.
 
 interface DataViewerProps {
   sessionId: string
@@ -28,6 +31,8 @@ interface ChartPoint {
   y: number
 }
 
+type ChartTuple = [number, number]
+
 interface OptimizedChartData {
   datasets: Record<string, Record<string, ChartPoint[]>> // device -> dataType -> points
   metadata: {
@@ -35,22 +40,31 @@ interface OptimizedChartData {
     data_types: string[]
     sample_rate: number
     duration: number
+    device_sample_rates?: Record<string, number>
+    start_timestamp_ms?: number // absolute start (ms since epoch)
+    normalized?: boolean // true if backend sent relative timestamps
   }
 }
 
-interface FilteredDataPoint {
-  device_id: string
-  data_type: string
-  timestamp: number
-  value: number
-  unit: string
+// Preprocessed typed-array representation for efficient slicing
+interface ProcessedDatasetPointArrays {
+  xs: Float32Array // relative seconds
+  ys: Float32Array
 }
+
+type ProcessedDatasets = Record<string, Record<string, ProcessedDatasetPointArrays>>
+
+// Removed legacy FilteredDataPoint list usage (export now slices directly)
 
 export default function DataViewer({ sessionId, sessionName, onClose }: DataViewerProps) {
   const [optimizedData, setOptimizedData] = useState<OptimizedChartData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fullDataLoading, setFullDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
+
+  // Dynamically loaded chart libraries (Chart.js + react-chartjs-2 Line component)
+  const [chartLib, setChartLib] = useState<{ Line: any; Chart: any } | null>(null)
 
   const [timeWindowSize, setTimeWindowSize] = useState<number>(10) // seconds - base window size
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(0) // start position in seconds
@@ -61,6 +75,30 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [useDownsampling, setUseDownsampling] = useState<boolean>(true)
   const [enableAnimations] = useState<boolean>(false) // Disabled by default for performance
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false)
+  // Track chart width for adaptive decimation / thinning
+  const chartContainerRef = useRef<HTMLDivElement | null>(null)
+  const [chartWidth, setChartWidth] = useState<number>(800)
+  const [isCompact, setIsCompact] = useState<boolean>(false)
+  const [isTabletCondensed, setIsTabletCondensed] = useState<boolean>(false)
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (chartContainerRef.current) {
+        const w = chartContainerRef.current.clientWidth
+        if (w && Math.abs(w - chartWidth) > 10) setChartWidth(w)
+      }
+  const ww = window.innerWidth
+  const compact = ww < 600
+  const tabletCondensed = ww >= 600 && ww < 950
+  setIsCompact(compact)
+  setIsTabletCondensed(tabletCondensed)
+  // Auto-collapse advanced settings on compact screens / tablet condensed
+  if ((compact || tabletCondensed) && showAdvancedSettings) setShowAdvancedSettings(false)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [chartWidth, showAdvancedSettings])
 
   const [deviceColors, setDeviceColors] = useState<
     Map<
@@ -69,10 +107,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     >
   >(new Map())
 
+  // Ref holding preprocessed typed arrays (rebuilt when full datasets loaded)
+  const processedRef = useRef<ProcessedDatasets | null>(null)
+  // Track a simple version to know when to rebuild (use dataset object identity)
+  const processedVersionRef = useRef<number>(0)
+  // Reusable object pools per device/dataType to avoid per-render point allocations
+  // Removed object pool in favor of tuple reuse logic (future optimization placeholder)
+
   const { getChartTimestamp } = useTimestampManager({
     useRelativeTime: true, // Match LiveChart configuration
   })
   const { showError, showInfo, showSuccess } = useToast()
+  const { deviceSides } = useDeviceConnection()
 
   const getEffectiveTimeWindow = useCallback(() => {
     if (!optimizedData) return { start: 0, end: timeWindowSize }
@@ -206,108 +252,135 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setLoading(true)
       setError(null)
 
-      // Always load full data initially; apply downsampling client-side
-      console.log(`[DataViewer] Loading session data for ${sessionId}`)
-
-      // Load all data, filter client side
-      const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
+      console.log(`[DataViewer] Loading session metadata for ${sessionId}`)
+      const metaOnly: OptimizedChartData = await invoke('load_optimized_chart_data', {
         sessionId,
-        selectedDevices: [], // Load all devices (empty array = all devices)
-        selectedDataTypes: [], // Load all data types (empty array = all data types)
+        selectedDevices: [],
+        selectedDataTypes: [],
         startTime: null,
         endTime: null,
-        maxPointsPerDataset: null, // Load full data, apply downsampling in chartData memoization
+        maxPointsPerDataset: null,
+        metadata_only: true,
+        normalize_timestamps: true,
       })
-
-      setOptimizedData(data)
-
-      // Initialize window size based on data duration
-      const dataDuration = data.metadata.duration
-      if (dataDuration <= 30) {
-        // For short sessions, show all data by default
-        setTimeWindowSize(Math.ceil(dataDuration))
-      } else {
-        // For longer sessions, start with a reasonable window
-        setTimeWindowSize(Math.min(30, Math.ceil(dataDuration / 3)))
+      // Skeleton (no datasets yet)
+      setOptimizedData({ ...metaOnly, datasets: {} as any })
+      // Kick off dynamic import of chart libraries immediately after metadata is known.
+      // This allows UI (metadata header, etc.) to paint before heavy libs parse.
+      if (!chartLib) {
+        ;(async () => {
+          try {
+            const [{ Line }, chartJsModule, setup] = await Promise.all([
+              import('react-chartjs-2'),
+              import('chart.js'),
+              import('../utils/chartSetup'),
+            ])
+            setup.registerChartComponents()
+            setChartLib({ Line, Chart: chartJsModule.Chart })
+          } catch (e) {
+            console.warn('Failed to lazy-load chart libraries:', e)
+          }
+        })()
       }
+      const dataDuration = metaOnly.metadata.duration
+      const presets = [30, 10, 5, 2]
+      const baseWindow = presets.find((p) => dataDuration >= p) || dataDuration
+      setTimeWindowSize(baseWindow)
+      setLoading(false) // reveal UI quickly
+      setFullDataLoading(true)
 
-      const devices = data.metadata.devices
-      const dataTypes = data.metadata.data_types
-
-      const totalPoints = Object.values(data.datasets)
-        .flatMap((deviceData) => Object.values(deviceData))
-        .reduce((sum, points) => sum + points.length, 0)
-
-      console.log(
-        `[DataViewer] Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`,
-      )
-
-      // Generate device colors
-      if (devices.length > 0) {
-        const deviceColorPalettes = generateMultiDeviceColors(devices)
-        const colorMap = new Map<
-          string,
-          Record<string, { primary: string; light: string; dark: string; background: string }>
-        >()
-
-        devices.forEach((device) => {
-          const palette = deviceColorPalettes.get(device)!
-          const dataTypeColors: Record<
-            string,
-            { primary: string; light: string; dark: string; background: string }
-          > = {}
-
-          dataTypes.forEach((dataType, index) => {
-            const channelMapping: Record<string, ChannelType> = {
-              r1: 'R1',
-              r2: 'R2',
-              r3: 'R3',
-              x: 'X',
-              y: 'Y',
-              z: 'Z',
-              R1: 'R1',
-              R2: 'R2',
-              R3: 'R3',
-              X: 'X',
-              Y: 'Y',
-              Z: 'Z',
-            }
-
-            const channel =
-              channelMapping[dataType] ||
-              (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[index % 6]
-            dataTypeColors[dataType] = palette[channel]
+      // Progressive per-device loading: load first device immediately, queue rest
+      ;(async () => {
+        try {
+          const allDevices = metaOnly.metadata.devices
+          if (!allDevices.length) {
+            setFullDataLoading(false)
+            return
+          }
+          const remaining = [...allDevices]
+          const first = remaining.shift()!
+          console.log(`[DataViewer] Progressive load: initial device ${first}`)
+          const firstData: OptimizedChartData = await invoke('load_optimized_chart_data', {
+            sessionId,
+            selectedDevices: [first],
+            selectedDataTypes: [],
+            startTime: null,
+            endTime: null,
+            maxPointsPerDataset: null,
+            metadata_only: false,
+            normalize_timestamps: true,
           })
-
-          colorMap.set(device, dataTypeColors)
-        })
-
-        setDeviceColors(colorMap)
-        console.log('Generated device colors:', Object.fromEntries(colorMap))
-      }
+          // Merge first device datasets into existing optimizedData skeleton
+          setOptimizedData((prev) => {
+            if (!prev) return firstData
+            return { ...prev, datasets: { ...prev.datasets, ...firstData.datasets } }
+          })
+          // Prepare colors (all devices known from metadata)
+          if (allDevices.length > 0) {
+            const deviceColorPalettes = generateMultiDeviceColors(allDevices)
+            const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+            const dataTypes = metaOnly.metadata.data_types
+            const channelMapping: Record<string, ChannelType> = { r1: 'R1', r2: 'R2', r3: 'R3', x: 'X', y: 'Y', z: 'Z', R1: 'R1', R2: 'R2', R3: 'R3', X: 'X', Y: 'Y', Z: 'Z' }
+            allDevices.forEach((device) => {
+              const palette = deviceColorPalettes.get(device)!
+              const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
+              dataTypes.forEach((dt, idx) => {
+                const ch = channelMapping[dt] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
+                dataTypeColors[dt] = palette[ch]
+              })
+              colorMap.set(device, dataTypeColors)
+            })
+            setDeviceColors(colorMap)
+          }
+          // Sequentially load remaining devices without blocking UI
+          for (const dev of remaining) {
+            try {
+              const devData: OptimizedChartData = await invoke('load_optimized_chart_data', {
+                sessionId,
+                selectedDevices: [dev],
+                selectedDataTypes: [],
+                startTime: null,
+                endTime: null,
+                maxPointsPerDataset: null,
+                metadata_only: false,
+                normalize_timestamps: true,
+              })
+              setOptimizedData((prev) => {
+                if (!prev) return devData
+                // do not overwrite existing devices
+                return { ...prev, datasets: { ...prev.datasets, ...devData.datasets } }
+              })
+            } catch (e) {
+              console.warn(`[DataViewer] Failed loading device ${dev}:`, e)
+            }
+          }
+        } catch (e) {
+          console.error('Progressive load error:', e)
+          showError('Data Load Error', `Progressive load failed: ${e}`)
+        } finally {
+          setFullDataLoading(false)
+        }
+      })()
     } catch (err) {
-      console.error('Failed to load session data:', err)
+      console.error('Failed to load session metadata:', err)
       setError(err instanceof Error ? err.message : 'Failed to load session data')
       showError('Data Load Error', `Failed to load session data: ${err}`)
-    } finally {
       setLoading(false)
     }
-  }, [sessionId, showError]) // Only essential dependencies to prevent unnecessary reloads
+  }, [sessionId, showError, chartLib])
 
   useEffect(() => {
     loadSessionData()
   }, [loadSessionData])
 
   useEffect(() => {
-    if (optimizedData && (zoomLevel !== 1 || currentTimePosition !== 0)) {
-      const effectiveWindow = getEffectiveTimeWindow()
-      setTimeRange(effectiveWindow)
-      console.log(
-        `Time range updated: ${effectiveWindow.start.toFixed(2)}s - ${effectiveWindow.end.toFixed(2)}s (zoom: ${zoomLevel}x)`,
-      )
-    } else if (zoomLevel === 1 && currentTimePosition === 0) {
-      setTimeRange(null) // Show all data when not zoomed
-    }
+    if (!optimizedData) return
+    const effectiveWindow = getEffectiveTimeWindow()
+    
+    setTimeRange(effectiveWindow)
+    console.log(
+      `Time range updated: ${effectiveWindow.start.toFixed(2)}s - ${effectiveWindow.end.toFixed(2)}s (zoom: ${zoomLevel}x)`,
+    )
   }, [zoomLevel, currentTimePosition, optimizedData, getEffectiveTimeWindow])
 
   useEffect(() => {
@@ -340,23 +413,22 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   useEffect(() => {
     return () => {
-      // Clean up any chart instances when component unmounts
+      // Clean up any chart instances when component unmounts (after dynamic load).
       try {
+        if (!chartLib) return
         const container = document.getElementById('data-viewer-chart')
         if (container) {
           const canvases = container.querySelectorAll('canvas')
           canvases.forEach((canvas) => {
-            const chart = Chart.getChart(canvas)
-            if (chart) {
-              chart.destroy()
-            }
+            const chart = chartLib.Chart.getChart(canvas as HTMLCanvasElement)
+            if (chart) chart.destroy()
           })
         }
       } catch (error) {
         console.warn('Error cleaning up DataViewer charts:', error)
       }
     }
-  }, [])
+  }, [chartLib])
 
   const getDeviceColor = useCallback(
     (device: string, dataType: string, alpha: number = 1): string => {
@@ -385,140 +457,144 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     [deviceColors],
   )
 
-  const filteredData = useMemo((): FilteredDataPoint[] => {
-    if (!optimizedData) return []
-
-    const filtered: FilteredDataPoint[] = []
-
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      for (const [dataType, points] of Object.entries(deviceData)) {
-        for (const point of points) {
-          const convertedTimestamp = getChartTimestamp(point.x)
-          const timeMatch =
-            !timeRange ||
-            (convertedTimestamp >= timeRange.start && convertedTimestamp <= timeRange.end)
-
-          if (timeMatch) {
-            filtered.push({
-              device_id: device,
-              data_type: dataType,
-              timestamp: convertedTimestamp,
-              value: point.y,
-              unit: '',
-            })
-          }
-        }
-      }
+  // Unified computation for chartData (single traversal & slicing)
+  const unifiedView = useMemo(() => {
+    if (!optimizedData || !processedRef.current || deviceColors.size === 0) {
+      return { chartData: null as any }
     }
-    if (timeRange) {
-      console.log(
-        `[Filter] Time filtering: range=[${timeRange.start.toFixed(2)}s, ${timeRange.end.toFixed(2)}s], filtered=${filtered.length} points`,
-      )
-    } else {
-      console.log(`[Filter] No time filtering: showing all ${filtered.length} points`)
+    const rangeStart = timeRange?.start ?? 0
+    const rangeEnd = timeRange?.end ?? optimizedData.metadata.duration
+    const lowerBound = (arr: Float32Array, target: number) => { // tight loop binary search
+      let lo = 0, hi = arr.length
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+      return lo
+    }
+    const upperBound = (arr: Float32Array, target: number) => {
+      let lo = 0, hi = arr.length
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+      return lo
     }
 
-    return filtered
-  }, [optimizedData, timeRange, getChartTimestamp])
+    // --- Precompute loop constants (perf improvement #6) ---
+    // Total series count (sum of data types per device) so we can derive a single per-series target.
+    let totalSeries = 0
+    for (const deviceData of Object.values(processedRef.current)) {
+      totalSeries += Object.keys(deviceData).length
+    }
+    if (totalSeries === 0) {
+      return { chartData: { datasets: [], totalDataPoints: 0 } }
+    }
+  const perSeriesBaseTarget = Math.max(100, Math.floor(maxDataPoints / totalSeries))
+  const pixelCap = Math.max(300, chartWidth || 800) // approximate distinguishable points per series
 
-  const chartData = useMemo(() => {
-    console.log('[Chart] Data recalculation triggered')
-
-    if (!optimizedData || deviceColors.size === 0) return null
-
-    const datasets = []
+    const datasets: any[] = []
     let totalDataPoints = 0
 
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      for (const [dataType, points] of Object.entries(deviceData)) {
-        const deviceLabel = getDeviceLabel(device)
-
-        const processedPoints = points.map((point: ChartPoint) => ({
-          ...point,
-          x: getChartTimestamp(point.x), // Convert milliseconds to relative seconds
-        }))
-
-        const filteredPoints = timeRange
-          ? processedPoints.filter((point: ChartPoint) => {
-              const inRange = point.x >= timeRange.start && point.x <= timeRange.end
-              return inRange
-            })
-          : processedPoints
-
-        if (filteredPoints.length > 0) {
-          let validDataPoints = filteredPoints.filter(
-            (point) =>
-              point &&
-              typeof point.x === 'number' &&
-              typeof point.y === 'number' &&
-              !isNaN(point.x) &&
-              !isNaN(point.y),
-          )
-
-          const deviceCount = Object.keys(optimizedData.datasets).length
-          const dataTypeCount = Object.keys(deviceData).length
-          if (
-            useDownsampling &&
-            validDataPoints.length > maxDataPoints / deviceCount / dataTypeCount
-          ) {
-            const targetPoints = Math.max(
-              50,
-              Math.floor(maxDataPoints / deviceCount / dataTypeCount),
-            )
-            validDataPoints = downsampleData(validDataPoints, targetPoints)
-            console.log(
-              `Client-side downsampled ${device}-${dataType}: ${filteredPoints.length} → ${validDataPoints.length} points`,
-            )
-          }
-
-          if (validDataPoints.length > 0) {
-            totalDataPoints += validDataPoints.length
-
-            const pointCount = validDataPoints.length
-            const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
-            const borderWidth = pointCount > 3000 ? 1 : 2
-            const hoverRadius = pointCount > 2000 ? 2 : 4
-            const hitRadius = pointCount > 2000 ? 4 : 6
-
-            datasets.push({
-              label: `${deviceLabel} - ${dataType}`,
-              data: validDataPoints,
-              borderColor: getDeviceColor(device, dataType),
-              backgroundColor: getDeviceColor(device, dataType, 0.1),
-              borderWidth: borderWidth,
-              pointRadius: pointRadius,
-              tension: config.chartSmoothing,
-              spanGaps: false,
-              pointHoverRadius: hoverRadius,
-              pointHitRadius: hitRadius,
-            })
+    for (const [device, deviceData] of Object.entries(processedRef.current)) {
+      const baseLabel = getDeviceLabel(device)
+      const side = deviceSides.get(device)
+      const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
+      for (const [dataType, arrays] of Object.entries(deviceData)) {
+        const xs = arrays.xs
+        const ys = arrays.ys
+        if (!xs.length) continue
+        const startIdx = lowerBound(xs, rangeStart)
+        const endExclusive = upperBound(xs, rangeEnd)
+        const sliceLen = endExclusive - startIdx
+        if (sliceLen <= 0) continue
+  // (Export rows no longer accumulated each render; export builds on demand.)
+        // Direct allocate tuple slice (fast path). Potential future: reuse preallocated shared buffers.
+        let pointCount = sliceLen
+        let tuplePoints: ChartTuple[] = new Array(sliceLen)
+        for (let i = 0; i < sliceLen; i++) {
+          const idx = startIdx + i
+          tuplePoints[i] = [xs[idx], ys[idx]]
+        }
+        // Adaptive thinning strategy (mutually aware of Chart.js decimation):
+        // If extremely large relative to pixel capacity, first stride-thin down to ~pixelCap*2 to reduce pre-decimation load.
+        if (useDownsampling && sliceLen > pixelCap * 3) {
+          const target = Math.min(perSeriesBaseTarget, pixelCap * 2)
+          const stride = Math.max(1, Math.floor(sliceLen / target))
+          if (stride > 1) {
+            const thinned: ChartTuple[] = []
+            for (let i = 0; i < sliceLen; i += stride) thinned.push(tuplePoints[i])
+            tuplePoints = thinned
+            pointCount = tuplePoints.length
           }
         }
+        totalDataPoints += pointCount
+        const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
+        const borderWidth = pointCount > 3000 ? 1 : 2
+        const hoverRadius = pointCount > 2000 ? 2 : 4
+        const hitRadius = pointCount > 2000 ? 4 : 6
+        datasets.push({
+          label: `${deviceLabel} - ${dataType}`,
+          data: tuplePoints, // tuples [x,y]
+          borderColor: getDeviceColor(device, dataType),
+          backgroundColor: getDeviceColor(device, dataType, 0.1),
+          borderWidth,
+          pointRadius,
+          tension: config.chartSmoothing,
+          spanGaps: false,
+          pointHoverRadius: hoverRadius,
+          pointHitRadius: hitRadius,
+        })
       }
     }
-
-    if (totalDataPoints > 0) {
-      console.log(
-        `Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`,
-      )
-      if (totalDataPoints > maxDataPoints) {
-        console.warn(
-          `High data point count (${totalDataPoints}) may impact performance. Consider enabling downsampling.`,
-        )
-      }
-    }
-
-    return { datasets, totalDataPoints }
+  // Logging suppressed for performance
+  return { chartData: { datasets, totalDataPoints } }
   }, [
     optimizedData,
-    getDeviceColor,
+    processedRef,
     deviceColors,
     timeRange,
     useDownsampling,
     maxDataPoints,
     downsampleData,
-    getChartTimestamp,
+    getDeviceColor,
+    deviceSides,
   ])
+
+  const chartData = unifiedView.chartData
+
+  // Incremental / lazy typed-array preprocessing: only build for newly loaded devices/dataTypes.
+  useEffect(() => {
+    if (!optimizedData) return
+    const datasetEntries = Object.entries(optimizedData.datasets || {})
+    if (!datasetEntries.length) return // metadata-only stage
+
+    if (!processedRef.current) processedRef.current = {}
+    const normalized = optimizedData.metadata.normalized
+    let newPoints = 0
+    let newSeries = 0
+    const start = performance.now()
+
+    for (const [device, deviceData] of datasetEntries) {
+      if (!processedRef.current[device]) processedRef.current[device] = {}
+      for (const [dataType, points] of Object.entries(deviceData)) {
+        const existing = processedRef.current[device][dataType]
+        // Skip if already processed with matching length (assumes append-only datasets)
+        if (existing && existing.xs.length === points.length) continue
+        const len = points.length
+        const xs = new Float32Array(len)
+        const ys = new Float32Array(len)
+        for (let i = 0; i < len; i++) {
+          xs[i] = normalized ? points[i].x / 1000 : getChartTimestamp(points[i].x)
+          ys[i] = points[i].y
+        }
+        processedRef.current[device][dataType] = { xs, ys }
+        newPoints += len
+        newSeries++
+      }
+    }
+    if (newSeries > 0) {
+      processedVersionRef.current++
+      const elapsed = performance.now() - start
+      console.log(
+        `[Preprocess] Added ${newSeries} new series (${newPoints.toLocaleString()} pts) in ${elapsed.toFixed(1)}ms (total devices: ${Object.keys(processedRef.current).length})`,
+      )
+    }
+  }, [optimizedData, getChartTimestamp])
 
   const reloadData = () => {
     loadSessionData()
@@ -526,53 +602,57 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   const exportFilteredData = useCallback(async () => {
     try {
-      const csvContent = [
-        ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
-        ...filteredData.map((point: FilteredDataPoint) => {
-          return [
-            `${point.timestamp.toFixed(3)}s`, // Export as relative seconds with high precision
-            point.device_id,
-            point.data_type,
-            point.value,
-            point.unit,
-          ].join(',')
-        }),
-      ].join('\n')
-
-      const fileName = `${sessionName}_filtered_${new Date().toISOString().split('T')[0]}.csv`
-
-      // Save filtered data to app data directory using CSRF protection
+      if (!optimizedData || !processedRef.current) {
+        showError('Export Failed', 'Data not ready for export')
+        return
+      }
+      const duration = optimizedData.metadata.duration
+      const rangeStart = timeRange?.start ?? 0
+      const rangeEnd = timeRange?.end ?? duration
+      const lowerBound = (arr: Float32Array, target: number) => {
+        let lo = 0, hi = arr.length
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+        return lo
+      }
+      const upperBound = (arr: Float32Array, target: number) => {
+        let lo = 0, hi = arr.length
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+        return lo
+      }
+      let lines: string[] = [['Timestamp','Device','Data Type','Value','Unit'].join(',')]
+      let rowCount = 0
+      for (const [device, deviceData] of Object.entries(processedRef.current)) {
+        for (const [dataType, arrays] of Object.entries(deviceData)) {
+          const xs = arrays.xs; const ys = arrays.ys
+          if (!xs.length) continue
+          const startIdx = lowerBound(xs, rangeStart)
+          const endEx = upperBound(xs, rangeEnd)
+          for (let i = startIdx; i < endEx; i++) {
+            lines.push(`${xs[i].toFixed(3)}s,${device},${dataType},${ys[i]},`)
+            rowCount++
+          }
+        }
+      }
+      const csvContent = lines.join('\n')
+      const fileName = `${sessionName}_slice_${new Date().toISOString().split('T')[0]}.csv`
       const savedPath = (await protectedOperations.saveFilteredData(fileName, csvContent)) as string
-
-      // Then copy it to Downloads folder using CSRF protection
       try {
         const result = await protectedOperations.copyFileToDownloads(savedPath, fileName)
-
-        showSuccess(
-          'File Exported Successfully',
-          `Filtered data exported to Downloads folder: ${result}`,
-        )
+        showSuccess('File Exported Successfully', `Exported ${rowCount} rows: ${result}`)
       } catch {
-        // If copy fails, at least show where the file was saved
-        showInfo(
-          'Export Completed - Manual Copy Available',
-          `Filtered data saved to: ${savedPath}\n\nNote: You can manually copy this file to your desired location.`,
-        )
+        showInfo('Export Completed - Manual Copy Available', `Exported ${rowCount} rows to: ${savedPath}`)
       }
     } catch (err) {
-      console.error('Failed to export filtered data:', err)
-      showError('Export Failed', `Failed to export filtered data: ${err}`)
+      console.error('Failed to export data slice:', err)
+      showError('Export Failed', `Failed to export data: ${err}`)
     }
-  }, [filteredData, sessionName, showSuccess, showError, showInfo])
+  }, [optimizedData, timeRange, sessionName, showSuccess, showError, showInfo])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when DataViewer is open and not in input fields
       if (event.target && (event.target as HTMLElement).tagName === 'INPUT') return
-
       const step = (timeWindowSize / zoomLevel) * 0.1
       const totalDuration = optimizedData?.metadata.duration || 30
-
       switch (event.key) {
         case 'Escape':
           onClose()
@@ -600,16 +680,15 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           event.preventDefault()
           setZoomLevel(1)
           setCurrentTimePosition(0)
+          setTimeRange(null)
           break
         case '1':
           event.preventDefault()
-          // View all data
           setZoomLevel(1)
           setCurrentTimePosition(0)
           break
         case '2':
           event.preventDefault()
-          // 30 second view
           if (totalDuration >= 30) {
             setZoomLevel(totalDuration / 30)
             setCurrentTimePosition(0)
@@ -617,7 +696,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '3':
           event.preventDefault()
-          // 10 second view
           if (totalDuration >= 10) {
             setZoomLevel(totalDuration / 10)
             setCurrentTimePosition(0)
@@ -625,7 +703,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '4':
           event.preventDefault()
-          // 5 second view
           if (totalDuration >= 5) {
             setZoomLevel(totalDuration / 5)
             setCurrentTimePosition(0)
@@ -633,7 +710,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '5':
           event.preventDefault()
-          // 2 second view
           if (totalDuration >= 2) {
             setZoomLevel(totalDuration / 2)
             setCurrentTimePosition(0)
@@ -670,7 +746,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
       }
     }
-
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose, optimizedData, timeWindowSize, zoomLevel, exportFilteredData, showInfo])
@@ -759,7 +834,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   return (
     <div className="data-viewer-overlay">
-      <div className="data-viewer-modal">
+      <div
+        className="data-viewer-modal"
+        data-compact={isCompact || undefined}
+        data-tablet-condensed={isTabletCondensed || undefined}
+      >
         {/* Close button */}
         <button
           className="btn-close"
@@ -805,107 +884,230 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   {optimizedData.metadata.devices.length} device
                   {optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-item" title="Total data points in current view">
+                  <span className="metadata-icon" aria-hidden="true">
+                    <Icon.Chart />
+                  </span>
+                  {chartData ? chartData.totalDataPoints.toLocaleString() : '0'} pts
+                </span>
+                <span className="metadata-separator" aria-hidden="true">•</span>
+                <span className="metadata-item" title="Number of data types">
+                  <span className="metadata-icon" aria-hidden="true">
+                    <Icon.Gear />
+                  </span>
+                  {optimizedData.metadata.data_types.length} types
+                </span>
+                {fullDataLoading && (
+                  <>
+                    <span className="metadata-separator" aria-hidden="true">•</span>
+                    <span className="metadata-item" title="Loading full datasets">Loading full data…</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </header>
 
         <nav className="data-viewer-toolbar">
-          <div className="toolbar-left">
-            <div className="data-summary">
-              <span className="summary-item">
-                <span className="summary-label">Data Points:</span>
-                <span className="summary-value">
-                  {chartData ? chartData.totalDataPoints.toLocaleString() : '0'}
-                </span>
-              </span>
-              <span className="summary-separator">•</span>
-              <span className="summary-item">
-                <span className="summary-label">Data Types:</span>
-                <span className="summary-value">
-                  {optimizedData ? optimizedData.metadata.data_types.length : 0}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="toolbar-right">
-            <div className="action-buttons">
-              <div className="quick-actions">
-                <button
-                  className="btn-action btn-fit"
-                  onClick={() => {
-                    setZoomLevel(1)
-                    setCurrentTimePosition(0)
-                    setTimeRange(null)
-                  }}
-                  title="Fit all data to view"
-                  aria-label="Fit all data"
-                >
-                  <span className="btn-icon" aria-hidden="true">
-                    <Icon.Fit />
-                  </span>
-                  <span className="btn-label">Fit All</span>
-                </button>
-
-                {selectionBox && (
+          <div className="dv-toolbar-grid" data-condensed={isCompact || isTabletCondensed || undefined}>
+            {!isCompact && (
+              <div className="dv-zoom-group" aria-label="Zoom controls">
+                <div className="zoom-presets">
+                  {[
+                    { span: null, label: 'All', isAll: true },
+                    { span: 30, label: '30s' },
+                    { span: 10, label: '10s' },
+                    { span: 5, label: '5s' },
+                    { span: 2, label: '2s' },
+                  ].map((preset) => {
+                    const totalDuration = optimizedData?.metadata.duration || 30
+                    let isActive: boolean
+                    let requiredZoom: number
+                    if (preset.isAll) {
+                      isActive = Math.abs(zoomLevel - 1) < 0.1
+                      requiredZoom = 1
+                    } else if (preset.span != null) {
+                      requiredZoom = totalDuration / preset.span
+                      isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
+                    } else {
+                      requiredZoom = 1
+                      isActive = Math.abs(zoomLevel - 1) < 0.1
+                    }
+                    const spanValue = (preset as any).span ?? undefined
+                    return (
+                      <button
+                        key={preset.label}
+                        onClick={() => {
+                          if (preset.isAll) {
+                            setZoomLevel(1)
+                            setCurrentTimePosition(0)
+                          } else if (spanValue) {
+                            const newZoom = Math.min(10, Math.max(1, totalDuration / spanValue))
+                            setZoomLevel(newZoom)
+                            setCurrentTimePosition(0)
+                          }
+                        }}
+                        className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
+                        disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
+                        title={
+                          preset.isAll
+                            ? 'View all data'
+                            : spanValue
+                              ? `View ${spanValue} second window`
+                              : 'View all data'
+                        }
+                        aria-label={
+                          preset.isAll
+                            ? 'Fit all data'
+                            : spanValue
+                              ? `Set view to ${spanValue} seconds`
+                              : 'Fit all data'
+                        }
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="zoom-fine-controls">
                   <button
-                    className="btn-action btn-zoom-selection"
-                    onClick={() => {
-                      if (selectionBox) {
-                        const duration = selectionBox.end - selectionBox.start
-                        const newZoom = Math.min(
-                          10,
-                          Math.max(1, (optimizedData?.metadata.duration || 10) / duration),
-                        )
-                        setZoomLevel(newZoom)
-                        setCurrentTimePosition(selectionBox.start)
-                      }
-                    }}
-                    title="Zoom to selected area"
-                    aria-label="Zoom to selection"
+                    onClick={() => handleZoomChange('out')}
+                    className="btn-zoom btn-zoom-out"
+                    disabled={zoomLevel <= 1.0}
+                    title="Zoom out (-)"
+                    aria-label="Zoom out"
                   >
-                    <span className="btn-icon" aria-hidden="true">
-                      <Icon.Chart />
-                    </span>
-                    <span className="btn-label">Zoom to Selection</span>
+                    <span className="zoom-icon">−</span>
                   </button>
-                )}
-              </div>
-
-              <div className="primary-actions">
-                <button
-                  className="btn-action btn-export"
-                  onClick={exportFilteredData}
-                  title="Export current data view to CSV"
-                  aria-label="Export data"
-                >
-                  <span className="btn-icon" aria-hidden="true">
-                    <Icon.Export />
-                  </span>
-                  <span className="btn-label">Export Data</span>
-                </button>
-
-                <button
-                  className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
-                  onClick={handleSettingsToggle}
-                  title={
-                    showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'
-                  }
-                  aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
-                >
-                  <span className="btn-icon" aria-hidden="true">
-                    <Icon.Gear />
-                  </span>
-                  <span className="btn-label">Settings</span>
-                  <span
-                    className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}
-                    aria-hidden="true"
+                  <div className="zoom-display-enhanced">
+                    <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
+                    <div className="zoom-indicator">
+                      <div
+                        className="zoom-level-bar"
+                        data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleZoomChange('in')}
+                    className="btn-zoom btn-zoom-in"
+                    disabled={zoomLevel >= 10.0}
+                    title="Zoom in (+)"
+                    aria-label="Zoom in"
                   >
-                    <Icon.ChevronDown />
-                  </span>
-                </button>
+                    <span className="zoom-icon">+</span>
+                  </button>
+                  <button
+                    onClick={() => handleZoomChange('reset')}
+                    className="btn-zoom btn-reset"
+                    title="Reset view (Fit all data)"
+                    aria-label="Reset zoom and position"
+                  >
+                    <span className="reset-icon" aria-hidden="true">
+                      <Icon.Fit />
+                    </span>
+                  </button>
+                </div>
               </div>
+            )}
+            {!isCompact && (
+              <div className="dv-time-group" aria-label="Time navigation">
+                <div className="time-navigation">
+                  <button
+                    onClick={() => {
+                      const step = (timeWindowSize / zoomLevel) * 0.1
+                      setCurrentTimePosition(Math.max(0, currentTimePosition - step))
+                    }}
+                    className="btn-time-nav"
+                    disabled={currentTimePosition <= 0}
+                    title="Jump backward"
+                  >
+                    <span aria-hidden="true">
+                      <Icon.StepBack />
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const step = (timeWindowSize / zoomLevel) * 0.1
+                      const maxPos = Math.max(
+                        0,
+                        (optimizedData?.metadata.duration || 0) - timeWindowSize / zoomLevel,
+                      )
+                      setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
+                    }}
+                    className="btn-time-nav"
+                    disabled={(() => {
+                      const maxPos = Math.max(
+                        0,
+                        (optimizedData?.metadata.duration || 0) - timeWindowSize / zoomLevel,
+                      )
+                      return currentTimePosition >= maxPos
+                    })()}
+                    title="Jump forward"
+                  >
+                    <span aria-hidden="true">
+                      <Icon.StepForward />
+                    </span>
+                  </button>
+                </div>
+                {/* time-display removed as requested */}
+              </div>
+            )}
+            <div className="dv-actions" aria-label="Viewer actions">
+              {selectionBox && (
+                <button
+                  className="btn-action btn-zoom-selection"
+                  onClick={() => {
+                    if (selectionBox) {
+                      const duration = selectionBox.end - selectionBox.start
+                      const newZoom = Math.min(
+                        10,
+                        Math.max(1, (optimizedData?.metadata.duration || 10) / duration),
+                      )
+                      setZoomLevel(newZoom)
+                      setCurrentTimePosition(selectionBox.start)
+                    }
+                  }}
+                  title="Zoom to selected area"
+                  aria-label="Zoom to selection"
+                >
+                  <span className="btn-icon" aria-hidden="true">
+                    <Icon.Chart />
+                  </span>
+                  <span className="btn-label">Sel</span>
+                </button>
+              )}
+              <button
+                className="btn-action btn-export"
+                onClick={exportFilteredData}
+                title="Export current data view to CSV"
+                aria-label="Export data"
+              >
+                <span className="btn-icon" aria-hidden="true">
+                  <Icon.Export />
+                </span>
+                <span className="btn-label">Export</span>
+              </button>
+              <button
+                className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
+                onClick={handleSettingsToggle}
+                title={
+                  showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'
+                }
+                aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
+              >
+                <span className="btn-icon" aria-hidden="true">
+                  <Icon.Gear />
+                </span>
+                <span className="btn-label">Settings</span>
+                <span
+                  className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}
+                  aria-hidden="true"
+                >
+                  <Icon.ChevronDown />
+                </span>
+              </button>
             </div>
           </div>
         </nav>
@@ -1086,9 +1288,22 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   role="tabpanel"
                   aria-labelledby="chart-tab"
                   className="chart-container"
+                  ref={chartContainerRef}
                 >
                   {(() => {
                     try {
+                      if (!chartLib) {
+                        return (
+                          <div className="chart-loading">
+                            <div className="loading-spinner small">
+                              <div className="spinner" />
+                            </div>
+                            <p>Loading chart engine…</p>
+                          </div>
+                        )
+                      }
+                      const Line = chartLib.Line
+                      const ChartJS = chartLib.Chart
                       return (
                         <Line
                           key={`data-chart-${timeRange ? 'filtered' : 'all'}`}
@@ -1096,6 +1311,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           options={{
                             responsive: true,
                             maintainAspectRatio: false,
+                            parsing: { xAxisKey: '0', yAxisKey: '1' },
                             animation: enableAnimations
                               ? {
                                   duration: 300,
@@ -1103,7 +1319,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 }
                               : false,
                             plugins: {
-                              legend: {
+                              decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                // Dynamic sample target based on current chart width & user cap
+                                samples: Math.min(maxDataPoints, Math.floor((chartWidth || 800) * 1.25)),
+                              },
+          legend: {
                                 position: 'top',
                                 labels: {
                                   boxWidth: 12,
@@ -1111,10 +1333,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   font: {
                                     size: 12,
                                   },
-                                  generateLabels: function (chart) {
-                                    const original =
-                                      Chart.defaults.plugins.legend.labels.generateLabels(chart)
-                                    return original.map((item) => {
+                                  generateLabels: function (chart: any) {
+            const baseGen = ChartJS?.defaults?.plugins?.legend?.labels?.generateLabels
+            const original = baseGen ? baseGen(chart) : []
+                                    return original.map((item: any) => {
                                       if (item.text) {
                                         const match = item.text.match(/^Device (\w+) - (.+)$/)
                                         if (match) {
@@ -1136,7 +1358,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 enabled: true,
                                 mode: 'index',
                                 intersect: false,
-                                filter: function (tooltipItem) {
+                                filter: function (tooltipItem: any) {
                                   // Filter out null/undefined values from tooltips
                                   return (
                                     tooltipItem &&
@@ -1148,13 +1370,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   )
                                 },
                                 callbacks: {
-                                  title: function (context) {
+                                  title: function (context: any) {
                                     if (context && context[0] && context[0].parsed) {
                                       return `Time: ${context[0].parsed.x.toFixed(2)}s`
                                     }
                                     return 'Data Point'
                                   },
-                                  label: function (context) {
+                                  label: function (context: any) {
                                     if (
                                       context &&
                                       context.parsed &&
@@ -1178,7 +1400,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 min: timeRange?.start,
                                 max: timeRange?.end,
                                 ticks: {
-                                  callback: function (value) {
+                                  callback: function (value: any) {
                                     // Format relative time in seconds (matching LiveChart)
                                     if (typeof value === 'number' && !isNaN(value)) {
                                       return `${value.toFixed(1)}s`
@@ -1316,179 +1538,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     </div>
 
-                    <div className="controls-row">
-                      <div className="zoom-group">
-                        <span className="control-label">
-                          <span aria-hidden="true">
-                            <Icon.Zoom />
-                          </span>{' '}
-                          Zoom
-                        </span>
-
-                        <div className="zoom-presets">
-                          {[
-                            { span: null, label: 'All', isAll: true },
-                            { span: 30, label: '30s' },
-                            { span: 10, label: '10s' },
-                            { span: 5, label: '5s' },
-                            { span: 2, label: '2s' },
-                          ].map((preset) => {
-                            const totalDuration = optimizedData?.metadata.duration || 30
-                            let isActive: boolean
-                            let requiredZoom: number
-
-                            if (preset.isAll) {
-                              // 'All' corresponds to a zoom level of 1, showing the base `timeWindowSize`
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
-                            } else if (preset.span != null) {
-                              // The required zoom to achieve the target span
-                              requiredZoom = timeWindowSize / preset.span
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.01
-                            } else {
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - 1) < 0.01
-                            }
-
-                            const spanValue = preset.span ?? undefined
-                            return (
-                              <button
-                                key={preset.label}
-                                onClick={() => {
-                                  if (preset.isAll) {
-                                    setZoomLevel(1)
-                                    setCurrentTimePosition(0)
-                                  } else if (spanValue) {
-                                    // Calculate zoom based on the desired span vs the base window size
-                                    const newZoom = timeWindowSize / spanValue
-                                    setZoomLevel(Math.min(10, Math.max(1, newZoom)))
-                                    setCurrentTimePosition(0)
-                                  }
-                                }}
-                                className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
-                                disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
-                                title={
-                                  preset.isAll
-                                    ? 'View all data'
-                                    : spanValue
-                                      ? `View ${spanValue} second window`
-                                      : 'View all data'
-                                }
-                                aria-label={
-                                  preset.isAll
-                                    ? 'Fit all data'
-                                    : spanValue
-                                      ? `Set view to ${spanValue} seconds`
-                                      : 'Fit all data'
-                                }
-                              >
-                                {preset.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        <div className="zoom-fine-controls">
-                          <button
-                            onClick={() => handleZoomChange('out')}
-                            className="btn-zoom btn-zoom-out"
-                            disabled={zoomLevel <= 1.0}
-                            title="Zoom out (-)"
-                            aria-label="Zoom out"
-                          >
-                            <span className="zoom-icon">−</span>
-                          </button>
-                          <div className="zoom-display-enhanced">
-                            <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
-                            <div className="zoom-indicator">
-                              <div
-                                className="zoom-level-bar"
-                                data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleZoomChange('in')}
-                            className="btn-zoom btn-zoom-in"
-                            disabled={zoomLevel >= 10.0}
-                            title="Zoom in (+)"
-                            aria-label="Zoom in"
-                          >
-                            <span className="zoom-icon">+</span>
-                          </button>
-                          <button
-                            onClick={() => handleZoomChange('reset')}
-                            className="btn-zoom btn-reset"
-                            title="Reset view (Fit all data)"
-                            aria-label="Reset zoom and position"
-                          >
-                            <span className="reset-icon" aria-hidden="true">
-                              <Icon.Home />
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="time-info-enhanced">
-                        <div className="time-navigation">
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              setCurrentTimePosition(Math.max(0, currentTimePosition - step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={currentTimePosition <= 0}
-                            title="Jump backward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepBack />
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={(() => {
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              return currentTimePosition >= maxPos
-                            })()}
-                            title="Jump forward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepForward />
-                            </span>
-                          </button>
-                        </div>
-
-                        <div className="time-display">
-                          <span className="info-label" aria-hidden="true">
-                            <Icon.Chart />
-                          </span>
-                          <span className="info-value">
-                            {(() => {
-                              const effectiveWindow = getEffectiveTimeWindow()
-                              const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                              const percentage = (
-                                (viewingDuration / optimizedData.metadata.duration) *
-                                100
-                              ).toFixed(1)
-                              return `${viewingDuration.toFixed(1)}s (${percentage}%)`
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* duplicate zoom controls row removed */}
 
                     {selectionBox && (
                       <div className="selection-info">
@@ -1502,6 +1552,48 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     )}
                   </div>
+                )}
+                {isCompact && (
+                  <nav className="mobile-toolbar" aria-label="Mobile chart controls">
+                    <button
+                      className="mt-btn"
+                      onClick={() => handleZoomChange('out')}
+                      disabled={zoomLevel <= 1}
+                      aria-label="Zoom out"
+                      title="Zoom out"
+                    >
+                      <span className="mt-icon">−</span>
+                      <span className="mt-label">Out</span>
+                    </button>
+                    <button
+                      className="mt-btn"
+                      onClick={() => handleZoomChange('in')}
+                      disabled={zoomLevel >= 10}
+                      aria-label="Zoom in"
+                      title="Zoom in"
+                    >
+                      <span className="mt-icon">+</span>
+                      <span className="mt-label">In</span>
+                    </button>
+                    <button
+                      className="mt-btn"
+                      onClick={exportFilteredData}
+                      aria-label="Export data"
+                      title="Export"
+                    >
+                      <span className="mt-icon"><Icon.Export /></span>
+                      <span className="mt-label">Export</span>
+                    </button>
+                    <button
+                      className={`mt-btn ${showAdvancedSettings ? 'active' : ''}`}
+                      onClick={handleSettingsToggle}
+                      aria-label="Toggle settings"
+                      title="Settings"
+                    >
+                      <span className="mt-icon"><Icon.Gear /></span>
+                      <span className="mt-label">Settings</span>
+                    </button>
+                  </nav>
                 )}
               </div>
             ) : (
@@ -1585,176 +1677,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     </div>
 
-                    <div className="controls-row">
-                      <div className="zoom-group">
-                        <span className="control-label">
-                          <span aria-hidden="true">
-                            <Icon.Zoom />
-                          </span>{' '}
-                          Zoom
-                        </span>
-                        <div className="zoom-presets">
-                          {[
-                            { span: null, label: 'All', isAll: true },
-                            { span: 30, label: '30s' },
-                            { span: 10, label: '10s' },
-                            { span: 5, label: '5s' },
-                            { span: 2, label: '2s' },
-                          ].map((preset) => {
-                            const totalDuration = optimizedData?.metadata.duration || 30
-                            let isActive: boolean
-                            let requiredZoom: number
-                            if (preset.isAll) {
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
-                              requiredZoom = 1
-                            } else if (preset.span != null) {
-                              requiredZoom = totalDuration / preset.span
-                              isActive = Math.abs(zoomLevel - requiredZoom) < 0.1
-                            } else {
-                              requiredZoom = 1
-                              isActive = Math.abs(zoomLevel - 1) < 0.1
-                            }
-                            const spanValue = preset.span ?? undefined
-                            return (
-                              <button
-                                key={preset.label}
-                                onClick={() => {
-                                  if (preset.isAll) {
-                                    setZoomLevel(1)
-                                    setCurrentTimePosition(0)
-                                  } else if (spanValue) {
-                                    const newZoom = Math.min(
-                                      10,
-                                      Math.max(1, totalDuration / spanValue),
-                                    )
-                                    setZoomLevel(newZoom)
-                                    setCurrentTimePosition(0)
-                                  }
-                                }}
-                                className={`btn-zoom-preset ${isActive ? 'active' : ''} ${preset.isAll ? 'all-data' : ''}`}
-                                disabled={!preset.isAll && !!spanValue && spanValue > totalDuration}
-                                title={
-                                  preset.isAll
-                                    ? 'View all data'
-                                    : spanValue
-                                      ? `View ${spanValue} second window`
-                                      : 'View all data'
-                                }
-                                aria-label={
-                                  preset.isAll
-                                    ? 'Fit all data'
-                                    : spanValue
-                                      ? `Set view to ${spanValue} seconds`
-                                      : 'Fit all data'
-                                }
-                              >
-                                {preset.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        <div className="zoom-fine-controls">
-                          <button
-                            onClick={() => handleZoomChange('out')}
-                            className="btn-zoom btn-zoom-out"
-                            disabled={zoomLevel <= 1.0}
-                            title="Zoom out (-)"
-                            aria-label="Zoom out"
-                          >
-                            <span className="zoom-icon">−</span>
-                          </button>
-                          <div className="zoom-display-enhanced">
-                            <span className="zoom-current">{zoomLevel.toFixed(1)}×</span>
-                            <div className="zoom-indicator">
-                              <div
-                                className="zoom-level-bar"
-                                data-zoom-level={Math.min((zoomLevel / 10) * 100, 100)}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleZoomChange('in')}
-                            className="btn-zoom btn-zoom-in"
-                            disabled={zoomLevel >= 10.0}
-                            title="Zoom in (+)"
-                            aria-label="Zoom in"
-                          >
-                            <span className="zoom-icon">+</span>
-                          </button>
-                          <button
-                            onClick={() => handleZoomChange('reset')}
-                            className="btn-zoom btn-reset"
-                            title="Reset view (Fit all data)"
-                            aria-label="Reset zoom and position"
-                          >
-                            <span className="reset-icon" aria-hidden="true">
-                              <Icon.Home />
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="time-info-enhanced">
-                        <div className="time-navigation">
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              setCurrentTimePosition(Math.max(0, currentTimePosition - step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={currentTimePosition <= 0}
-                            title="Jump backward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepBack />
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              const step = (timeWindowSize / zoomLevel) * 0.1
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              setCurrentTimePosition(Math.min(maxPos, currentTimePosition + step))
-                            }}
-                            className="btn-time-nav"
-                            disabled={(() => {
-                              const maxPos = Math.max(
-                                0,
-                                (optimizedData?.metadata.duration || 0) -
-                                  timeWindowSize / zoomLevel,
-                              )
-                              return currentTimePosition >= maxPos
-                            })()}
-                            title="Jump forward"
-                          >
-                            <span aria-hidden="true">
-                              <Icon.StepForward />
-                            </span>
-                          </button>
-                        </div>
-
-                        <div className="time-display">
-                          <span className="info-label" aria-hidden="true">
-                            <Icon.Chart />
-                          </span>
-                          <span className="info-value">
-                            {(() => {
-                              const effectiveWindow = getEffectiveTimeWindow()
-                              const viewingDuration = effectiveWindow.end - effectiveWindow.start
-                              const percentage = (
-                                (viewingDuration / optimizedData.metadata.duration) *
-                                100
-                              ).toFixed(1)
-                              return `${viewingDuration.toFixed(1)}s (${percentage}%)`
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* duplicate zoom controls row removed */}
 
                     {selectionBox && (
                       <div className="selection-info">

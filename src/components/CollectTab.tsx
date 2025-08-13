@@ -4,7 +4,7 @@ import LiveChart from './LiveChart'
 import DeviceStatusViewer from './MultiDeviceSelector'
 import ScrollableContainer from './ScrollableContainer'
 import ConfirmationModal from './ConfirmationModal'
-import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
+import { useOptionalDeviceConnection } from '../contexts/DeviceConnectionContext'
 import { useToast } from '../contexts/ToastContext'
 import { useConfirmation } from '../hooks/useConfirmation'
 import { usePersistentWorkflow } from '../hooks/usePersistentWorkflow'
@@ -115,8 +115,20 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
     }
   }, [])
 
-  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData } =
-    useDeviceConnection()
+  const optionalCtx = useOptionalDeviceConnection()
+  if (!optionalCtx) {
+    return (
+      <div className="card">
+        <h2>Collection Unavailable</h2>
+        <p>
+          The DeviceConnectionProvider is not mounted. Ensure the root App component wraps this
+          component.
+        </p>
+      </div>
+    )
+  }
+  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData, deviceSides } =
+    optionalCtx
 
   useEffect(() => {
     if (isCollecting) {
@@ -434,10 +446,32 @@ ${warningText}`,
     try {
       console.log('[Collect] Saving session with enhanced CSRF protection...')
 
+      // Append device side mapping to notes if available and not already present
+      let notes = collectedData.notes || ''
+      try {
+        if (deviceSides && deviceSides.size) {
+          const uniqueDeviceIds = Array.from(new Set(collectedData.dataPoints.map(d => d.device_id)))
+          const sidePairs = uniqueDeviceIds
+            .map(id => {
+              const side = deviceSides.get(id)
+              return side ? `${id}=${side}` : null
+            })
+            .filter(Boolean) as string[]
+          if (sidePairs.length) {
+            const sideLine = `Sides: ${sidePairs.join(', ')}`
+            if (!notes.toLowerCase().includes('sides:')) {
+              notes = notes ? `${notes}\n${sideLine}` : sideLine
+            }
+          }
+        }
+      } catch {
+        // Silently ignore side augmentation errors
+      }
+
       const filePath = await protectedOperations.saveSessionData(
         collectedData.sessionName,
         collectedData.subjectId,
-        collectedData.notes,
+        notes,
         collectedData.dataPoints,
       )
 

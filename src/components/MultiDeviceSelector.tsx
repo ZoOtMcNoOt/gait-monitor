@@ -7,6 +7,7 @@ interface DeviceStatus {
   id: string
   name: string
   isConnected: boolean
+  isTimeout?: boolean
   isCollecting: boolean
   signalStrength?: number // RSSI converted to %-style indicator
   lastDataTime?: number // epoch ms of last data packet
@@ -28,6 +29,9 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
     lastGaitDataTime,
     deviceSampleRates,
     connectionStatus,
+  deviceSides,
+  setDeviceSide,
+  activeCollectingDevices,
   } = useDeviceConnection()
 
   // Derive active collecting devices (async function returns and updates state internally).
@@ -37,53 +41,63 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
 
   const devices: DeviceStatus[] = useMemo(() => {
     const now = Date.now()
-    const GAIT_STALE_MS = 5_000 // 5s threshold for stale
+    const STALE_THRESHOLD_MS = 5000
 
     return connectedDevices.map((id) => {
       const shortId = id.slice(-6).toUpperCase()
       const lastTime = lastGaitDataTime.get(id)
       const sampleRate = deviceSampleRates.get(id)
       const status = connectionStatus.get(id)
+      const active = activeCollectingDevices.includes(id)
+      const hasData = lastTime !== undefined
+      const age = hasData ? now - (lastTime as number) : Infinity
+      const stale = active && hasData && age > STALE_THRESHOLD_MS
+      const initializing = active && !hasData
+      const isCollecting = active && hasData && !stale
+      const isTimeout = status === 'timeout'
 
       // RSSI from scanned devices list
       const scanInfo = scannedDevices.find((d) => d.id === id)
       const rssi = scanInfo?.rssi
-      // Convert RSSI (~ -100 to -30) to 0-100 strength
-      const signalStrength =
-        rssi !== undefined ? Math.min(100, Math.max(0, ((rssi + 100) / 70) * 100)) : undefined
+      let signalStrength: number | undefined
+      if (rssi !== undefined) {
+        const pct = Math.min(100, Math.max(0, ((rssi + 100) / 70) * 100))
+        signalStrength = Math.round(pct)
+      }
 
-      const isCollecting = sampleRate !== undefined || status === 'connected'
-      const hasData = lastTime !== undefined
-      const age = hasData ? now - lastTime! : Infinity
-      const stale = hasData ? age > GAIT_STALE_MS : false
-      const initializing = isCollecting && !hasData
+      // Only treat fully disconnected as error; timeout is a warning state now
+      const errorState = status === 'disconnected' ? 'Disconnected' : undefined
 
       return {
         id,
         name: shortId,
-        isConnected: status === 'connected' || status === 'timeout',
-        isCollecting: isCollecting && !stale,
-        signalStrength: signalStrength ? Math.round(signalStrength) : undefined,
+        isConnected: status === 'connected',
+        isTimeout,
+        isCollecting,
+        signalStrength,
         lastDataTime: lastTime,
-        dataRate: sampleRate,
+        dataRate: isCollecting && sampleRate ? sampleRate : undefined,
         stale,
         initializing,
-        errorState:
-          status === 'timeout'
-            ? 'Data timeout'
-            : status === 'disconnected'
-              ? 'Disconnected'
-              : undefined,
+        errorState,
       } as DeviceStatus
     })
-  }, [connectedDevices, lastGaitDataTime, deviceSampleRates, scannedDevices, connectionStatus])
+  }, [
+    connectedDevices,
+    lastGaitDataTime,
+    deviceSampleRates,
+    scannedDevices,
+    connectionStatus,
+    activeCollectingDevices,
+  ])
 
-  const collectingCount = devices.filter((d) => d.isCollecting).length
-  const connectedCount = devices.filter((d) => d.isConnected).length
+  // Summary counts removed with status summary UI
+  const compact = devices.length > 5
+  const veryCompact = devices.length > 10
 
   return (
     <div
-      className="device-status-viewer sidebar-style"
+      className={`device-status-viewer sidebar-style ${compact ? 'compact' : ''} ${veryCompact ? 'very-compact' : ''}`.trim()}
       role="region"
       aria-label="Device Status Viewer"
     >
@@ -123,26 +137,7 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
         </div>
       ) : (
         <>
-          <div className="status-summary" aria-label="Device summary statistics">
-            <div className="summary-stats">
-              <span className="stat" aria-label={`${collectingCount} devices collecting data`}>
-                <span className="stat-number">{collectingCount}</span>
-                <span className="stat-label">Collecting</span>
-              </span>
-              <span className="stat" aria-label={`${connectedCount} devices connected`}>
-                <span className="stat-number">{connectedCount}</span>
-                <span className="stat-label">Connected</span>
-              </span>
-            </div>
-            {collectingCount > 0 && (
-              <div className="sync-indicator" aria-label="Synchronized collection active">
-                <span className="sync-icon" aria-hidden="true">
-                  <Icon.Link title="Synchronized" />
-                </span>
-                <span className="sync-text">Synchronized Collection</span>
-              </div>
-            )}
-          </div>
+          {/* Status summary removed per user request */}
 
           <ScrollableContainer id="device-status-list" className="device-status-list">
             <div role="list" aria-label="Connected devices">
@@ -157,23 +152,47 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                   <div className="device-info">
                     <div className="device-name-section">
                       <span className="device-name" title={`Full ID: ${device.id}`}>
-                        {device.name}
+                        {(() => {
+                          const side = deviceSides.get(device.id)
+                          return side ? `${side}:${device.name}` : device.name
+                        })()}
                       </span>
                       <span className="device-label">Device</span>
+                      {!deviceSides.get(device.id) && (
+                        <div className="device-side-select inline">
+                          <label className="sr-only" htmlFor={`mdv-side-${device.id}`}>
+                            Set side for device {device.id}
+                          </label>
+                          <select
+                            id={`mdv-side-${device.id}`}
+                            value={deviceSides.get(device.id) || ''}
+                            onChange={(e) => {
+                              const val = e.target.value as 'L' | 'R' | ''
+                              if (val) setDeviceSide(device.id, val)
+                            }}
+                          >
+                            <option value="">Side?</option>
+                            <option value="L">Left</option>
+                            <option value="R">Right</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     <div className="device-indicators">
-                      <div className="connection-status">
-                        <span
-                          className={`status-dot ${device.isConnected ? 'connected' : 'disconnected'}`}
-                          aria-hidden="true"
-                        >
-                          ●
-                        </span>
-                        <span className="status-label">
-                          {device.isConnected ? 'Connected' : 'Disconnected'}
-                        </span>
-                      </div>
+                      {(device.isConnected || device.isTimeout) && (
+                        <div className="connection-status">
+                          <span
+                            className={`status-dot ${device.isConnected ? 'connected' : device.isTimeout ? 'timeout' : ''}`}
+                            aria-hidden="true"
+                          >
+                            ●
+                          </span>
+                          <span className="status-label">
+                            {device.isConnected ? 'Connected' : 'Timeout'}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="collection-status">
                         <span
@@ -227,14 +246,6 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
                                 />
                               ))}
                             </div>
-                          </div>
-                        )}
-                        {device.lastDataTime && (
-                          <div className="last-seen" title="Seconds since last packet">
-                            <span className="last-seen-value">
-                              {Math.min(999, Math.round((Date.now() - device.lastDataTime) / 1000))}
-                              s
-                            </span>
                           </div>
                         )}
                       </div>
