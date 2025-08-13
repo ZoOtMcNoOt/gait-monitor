@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Line } from 'react-chartjs-2'
-import { Chart } from 'chart.js'
-import { registerChartComponents } from '../utils/chartSetup'
+// Lazy load heavy chart libraries (react-chartjs-2 & chart.js) after metadata fetch
+// to reduce initial bundle parse/execute time.
+// (They will be dynamically imported once we have metadata.)
+// import { Line } from 'react-chartjs-2'
+// import { Chart } from 'chart.js'
+// import { registerChartComponents } from '../utils/chartSetup'
 import { Icon } from './icons'
 import { config } from '../config'
 import {
@@ -15,8 +18,7 @@ import { useToast } from '../contexts/ToastContext'
 import { protectedOperations } from '../services/csrfProtection'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
 
-// Chart.js components registration
-registerChartComponents()
+// NOTE: Chart components now registered on-demand after dynamic import.
 
 interface DataViewerProps {
   sessionId: string
@@ -38,6 +40,9 @@ interface OptimizedChartData {
     data_types: string[]
     sample_rate: number
     duration: number
+    device_sample_rates?: Record<string, number>
+    start_timestamp_ms?: number // absolute start (ms since epoch)
+    normalized?: boolean // true if backend sent relative timestamps
   }
 }
 
@@ -58,6 +63,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
 
+  // Dynamically loaded chart libraries (Chart.js + react-chartjs-2 Line component)
+  const [chartLib, setChartLib] = useState<{ Line: any; Chart: any } | null>(null)
+
   const [timeWindowSize, setTimeWindowSize] = useState<number>(10) // seconds - base window size
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(0) // start position in seconds
   const [zoomLevel, setZoomLevel] = useState<number>(1) // 1x to 10x zoom
@@ -70,6 +78,8 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   // Track chart width for adaptive decimation / thinning
   const chartContainerRef = useRef<HTMLDivElement | null>(null)
   const [chartWidth, setChartWidth] = useState<number>(800)
+  const [isCompact, setIsCompact] = useState<boolean>(false)
+  const [isTabletCondensed, setIsTabletCondensed] = useState<boolean>(false)
 
   useLayoutEffect(() => {
     const update = () => {
@@ -77,11 +87,18 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         const w = chartContainerRef.current.clientWidth
         if (w && Math.abs(w - chartWidth) > 10) setChartWidth(w)
       }
+  const ww = window.innerWidth
+  const compact = ww < 600
+  const tabletCondensed = ww >= 600 && ww < 950
+  setIsCompact(compact)
+  setIsTabletCondensed(tabletCondensed)
+  // Auto-collapse advanced settings on compact screens / tablet condensed
+  if ((compact || tabletCondensed) && showAdvancedSettings) setShowAdvancedSettings(false)
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [chartWidth])
+  }, [chartWidth, showAdvancedSettings])
 
   const [deviceColors, setDeviceColors] = useState<
     Map<
@@ -244,9 +261,27 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         endTime: null,
         maxPointsPerDataset: null,
         metadata_only: true,
+        normalize_timestamps: true,
       })
       // Skeleton (no datasets yet)
       setOptimizedData({ ...metaOnly, datasets: {} as any })
+      // Kick off dynamic import of chart libraries immediately after metadata is known.
+      // This allows UI (metadata header, etc.) to paint before heavy libs parse.
+      if (!chartLib) {
+        ;(async () => {
+          try {
+            const [{ Line }, chartJsModule, setup] = await Promise.all([
+              import('react-chartjs-2'),
+              import('chart.js'),
+              import('../utils/chartSetup'),
+            ])
+            setup.registerChartComponents()
+            setChartLib({ Line, Chart: chartJsModule.Chart })
+          } catch (e) {
+            console.warn('Failed to lazy-load chart libraries:', e)
+          }
+        })()
+      }
       const dataDuration = metaOnly.metadata.duration
       const presets = [30, 10, 5, 2]
       const baseWindow = presets.find((p) => dataDuration >= p) || dataDuration
@@ -254,55 +289,85 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setLoading(false) // reveal UI quickly
       setFullDataLoading(true)
 
-      // Defer full data load
-      setTimeout(async () => {
+      // Progressive per-device loading: load first device immediately, queue rest
+      ;(async () => {
         try {
-          console.log(`[DataViewer] Loading full session data for ${sessionId}`)
-            const fullData: OptimizedChartData = await invoke('load_optimized_chart_data', {
-              sessionId,
-              selectedDevices: [],
-              selectedDataTypes: [],
-              startTime: null,
-              endTime: null,
-              maxPointsPerDataset: null,
-              metadata_only: false,
-            })
-            setOptimizedData(fullData)
-            const devices = fullData.metadata.devices
-            const dataTypes = fullData.metadata.data_types
-            const totalPoints = Object.values(fullData.datasets)
-              .flatMap((deviceData) => Object.values(deviceData))
-              .reduce((sum, points) => sum + points.length, 0)
-            console.log(`[DataViewer] Loaded ${totalPoints.toLocaleString()} pts across ${devices.length} devices / ${dataTypes.length} types`)
-            if (devices.length > 0) {
-              const deviceColorPalettes = generateMultiDeviceColors(devices)
-              const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
-              const channelMapping: Record<string, ChannelType> = { r1: 'R1', r2: 'R2', r3: 'R3', x: 'X', y: 'Y', z: 'Z', R1: 'R1', R2: 'R2', R3: 'R3', X: 'X', Y: 'Y', Z: 'Z' }
-              devices.forEach((device) => {
-                const palette = deviceColorPalettes.get(device)!
-                const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
-                dataTypes.forEach((dt, idx) => {
-                  const ch = channelMapping[dt] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
-                  dataTypeColors[dt] = palette[ch]
-                })
-                colorMap.set(device, dataTypeColors)
+          const allDevices = metaOnly.metadata.devices
+          if (!allDevices.length) {
+            setFullDataLoading(false)
+            return
+          }
+          const remaining = [...allDevices]
+          const first = remaining.shift()!
+          console.log(`[DataViewer] Progressive load: initial device ${first}`)
+          const firstData: OptimizedChartData = await invoke('load_optimized_chart_data', {
+            sessionId,
+            selectedDevices: [first],
+            selectedDataTypes: [],
+            startTime: null,
+            endTime: null,
+            maxPointsPerDataset: null,
+            metadata_only: false,
+            normalize_timestamps: true,
+          })
+          // Merge first device datasets into existing optimizedData skeleton
+          setOptimizedData((prev) => {
+            if (!prev) return firstData
+            return { ...prev, datasets: { ...prev.datasets, ...firstData.datasets } }
+          })
+          // Prepare colors (all devices known from metadata)
+          if (allDevices.length > 0) {
+            const deviceColorPalettes = generateMultiDeviceColors(allDevices)
+            const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+            const dataTypes = metaOnly.metadata.data_types
+            const channelMapping: Record<string, ChannelType> = { r1: 'R1', r2: 'R2', r3: 'R3', x: 'X', y: 'Y', z: 'Z', R1: 'R1', R2: 'R2', R3: 'R3', X: 'X', Y: 'Y', Z: 'Z' }
+            allDevices.forEach((device) => {
+              const palette = deviceColorPalettes.get(device)!
+              const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
+              dataTypes.forEach((dt, idx) => {
+                const ch = channelMapping[dt] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
+                dataTypeColors[dt] = palette[ch]
               })
-              setDeviceColors(colorMap)
+              colorMap.set(device, dataTypeColors)
+            })
+            setDeviceColors(colorMap)
+          }
+          // Sequentially load remaining devices without blocking UI
+          for (const dev of remaining) {
+            try {
+              const devData: OptimizedChartData = await invoke('load_optimized_chart_data', {
+                sessionId,
+                selectedDevices: [dev],
+                selectedDataTypes: [],
+                startTime: null,
+                endTime: null,
+                maxPointsPerDataset: null,
+                metadata_only: false,
+                normalize_timestamps: true,
+              })
+              setOptimizedData((prev) => {
+                if (!prev) return devData
+                // do not overwrite existing devices
+                return { ...prev, datasets: { ...prev.datasets, ...devData.datasets } }
+              })
+            } catch (e) {
+              console.warn(`[DataViewer] Failed loading device ${dev}:`, e)
             }
-        } catch (fullErr) {
-          console.error('Failed full session data load:', fullErr)
-          showError('Data Load Error', `Failed full data load: ${fullErr}`)
+          }
+        } catch (e) {
+          console.error('Progressive load error:', e)
+          showError('Data Load Error', `Progressive load failed: ${e}`)
         } finally {
           setFullDataLoading(false)
         }
-      }, 0)
+      })()
     } catch (err) {
       console.error('Failed to load session metadata:', err)
       setError(err instanceof Error ? err.message : 'Failed to load session data')
       showError('Data Load Error', `Failed to load session data: ${err}`)
       setLoading(false)
     }
-  }, [sessionId, showError])
+  }, [sessionId, showError, chartLib])
 
   useEffect(() => {
     loadSessionData()
@@ -348,23 +413,22 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   useEffect(() => {
     return () => {
-      // Clean up any chart instances when component unmounts
+      // Clean up any chart instances when component unmounts (after dynamic load).
       try {
+        if (!chartLib) return
         const container = document.getElementById('data-viewer-chart')
         if (container) {
           const canvases = container.querySelectorAll('canvas')
           canvases.forEach((canvas) => {
-            const chart = Chart.getChart(canvas)
-            if (chart) {
-              chart.destroy()
-            }
+            const chart = chartLib.Chart.getChart(canvas as HTMLCanvasElement)
+            if (chart) chart.destroy()
           })
         }
       } catch (error) {
         console.warn('Error cleaning up DataViewer charts:', error)
       }
     }
-  }, [])
+  }, [chartLib])
 
   const getDeviceColor = useCallback(
     (device: string, dataType: string, alpha: number = 1): string => {
@@ -493,41 +557,43 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   const chartData = unifiedView.chartData
 
-  // Build preprocessed typed arrays once full data is available
+  // Incremental / lazy typed-array preprocessing: only build for newly loaded devices/dataTypes.
   useEffect(() => {
     if (!optimizedData) return
-    const datasetKeys = Object.keys(optimizedData.datasets || {})
-    if (datasetKeys.length === 0) return // metadata-only stage
+    const datasetEntries = Object.entries(optimizedData.datasets || {})
+    if (!datasetEntries.length) return // metadata-only stage
 
-    // Simple version increment to force rebuild when dataset object identity changes
-    const version = processedVersionRef.current + 1
-    processedVersionRef.current = version
-
-    console.log('[Preprocess] Building typed arrays for datasets...')
+    if (!processedRef.current) processedRef.current = {}
+    const normalized = optimizedData.metadata.normalized
+    let newPoints = 0
+    let newSeries = 0
     const start = performance.now()
-    const processed: ProcessedDatasets = {}
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      processed[device] = {}
+
+    for (const [device, deviceData] of datasetEntries) {
+      if (!processedRef.current[device]) processedRef.current[device] = {}
       for (const [dataType, points] of Object.entries(deviceData)) {
+        const existing = processedRef.current[device][dataType]
+        // Skip if already processed with matching length (assumes append-only datasets)
+        if (existing && existing.xs.length === points.length) continue
         const len = points.length
         const xs = new Float32Array(len)
         const ys = new Float32Array(len)
         for (let i = 0; i < len; i++) {
-          // Convert x to relative seconds using getChartTimestamp (which expects ms input)
-          xs[i] = getChartTimestamp(points[i].x)
+          xs[i] = normalized ? points[i].x / 1000 : getChartTimestamp(points[i].x)
           ys[i] = points[i].y
         }
-        processed[device][dataType] = { xs, ys }
+        processedRef.current[device][dataType] = { xs, ys }
+        newPoints += len
+        newSeries++
       }
     }
-    processedRef.current = processed
-    const elapsed = performance.now() - start
-    const totalPoints = Object.values(processed)
-      .flatMap((d) => Object.values(d))
-      .reduce((sum, arrs) => sum + arrs.xs.length, 0)
-    console.log(
-      `[Preprocess] Completed in ${elapsed.toFixed(1)}ms for ${totalPoints.toLocaleString()} points`,
-    )
+    if (newSeries > 0) {
+      processedVersionRef.current++
+      const elapsed = performance.now() - start
+      console.log(
+        `[Preprocess] Added ${newSeries} new series (${newPoints.toLocaleString()} pts) in ${elapsed.toFixed(1)}ms (total devices: ${Object.keys(processedRef.current).length})`,
+      )
+    }
   }, [optimizedData, getChartTimestamp])
 
   const reloadData = () => {
@@ -768,7 +834,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   return (
     <div className="data-viewer-overlay">
-      <div className="data-viewer-modal">
+      <div
+        className="data-viewer-modal"
+        data-compact={isCompact || undefined}
+        data-tablet-condensed={isTabletCondensed || undefined}
+      >
         {/* Close button */}
         <button
           className="btn-close"
@@ -826,101 +896,112 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         </header>
 
         <nav className="data-viewer-toolbar">
-          <div className="toolbar-left">
-            <div className="data-summary">
-              <span className="summary-item">
-                <span className="summary-label">Data Points:</span>
-                <span className="summary-value">
+          <div
+            className="dv-toolbar-grid"
+            data-condensed={isCompact || isTabletCondensed || undefined}
+          >
+            <div className="dv-metrics" aria-label="Session metrics">
+              <div className="metric-pill" title="Total data points">
+                <span className="metric-label">Pts</span>
+                <span className="metric-value">
                   {chartData ? chartData.totalDataPoints.toLocaleString() : '0'}
                 </span>
-              </span>
-              <span className="summary-separator">•</span>
-              <span className="summary-item">
-                <span className="summary-label">Data Types:</span>
-                <span className="summary-value">
+              </div>
+              <div className="metric-pill" title="Data types">
+                <span className="metric-label">Types</span>
+                <span className="metric-value">
                   {optimizedData ? optimizedData.metadata.data_types.length : 0}
                 </span>
-              </span>
+              </div>
+              <div className="metric-pill hide-when-tight" title="Devices">
+                <span className="metric-label">Dev</span>
+                <span className="metric-value">
+                  {optimizedData ? optimizedData.metadata.devices.length : 0}
+                </span>
+              </div>
+              <div className="metric-pill hide-when-tight" title="Sample rate">
+                <span className="metric-label">Hz</span>
+                <span className="metric-value">
+                  {optimizedData
+                    ? (Math.round(optimizedData.metadata.sample_rate * 10) / 10).toFixed(1)
+                    : '0.0'}
+                </span>
+              </div>
+              {fullDataLoading && (
+                <div className="metric-pill loading" title="Loading remaining devices">
+                  <span className="metric-label">Loading…</span>
+                </div>
+              )}
             </div>
-          </div>
-
-          <div className="toolbar-right">
-            <div className="action-buttons">
-              <div className="quick-actions">
+            <div className="dv-actions">
+              <button
+                className="btn-action btn-fit"
+                onClick={() => {
+                  setZoomLevel(1)
+                  setCurrentTimePosition(0)
+                  setTimeRange(null)
+                }}
+                title="Fit all data to view"
+                aria-label="Fit all data"
+              >
+                <span className="btn-icon" aria-hidden="true">
+                  <Icon.Fit />
+                </span>
+                <span className="btn-label">Fit</span>
+              </button>
+              {selectionBox && (
                 <button
-                  className="btn-action btn-fit"
+                  className="btn-action btn-zoom-selection"
                   onClick={() => {
-                    setZoomLevel(1)
-                    setCurrentTimePosition(0)
-                    setTimeRange(null)
+                    if (selectionBox) {
+                      const duration = selectionBox.end - selectionBox.start
+                      const newZoom = Math.min(
+                        10,
+                        Math.max(1, (optimizedData?.metadata.duration || 10) / duration),
+                      )
+                      setZoomLevel(newZoom)
+                      setCurrentTimePosition(selectionBox.start)
+                    }
                   }}
-                  title="Fit all data to view"
-                  aria-label="Fit all data"
+                  title="Zoom to selected area"
+                  aria-label="Zoom to selection"
                 >
                   <span className="btn-icon" aria-hidden="true">
-                    <Icon.Fit />
+                    <Icon.Chart />
                   </span>
-                  <span className="btn-label">Fit All</span>
+                  <span className="btn-label">Sel</span>
                 </button>
-
-                {selectionBox && (
-                  <button
-                    className="btn-action btn-zoom-selection"
-                    onClick={() => {
-                      if (selectionBox) {
-                        const duration = selectionBox.end - selectionBox.start
-                        const newZoom = Math.min(
-                          10,
-                          Math.max(1, (optimizedData?.metadata.duration || 10) / duration),
-                        )
-                        setZoomLevel(newZoom)
-                        setCurrentTimePosition(selectionBox.start)
-                      }
-                    }}
-                    title="Zoom to selected area"
-                    aria-label="Zoom to selection"
-                  >
-                    <span className="btn-icon" aria-hidden="true">
-                      <Icon.Chart />
-                    </span>
-                    <span className="btn-label">Zoom to Selection</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="primary-actions">
-                <button
-                  className="btn-action btn-export"
-                  onClick={exportFilteredData}
-                  title="Export current data view to CSV"
-                  aria-label="Export data"
+              )}
+              <button
+                className="btn-action btn-export"
+                onClick={exportFilteredData}
+                title="Export current data view to CSV"
+                aria-label="Export data"
+              >
+                <span className="btn-icon" aria-hidden="true">
+                  <Icon.Export />
+                </span>
+                <span className="btn-label">Export</span>
+              </button>
+              <button
+                className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
+                onClick={handleSettingsToggle}
+                title={
+                  showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'
+                }
+                aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
+              >
+                <span className="btn-icon" aria-hidden="true">
+                  <Icon.Gear />
+                </span>
+                <span className="btn-label">Settings</span>
+                <span
+                  className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}
+                  aria-hidden="true"
                 >
-                  <span className="btn-icon" aria-hidden="true">
-                    <Icon.Export />
-                  </span>
-                  <span className="btn-label">Export Data</span>
-                </button>
-
-                <button
-                  className={`btn-action btn-settings ${showAdvancedSettings ? 'active' : ''}`}
-                  onClick={handleSettingsToggle}
-                  title={
-                    showAdvancedSettings ? 'Hide performance settings' : 'Show performance settings'
-                  }
-                  aria-label={showAdvancedSettings ? 'Hide settings' : 'Show settings'}
-                >
-                  <span className="btn-icon" aria-hidden="true">
-                    <Icon.Gear />
-                  </span>
-                  <span className="btn-label">Settings</span>
-                  <span
-                    className={`settings-chevron ${showAdvancedSettings ? 'expanded' : ''}`}
-                    aria-hidden="true"
-                  >
-                    <Icon.ChevronDown />
-                  </span>
-                </button>
-              </div>
+                  <Icon.ChevronDown />
+                </span>
+              </button>
             </div>
           </div>
         </nav>
@@ -1101,9 +1182,22 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   role="tabpanel"
                   aria-labelledby="chart-tab"
                   className="chart-container"
+                  ref={chartContainerRef}
                 >
                   {(() => {
                     try {
+                      if (!chartLib) {
+                        return (
+                          <div className="chart-loading">
+                            <div className="loading-spinner small">
+                              <div className="spinner" />
+                            </div>
+                            <p>Loading chart engine…</p>
+                          </div>
+                        )
+                      }
+                      const Line = chartLib.Line
+                      const ChartJS = chartLib.Chart
                       return (
                         <Line
                           key={`data-chart-${timeRange ? 'filtered' : 'all'}`}
@@ -1125,7 +1219,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 // Dynamic sample target based on current chart width & user cap
                                 samples: Math.min(maxDataPoints, Math.floor((chartWidth || 800) * 1.25)),
                               },
-                              legend: {
+          legend: {
                                 position: 'top',
                                 labels: {
                                   boxWidth: 12,
@@ -1133,10 +1227,10 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   font: {
                                     size: 12,
                                   },
-                                  generateLabels: function (chart) {
-                                    const original =
-                                      Chart.defaults.plugins.legend.labels.generateLabels(chart)
-                                    return original.map((item) => {
+                                  generateLabels: function (chart: any) {
+            const baseGen = ChartJS?.defaults?.plugins?.legend?.labels?.generateLabels
+            const original = baseGen ? baseGen(chart) : []
+                                    return original.map((item: any) => {
                                       if (item.text) {
                                         const match = item.text.match(/^Device (\w+) - (.+)$/)
                                         if (match) {
@@ -1158,7 +1252,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 enabled: true,
                                 mode: 'index',
                                 intersect: false,
-                                filter: function (tooltipItem) {
+                                filter: function (tooltipItem: any) {
                                   // Filter out null/undefined values from tooltips
                                   return (
                                     tooltipItem &&
@@ -1170,13 +1264,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   )
                                 },
                                 callbacks: {
-                                  title: function (context) {
+                                  title: function (context: any) {
                                     if (context && context[0] && context[0].parsed) {
                                       return `Time: ${context[0].parsed.x.toFixed(2)}s`
                                     }
                                     return 'Data Point'
                                   },
-                                  label: function (context) {
+                                  label: function (context: any) {
                                     if (
                                       context &&
                                       context.parsed &&
@@ -1200,7 +1294,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 min: timeRange?.start,
                                 max: timeRange?.end,
                                 ticks: {
-                                  callback: function (value) {
+                                  callback: function (value: any) {
                                     // Format relative time in seconds (matching LiveChart)
                                     if (typeof value === 'number' && !isNaN(value)) {
                                       return `${value.toFixed(1)}s`
@@ -1524,6 +1618,59 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       </div>
                     )}
                   </div>
+                )}
+                {isCompact && (
+                  <nav className="mobile-toolbar" aria-label="Mobile chart controls">
+                    <button
+                      className="mt-btn"
+                      onClick={() => {
+                        setZoomLevel(1); setCurrentTimePosition(0); setTimeRange(null)
+                      }}
+                      aria-label="Fit all data"
+                      title="Fit all"
+                    >
+                      <span className="mt-icon"><Icon.Fit /></span>
+                      <span className="mt-label">Fit</span>
+                    </button>
+                    <button
+                      className="mt-btn"
+                      onClick={() => handleZoomChange('out')}
+                      disabled={zoomLevel <= 1}
+                      aria-label="Zoom out"
+                      title="Zoom out"
+                    >
+                      <span className="mt-icon">−</span>
+                      <span className="mt-label">Out</span>
+                    </button>
+                    <button
+                      className="mt-btn"
+                      onClick={() => handleZoomChange('in')}
+                      disabled={zoomLevel >= 10}
+                      aria-label="Zoom in"
+                      title="Zoom in"
+                    >
+                      <span className="mt-icon">+</span>
+                      <span className="mt-label">In</span>
+                    </button>
+                    <button
+                      className="mt-btn"
+                      onClick={exportFilteredData}
+                      aria-label="Export data"
+                      title="Export"
+                    >
+                      <span className="mt-icon"><Icon.Export /></span>
+                      <span className="mt-label">Export</span>
+                    </button>
+                    <button
+                      className={`mt-btn ${showAdvancedSettings ? 'active' : ''}`}
+                      onClick={handleSettingsToggle}
+                      aria-label="Toggle settings"
+                      title="Settings"
+                    >
+                      <span className="mt-icon"><Icon.Gear /></span>
+                      <span className="mt-label">Settings</span>
+                    </button>
+                  </nav>
                 )}
               </div>
             ) : (

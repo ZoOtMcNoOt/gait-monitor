@@ -1991,6 +1991,8 @@ struct OptimizedMetadata {
   sample_rate: f64, // average per-device
   duration: f64,
   device_sample_rates: std::collections::HashMap<String, f64>,
+  start_timestamp_ms: u64, // absolute session start (ms since epoch)
+  normalized: bool, // whether dataset timestamps are relative to start
 }
 
 #[tauri::command]
@@ -2132,6 +2134,7 @@ async fn load_optimized_chart_data(
   end_time: Option<u64>,
   max_points_per_dataset: Option<usize>,
   metadata_only: Option<bool>,
+  normalize_timestamps: Option<bool>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<OptimizedChartData, String> {
   // Get the session metadata first - using the same logic as load_session_data
@@ -2278,6 +2281,17 @@ async fn load_optimized_chart_data(
     device_sample_rates.values().copied().sum::<f64>() / device_sample_rates.len() as f64
   } else { 0.0 };
 
+  // Normalize timestamps if requested (convert to relative milliseconds from session start)
+  if normalize_timestamps.unwrap_or(false) && !datasets.is_empty() {
+    for device_data in datasets.values_mut() {
+      for points in device_data.values_mut() {
+        for p in points.iter_mut() {
+          if p.x >= min_timestamp { p.x -= min_timestamp; }
+        }
+      }
+    }
+  }
+
   Ok(OptimizedChartData {
     datasets,
     metadata: OptimizedMetadata {
@@ -2286,6 +2300,8 @@ async fn load_optimized_chart_data(
       sample_rate,
       duration,
       device_sample_rates,
+      start_timestamp_ms: min_timestamp,
+      normalized: normalize_timestamps.unwrap_or(false),
     },
   })
 }
