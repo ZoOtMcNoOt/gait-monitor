@@ -9,6 +9,7 @@ import {
   Legend,
   TimeScale,
   LineController,
+  Decimation,
 } from 'chart.js'
 import 'chartjs-adapter-date-fns'
 
@@ -27,6 +28,7 @@ export const registerChartComponents = () => {
       Legend,
       TimeScale,
       LineController,
+  Decimation,
     )
     isRegistered = true
   }

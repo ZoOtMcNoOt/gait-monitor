@@ -1957,10 +1957,11 @@ struct SessionData {
 
 #[derive(Serialize)]
 struct SessionDataMetadata {
-    devices: Vec<String>,
-    data_types: Vec<String>,
-    sample_rate: f64,
-    duration: f64,
+  devices: Vec<String>,
+  data_types: Vec<String>,
+  sample_rate: f64, // average per-device sample rate (Hz)
+  duration: f64,
+  device_sample_rates: std::collections::HashMap<String, f64>, // per-device rates
 }
 
 #[derive(Serialize)]
@@ -1985,10 +1986,11 @@ struct ChartPoint {
 
 #[derive(Serialize)]
 struct OptimizedMetadata {
-    devices: Vec<String>,
-    data_types: Vec<String>,
-    sample_rate: f64,
-    duration: f64,
+  devices: Vec<String>,
+  data_types: Vec<String>,
+  sample_rate: f64, // average per-device
+  duration: f64,
+  device_sample_rates: std::collections::HashMap<String, f64>,
 }
 
 #[tauri::command]
@@ -2017,6 +2019,9 @@ async fn load_session_data(
   let mut min_timestamp = u64::MAX;
   let mut max_timestamp = 0u64;
 
+  // Track per-device unique timestamps
+  let mut device_timestamps: std::collections::HashMap<String, std::collections::HashSet<u64>> = std::collections::HashMap::new();
+
   // Parse CSV content (skip comments and header)
   let mut header_found = false;
   for line in content.lines() {
@@ -2044,6 +2049,12 @@ async fn load_session_data(
         devices.insert(device_id.clone());
         min_timestamp = min_timestamp.min(timestamp);
         max_timestamp = max_timestamp.max(timestamp);
+
+        // Record timestamp once per line per device
+        device_timestamps
+          .entry(device_id.clone())
+          .or_insert_with(std::collections::HashSet::new)
+          .insert(timestamp);
 
         // Parse each sensor value as a separate data point
         let sensor_data = [
@@ -2083,16 +2094,16 @@ async fn load_session_data(
     0.0
   };
 
-  // Calculate actual sample rate based on unique timestamps, not total data points
-  // Since each timestamp can have multiple sensor values (r1,r2,r3,x,y,z), we need to count unique timestamps
-  let unique_timestamps: std::collections::HashSet<u64> = data_points.iter().map(|p| p.timestamp).collect();
-  let actual_sample_count = unique_timestamps.len() as f64;
-  
-  let sample_rate = if duration > 0.0 {
-    actual_sample_count / duration
-  } else {
-    0.0
-  };
+  // Per-device sample rates (unique timestamps per device / duration)
+  let mut device_sample_rates: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+  if duration > 0.0 {
+    for (dev, ts_set) in &device_timestamps {
+      device_sample_rates.insert(dev.clone(), ts_set.len() as f64 / duration);
+    }
+  }
+  let sample_rate = if !device_sample_rates.is_empty() {
+    device_sample_rates.values().copied().sum::<f64>() / device_sample_rates.len() as f64
+  } else { 0.0 };
 
   let session_data = SessionData {
     session_name: session_metadata.session_name.clone(),
@@ -2105,6 +2116,7 @@ async fn load_session_data(
       data_types: data_types.into_iter().collect(),
       sample_rate,
       duration,
+      device_sample_rates,
     },
   };
 
@@ -2119,6 +2131,7 @@ async fn load_optimized_chart_data(
   start_time: Option<u64>,
   end_time: Option<u64>,
   max_points_per_dataset: Option<usize>,
+  metadata_only: Option<bool>,
   path_config: tauri::State<'_, PathConfigState>
 ) -> Result<OptimizedChartData, String> {
   // Get the session metadata first - using the same logic as load_session_data
@@ -2136,14 +2149,20 @@ async fn load_optimized_chart_data(
   let content = tokio::fs::read_to_string(file_path).await
     .map_err(|e| format!("Failed to read data file: {}", e))?;
 
-  // Use the same data structure approach as the original for compatibility
+  // If only metadata requested, we can scan minimally without collecting all points
+  let only_meta = metadata_only.unwrap_or(false);
+
+  // Use the same data structure approach as the original for compatibility (unless metadata only)
   let mut all_devices = std::collections::HashSet::new();
   let mut all_data_types = std::collections::HashSet::new();
   let mut min_timestamp = u64::MAX;
   let mut max_timestamp = 0u64;
 
-  // Create the device -> data_type -> points structure directly
-  let mut datasets: std::collections::HashMap<String, std::collections::HashMap<String, Vec<ChartPoint>>> = std::collections::HashMap::new();
+  // Track per-device unique timestamps
+  let mut device_timestamps: std::collections::HashMap<String, std::collections::HashSet<u64>> = std::collections::HashMap::new();
+
+  // Create the device -> data_type -> points structure directly (skip allocation if metadata only)
+  let mut datasets: std::collections::HashMap<String, std::collections::HashMap<String, Vec<ChartPoint>>> = if only_meta { std::collections::HashMap::new() } else { std::collections::HashMap::new() };
 
   // Parse CSV content - same logic as original load_session_data
   let mut header_found = false;
@@ -2185,9 +2204,18 @@ async fn load_optimized_chart_data(
         all_devices.insert(device_id.clone());
         min_timestamp = min_timestamp.min(timestamp);
         max_timestamp = max_timestamp.max(timestamp);
+        device_timestamps
+          .entry(device_id.clone())
+          .or_insert_with(std::collections::HashSet::new)
+          .insert(timestamp);
 
-        // Ensure device entry exists
-        let device_data = datasets.entry(device_id.clone()).or_insert_with(std::collections::HashMap::new);
+        // Prepare mutable device map reference when collecting full data
+        // (In metadata-only mode we skip allocating point vectors entirely)
+        #[allow(unused_mut)]
+        let mut device_map_opt: Option<&mut std::collections::HashMap<String, Vec<ChartPoint>>> = None;
+        if !only_meta {
+          device_map_opt = Some(datasets.entry(device_id.clone()).or_insert_with(std::collections::HashMap::new));
+        }
 
         // Parse each sensor value as a separate data type - same as original
         let sensor_data = [
@@ -2201,28 +2229,27 @@ async fn load_optimized_chart_data(
 
         for (data_type, value_str) in sensor_data {
           if let Ok(value) = value_str.parse::<f64>() {
-            // If data types filter is specified and non-empty, apply it
             if !selected_data_types.is_empty() && !selected_data_types.contains(&data_type.to_string()) {
               continue;
             }
-            
             all_data_types.insert(data_type.to_string());
-            
-            // Add point to the correct dataset
-            let data_type_points = device_data.entry(data_type.to_string()).or_insert_with(Vec::new);
-            data_type_points.push(ChartPoint { x: timestamp, y: value });
+            if let Some(device_map) = device_map_opt.as_mut() {
+              let data_type_points = device_map.entry(data_type.to_string()).or_insert_with(Vec::new);
+              data_type_points.push(ChartPoint { x: timestamp, y: value });
+            }
           }
         }
       }
     }
   }
 
-  if datasets.is_empty() {
+  if !only_meta && datasets.is_empty() {
     return Err("No valid data points found in file".to_string());
   }
 
   // Apply downsampling if requested
-  if let Some(max_points) = max_points_per_dataset {
+  if !only_meta && max_points_per_dataset.is_some() {
+    let max_points = max_points_per_dataset.unwrap();
     for device_data in datasets.values_mut() {
       for data_points in device_data.values_mut() {
         if data_points.len() > max_points {
@@ -2240,18 +2267,16 @@ async fn load_optimized_chart_data(
     0.0
   };
 
-  // Calculate sample rate based on actual timestamps
-  let total_unique_timestamps: std::collections::HashSet<u64> = datasets.values()
-    .flat_map(|device_data| device_data.values())
-    .flat_map(|points| points.iter().map(|p| p.x))
-    .collect();
-  let actual_sample_count = total_unique_timestamps.len() as f64;
-  
-  let sample_rate = if duration > 0.0 {
-    actual_sample_count / duration
-  } else {
-    0.0
-  };
+  // Per-device sample rates
+  let mut device_sample_rates: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+  if duration > 0.0 {
+    for (dev, ts_set) in &device_timestamps {
+      device_sample_rates.insert(dev.clone(), ts_set.len() as f64 / duration);
+    }
+  }
+  let sample_rate = if !device_sample_rates.is_empty() {
+    device_sample_rates.values().copied().sum::<f64>() / device_sample_rates.len() as f64
+  } else { 0.0 };
 
   Ok(OptimizedChartData {
     datasets,
@@ -2260,6 +2285,7 @@ async fn load_optimized_chart_data(
       data_types: all_data_types.into_iter().collect(),
       sample_rate,
       duration,
+      device_sample_rates,
     },
   })
 }

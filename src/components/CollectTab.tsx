@@ -127,7 +127,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       </div>
     )
   }
-  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData } =
+  const { connectedDevices, startDeviceCollection, stopDeviceCollection, subscribeToGaitData, deviceSides } =
     optionalCtx
 
   useEffect(() => {
@@ -446,10 +446,32 @@ ${warningText}`,
     try {
       console.log('[Collect] Saving session with enhanced CSRF protection...')
 
+      // Append device side mapping to notes if available and not already present
+      let notes = collectedData.notes || ''
+      try {
+        if (deviceSides && deviceSides.size) {
+          const uniqueDeviceIds = Array.from(new Set(collectedData.dataPoints.map(d => d.device_id)))
+          const sidePairs = uniqueDeviceIds
+            .map(id => {
+              const side = deviceSides.get(id)
+              return side ? `${id}=${side}` : null
+            })
+            .filter(Boolean) as string[]
+          if (sidePairs.length) {
+            const sideLine = `Sides: ${sidePairs.join(', ')}`
+            if (!notes.toLowerCase().includes('sides:')) {
+              notes = notes ? `${notes}\n${sideLine}` : sideLine
+            }
+          }
+        }
+      } catch {
+        // Silently ignore side augmentation errors
+      }
+
       const filePath = await protectedOperations.saveSessionData(
         collectedData.sessionName,
         collectedData.subjectId,
-        collectedData.notes,
+        notes,
         collectedData.dataPoints,
       )
 

@@ -92,10 +92,12 @@ export default function DeviceStatusViewer({ onNavigateToConnect }: DeviceStatus
   ])
 
   // Summary counts removed with status summary UI
+  const compact = devices.length > 5
+  const veryCompact = devices.length > 10
 
   return (
     <div
-      className="device-status-viewer sidebar-style"
+      className={`device-status-viewer sidebar-style ${compact ? 'compact' : ''} ${veryCompact ? 'very-compact' : ''}`.trim()}
       role="region"
       aria-label="Device Status Viewer"
     >

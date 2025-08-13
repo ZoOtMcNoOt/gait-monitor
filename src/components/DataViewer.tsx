@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Line } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
@@ -29,6 +29,8 @@ interface ChartPoint {
   y: number
 }
 
+type ChartTuple = [number, number]
+
 interface OptimizedChartData {
   datasets: Record<string, Record<string, ChartPoint[]>> // device -> dataType -> points
   metadata: {
@@ -39,17 +41,20 @@ interface OptimizedChartData {
   }
 }
 
-interface FilteredDataPoint {
-  device_id: string
-  data_type: string
-  timestamp: number
-  value: number
-  unit: string
+// Preprocessed typed-array representation for efficient slicing
+interface ProcessedDatasetPointArrays {
+  xs: Float32Array // relative seconds
+  ys: Float32Array
 }
+
+type ProcessedDatasets = Record<string, Record<string, ProcessedDatasetPointArrays>>
+
+// Removed legacy FilteredDataPoint list usage (export now slices directly)
 
 export default function DataViewer({ sessionId, sessionName, onClose }: DataViewerProps) {
   const [optimizedData, setOptimizedData] = useState<OptimizedChartData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fullDataLoading, setFullDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
 
@@ -69,6 +74,13 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       Record<string, { primary: string; light: string; dark: string; background: string }>
     >
   >(new Map())
+
+  // Ref holding preprocessed typed arrays (rebuilt when full datasets loaded)
+  const processedRef = useRef<ProcessedDatasets | null>(null)
+  // Track a simple version to know when to rebuild (use dataset object identity)
+  const processedVersionRef = useRef<number>(0)
+  // Reusable object pools per device/dataType to avoid per-render point allocations
+  // Removed object pool in favor of tuple reuse logic (future optimization placeholder)
 
   const { getChartTimestamp } = useTimestampManager({
     useRelativeTime: true, // Match LiveChart configuration
@@ -208,108 +220,89 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
       setLoading(true)
       setError(null)
 
-      // Always load full data initially; apply downsampling client-side
-      console.log(`[DataViewer] Loading session data for ${sessionId}`)
-
-      // Load all data, filter client side
-      const data: OptimizedChartData = await invoke('load_optimized_chart_data', {
+      console.log(`[DataViewer] Loading session metadata for ${sessionId}`)
+      const metaOnly: OptimizedChartData = await invoke('load_optimized_chart_data', {
         sessionId,
-        selectedDevices: [], // Load all devices (empty array = all devices)
-        selectedDataTypes: [], // Load all data types (empty array = all data types)
+        selectedDevices: [],
+        selectedDataTypes: [],
         startTime: null,
         endTime: null,
-        maxPointsPerDataset: null, // Load full data, apply downsampling in chartData memoization
+        maxPointsPerDataset: null,
+        metadata_only: true,
       })
+      // Skeleton (no datasets yet)
+      setOptimizedData({ ...metaOnly, datasets: {} as any })
+      const dataDuration = metaOnly.metadata.duration
+      const presets = [30, 10, 5, 2]
+      const baseWindow = presets.find((p) => dataDuration >= p) || dataDuration
+      setTimeWindowSize(baseWindow)
+      setLoading(false) // reveal UI quickly
+      setFullDataLoading(true)
 
-      setOptimizedData(data)
-
-      // Initialize window size based on data duration
-      const dataDuration = data.metadata.duration
-      if (dataDuration <= 30) {
-        // For short sessions, show all data by default
-        setTimeWindowSize(Math.ceil(dataDuration))
-      } else {
-        // For longer sessions, start with a reasonable window
-        setTimeWindowSize(Math.min(30, Math.ceil(dataDuration / 3)))
-      }
-
-      const devices = data.metadata.devices
-      const dataTypes = data.metadata.data_types
-
-      const totalPoints = Object.values(data.datasets)
-        .flatMap((deviceData) => Object.values(deviceData))
-        .reduce((sum, points) => sum + points.length, 0)
-
-      console.log(
-        `[DataViewer] Loaded ${totalPoints.toLocaleString()} total data points across ${devices.length} devices and ${dataTypes.length} data types`,
-      )
-
-      // Generate device colors
-      if (devices.length > 0) {
-        const deviceColorPalettes = generateMultiDeviceColors(devices)
-        const colorMap = new Map<
-          string,
-          Record<string, { primary: string; light: string; dark: string; background: string }>
-        >()
-
-        devices.forEach((device) => {
-          const palette = deviceColorPalettes.get(device)!
-          const dataTypeColors: Record<
-            string,
-            { primary: string; light: string; dark: string; background: string }
-          > = {}
-
-          dataTypes.forEach((dataType, index) => {
-            const channelMapping: Record<string, ChannelType> = {
-              r1: 'R1',
-              r2: 'R2',
-              r3: 'R3',
-              x: 'X',
-              y: 'Y',
-              z: 'Z',
-              R1: 'R1',
-              R2: 'R2',
-              R3: 'R3',
-              X: 'X',
-              Y: 'Y',
-              Z: 'Z',
+      // Defer full data load
+      setTimeout(async () => {
+        try {
+          console.log(`[DataViewer] Loading full session data for ${sessionId}`)
+            const fullData: OptimizedChartData = await invoke('load_optimized_chart_data', {
+              sessionId,
+              selectedDevices: [],
+              selectedDataTypes: [],
+              startTime: null,
+              endTime: null,
+              maxPointsPerDataset: null,
+              metadata_only: false,
+            })
+            setOptimizedData(fullData)
+            const devices = fullData.metadata.devices
+            const dataTypes = fullData.metadata.data_types
+            const totalPoints = Object.values(fullData.datasets)
+              .flatMap((deviceData) => Object.values(deviceData))
+              .reduce((sum, points) => sum + points.length, 0)
+            console.log(`[DataViewer] Loaded ${totalPoints.toLocaleString()} pts across ${devices.length} devices / ${dataTypes.length} types`)
+            if (devices.length > 0) {
+              const deviceColorPalettes = generateMultiDeviceColors(devices)
+              const colorMap = new Map<string, Record<string, { primary: string; light: string; dark: string; background: string }>>()
+              const channelMapping: Record<string, ChannelType> = { r1: 'R1', r2: 'R2', r3: 'R3', x: 'X', y: 'Y', z: 'Z', R1: 'R1', R2: 'R2', R3: 'R3', X: 'X', Y: 'Y', Z: 'Z' }
+              devices.forEach((device) => {
+                const palette = deviceColorPalettes.get(device)!
+                const dataTypeColors: Record<string, { primary: string; light: string; dark: string; background: string }> = {}
+                dataTypes.forEach((dt, idx) => {
+                  const ch = channelMapping[dt] || (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[idx % 6]
+                  dataTypeColors[dt] = palette[ch]
+                })
+                colorMap.set(device, dataTypeColors)
+              })
+              setDeviceColors(colorMap)
             }
-
-            const channel =
-              channelMapping[dataType] ||
-              (['R1', 'R2', 'R3', 'X', 'Y', 'Z'] as ChannelType[])[index % 6]
-            dataTypeColors[dataType] = palette[channel]
-          })
-
-          colorMap.set(device, dataTypeColors)
-        })
-
-        setDeviceColors(colorMap)
-        console.log('Generated device colors:', Object.fromEntries(colorMap))
-      }
+        } catch (fullErr) {
+          console.error('Failed full session data load:', fullErr)
+          showError('Data Load Error', `Failed full data load: ${fullErr}`)
+        } finally {
+          setFullDataLoading(false)
+        }
+      }, 0)
     } catch (err) {
-      console.error('Failed to load session data:', err)
+      console.error('Failed to load session metadata:', err)
       setError(err instanceof Error ? err.message : 'Failed to load session data')
       showError('Data Load Error', `Failed to load session data: ${err}`)
-    } finally {
       setLoading(false)
     }
-  }, [sessionId, showError]) // Only essential dependencies to prevent unnecessary reloads
+  }, [sessionId, showError])
 
   useEffect(() => {
     loadSessionData()
   }, [loadSessionData])
 
   useEffect(() => {
-    if (optimizedData && (zoomLevel !== 1 || currentTimePosition !== 0)) {
-      const effectiveWindow = getEffectiveTimeWindow()
-      setTimeRange(effectiveWindow)
-      console.log(
-        `Time range updated: ${effectiveWindow.start.toFixed(2)}s - ${effectiveWindow.end.toFixed(2)}s (zoom: ${zoomLevel}x)`,
-      )
-    } else if (zoomLevel === 1 && currentTimePosition === 0) {
-      setTimeRange(null) // Show all data when not zoomed
-    }
+    if (!optimizedData) return
+    const dataDuration = optimizedData.metadata.duration
+    const effectiveWindow = getEffectiveTimeWindow()
+    const windowDuration = effectiveWindow.end - effectiveWindow.start
+    
+    setTimeRange(effectiveWindow)
+    console.log(
+      `Time range updated: ${effectiveWindow.start.toFixed(2)}s - ${effectiveWindow.end.toFixed(2)}s (zoom: ${zoomLevel}x)`,
+    )
   }, [zoomLevel, currentTimePosition, optimizedData, getEffectiveTimeWindow])
 
   useEffect(() => {
@@ -387,142 +380,131 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     [deviceColors],
   )
 
-  const filteredData = useMemo((): FilteredDataPoint[] => {
-    if (!optimizedData) return []
-
-    const filtered: FilteredDataPoint[] = []
-
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      for (const [dataType, points] of Object.entries(deviceData)) {
-        for (const point of points) {
-          const convertedTimestamp = getChartTimestamp(point.x)
-          const timeMatch =
-            !timeRange ||
-            (convertedTimestamp >= timeRange.start && convertedTimestamp <= timeRange.end)
-
-          if (timeMatch) {
-            filtered.push({
-              device_id: device,
-              data_type: dataType,
-              timestamp: convertedTimestamp,
-              value: point.y,
-              unit: '',
-            })
-          }
-        }
-      }
+  // Unified computation for chartData (single traversal & slicing)
+  const unifiedView = useMemo(() => {
+    if (!optimizedData || !processedRef.current || deviceColors.size === 0) {
+      return { chartData: null as any }
     }
-    if (timeRange) {
-      console.log(
-        `[Filter] Time filtering: range=[${timeRange.start.toFixed(2)}s, ${timeRange.end.toFixed(2)}s], filtered=${filtered.length} points`,
-      )
-    } else {
-      console.log(`[Filter] No time filtering: showing all ${filtered.length} points`)
+    const rangeStart = timeRange?.start ?? 0
+    const rangeEnd = timeRange?.end ?? optimizedData.metadata.duration
+    const lowerBound = (arr: Float32Array, target: number) => {
+      let lo = 0, hi = arr.length
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+      return lo
+    }
+    const upperBound = (arr: Float32Array, target: number) => {
+      let lo = 0, hi = arr.length
+      while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+      return lo
     }
 
-    return filtered
-  }, [optimizedData, timeRange, getChartTimestamp])
-
-  const chartData = useMemo(() => {
-    console.log('[Chart] Data recalculation triggered')
-
-    if (!optimizedData || deviceColors.size === 0) return null
-
-    const datasets = []
+  const datasets: any[] = []
     let totalDataPoints = 0
+    const deviceCount = Object.keys(processedRef.current).length || 1
 
-    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
-      for (const [dataType, points] of Object.entries(deviceData)) {
-  const baseLabel = getDeviceLabel(device)
-  const side = deviceSides.get(device)
-  const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
-
-        const processedPoints = points.map((point: ChartPoint) => ({
-          ...point,
-          x: getChartTimestamp(point.x), // Convert milliseconds to relative seconds
-        }))
-
-        const filteredPoints = timeRange
-          ? processedPoints.filter((point: ChartPoint) => {
-              const inRange = point.x >= timeRange.start && point.x <= timeRange.end
-              return inRange
-            })
-          : processedPoints
-
-        if (filteredPoints.length > 0) {
-          let validDataPoints = filteredPoints.filter(
-            (point) =>
-              point &&
-              typeof point.x === 'number' &&
-              typeof point.y === 'number' &&
-              !isNaN(point.x) &&
-              !isNaN(point.y),
-          )
-
-          const deviceCount = Object.keys(optimizedData.datasets).length
-          const dataTypeCount = Object.keys(deviceData).length
-          if (
-            useDownsampling &&
-            validDataPoints.length > maxDataPoints / deviceCount / dataTypeCount
-          ) {
-            const targetPoints = Math.max(
-              50,
-              Math.floor(maxDataPoints / deviceCount / dataTypeCount),
-            )
-            validDataPoints = downsampleData(validDataPoints, targetPoints)
-            console.log(
-              `Client-side downsampled ${device}-${dataType}: ${filteredPoints.length} → ${validDataPoints.length} points`,
-            )
-          }
-
-          if (validDataPoints.length > 0) {
-            totalDataPoints += validDataPoints.length
-
-            const pointCount = validDataPoints.length
-            const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
-            const borderWidth = pointCount > 3000 ? 1 : 2
-            const hoverRadius = pointCount > 2000 ? 2 : 4
-            const hitRadius = pointCount > 2000 ? 4 : 6
-
-            datasets.push({
-              label: `${deviceLabel} - ${dataType}`,
-              data: validDataPoints,
-              borderColor: getDeviceColor(device, dataType),
-              backgroundColor: getDeviceColor(device, dataType, 0.1),
-              borderWidth: borderWidth,
-              pointRadius: pointRadius,
-              tension: config.chartSmoothing,
-              spanGaps: false,
-              pointHoverRadius: hoverRadius,
-              pointHitRadius: hitRadius,
-            })
+    for (const [device, deviceData] of Object.entries(processedRef.current)) {
+      const baseLabel = getDeviceLabel(device)
+      const side = deviceSides.get(device)
+      const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
+      const dataTypeCount = Object.keys(deviceData).length || 1
+      for (const [dataType, arrays] of Object.entries(deviceData)) {
+        const xs = arrays.xs
+        const ys = arrays.ys
+        if (!xs.length) continue
+        const startIdx = lowerBound(xs, rangeStart)
+        const endExclusive = upperBound(xs, rangeEnd)
+        const sliceLen = endExclusive - startIdx
+        if (sliceLen <= 0) continue
+  // (Export rows no longer accumulated each render; export builds on demand.)
+        // Direct allocate tuple slice (fast path). Potential future: reuse preallocated shared buffers.
+        let pointCount = sliceLen
+        let tuplePoints: ChartTuple[] = new Array(sliceLen)
+        for (let i = 0; i < sliceLen; i++) {
+          const idx = startIdx + i
+          tuplePoints[i] = [xs[idx], ys[idx]]
+        }
+        // Lightweight pre-decimation thinning (optional) to reduce cost for huge slices
+        if (useDownsampling && sliceLen > maxDataPoints / deviceCount / dataTypeCount * 2) {
+          const target = Math.max(100, Math.floor(maxDataPoints / deviceCount / dataTypeCount))
+          const stride = Math.max(1, Math.floor(sliceLen / target))
+          if (stride > 1) {
+            const thinned: ChartTuple[] = []
+            for (let i = 0; i < sliceLen; i += stride) thinned.push(tuplePoints[i])
+            tuplePoints = thinned
+            pointCount = tuplePoints.length
           }
         }
+        totalDataPoints += pointCount
+        const pointRadius = pointCount > 2000 ? 0 : pointCount > 1000 ? 0.5 : 1
+        const borderWidth = pointCount > 3000 ? 1 : 2
+        const hoverRadius = pointCount > 2000 ? 2 : 4
+        const hitRadius = pointCount > 2000 ? 4 : 6
+        datasets.push({
+          label: `${deviceLabel} - ${dataType}`,
+          data: tuplePoints, // tuples [x,y]
+          borderColor: getDeviceColor(device, dataType),
+          backgroundColor: getDeviceColor(device, dataType, 0.1),
+          borderWidth,
+          pointRadius,
+          tension: config.chartSmoothing,
+          spanGaps: false,
+          pointHoverRadius: hoverRadius,
+          pointHitRadius: hitRadius,
+        })
       }
     }
-
-    if (totalDataPoints > 0) {
-      console.log(
-        `Chart prepared with ${totalDataPoints} total data points across ${datasets.length} datasets`,
-      )
-      if (totalDataPoints > maxDataPoints) {
-        console.warn(
-          `High data point count (${totalDataPoints}) may impact performance. Consider enabling downsampling.`,
-        )
-      }
-    }
-
-    return { datasets, totalDataPoints }
+  // Logging suppressed for performance
+  return { chartData: { datasets, totalDataPoints } }
   }, [
     optimizedData,
-    getDeviceColor,
+    processedRef,
     deviceColors,
     timeRange,
     useDownsampling,
     maxDataPoints,
     downsampleData,
-    getChartTimestamp,
+    getDeviceColor,
+    deviceSides,
   ])
+
+  const chartData = unifiedView.chartData
+
+  // Build preprocessed typed arrays once full data is available
+  useEffect(() => {
+    if (!optimizedData) return
+    const datasetKeys = Object.keys(optimizedData.datasets || {})
+    if (datasetKeys.length === 0) return // metadata-only stage
+
+    // Simple version increment to force rebuild when dataset object identity changes
+    const version = processedVersionRef.current + 1
+    processedVersionRef.current = version
+
+    console.log('[Preprocess] Building typed arrays for datasets...')
+    const start = performance.now()
+    const processed: ProcessedDatasets = {}
+    for (const [device, deviceData] of Object.entries(optimizedData.datasets)) {
+      processed[device] = {}
+      for (const [dataType, points] of Object.entries(deviceData)) {
+        const len = points.length
+        const xs = new Float32Array(len)
+        const ys = new Float32Array(len)
+        for (let i = 0; i < len; i++) {
+          // Convert x to relative seconds using getChartTimestamp (which expects ms input)
+          xs[i] = getChartTimestamp(points[i].x)
+          ys[i] = points[i].y
+        }
+        processed[device][dataType] = { xs, ys }
+      }
+    }
+    processedRef.current = processed
+    const elapsed = performance.now() - start
+    const totalPoints = Object.values(processed)
+      .flatMap((d) => Object.values(d))
+      .reduce((sum, arrs) => sum + arrs.xs.length, 0)
+    console.log(
+      `[Preprocess] Completed in ${elapsed.toFixed(1)}ms for ${totalPoints.toLocaleString()} points`,
+    )
+  }, [optimizedData, getChartTimestamp])
 
   const reloadData = () => {
     loadSessionData()
@@ -530,53 +512,57 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
 
   const exportFilteredData = useCallback(async () => {
     try {
-      const csvContent = [
-        ['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(','),
-        ...filteredData.map((point: FilteredDataPoint) => {
-          return [
-            `${point.timestamp.toFixed(3)}s`, // Export as relative seconds with high precision
-            point.device_id,
-            point.data_type,
-            point.value,
-            point.unit,
-          ].join(',')
-        }),
-      ].join('\n')
-
-      const fileName = `${sessionName}_filtered_${new Date().toISOString().split('T')[0]}.csv`
-
-      // Save filtered data to app data directory using CSRF protection
+      if (!optimizedData || !processedRef.current) {
+        showError('Export Failed', 'Data not ready for export')
+        return
+      }
+      const duration = optimizedData.metadata.duration
+      const rangeStart = timeRange?.start ?? 0
+      const rangeEnd = timeRange?.end ?? duration
+      const lowerBound = (arr: Float32Array, target: number) => {
+        let lo = 0, hi = arr.length
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] < target) lo = mid + 1; else hi = mid }
+        return lo
+      }
+      const upperBound = (arr: Float32Array, target: number) => {
+        let lo = 0, hi = arr.length
+        while (lo < hi) { const mid = (lo + hi) >>> 1; if (arr[mid] <= target) lo = mid + 1; else hi = mid }
+        return lo
+      }
+      let lines: string[] = [['Timestamp','Device','Data Type','Value','Unit'].join(',')]
+      let rowCount = 0
+      for (const [device, deviceData] of Object.entries(processedRef.current)) {
+        for (const [dataType, arrays] of Object.entries(deviceData)) {
+          const xs = arrays.xs; const ys = arrays.ys
+          if (!xs.length) continue
+          const startIdx = lowerBound(xs, rangeStart)
+          const endEx = upperBound(xs, rangeEnd)
+          for (let i = startIdx; i < endEx; i++) {
+            lines.push(`${xs[i].toFixed(3)}s,${device},${dataType},${ys[i]},`)
+            rowCount++
+          }
+        }
+      }
+      const csvContent = lines.join('\n')
+      const fileName = `${sessionName}_slice_${new Date().toISOString().split('T')[0]}.csv`
       const savedPath = (await protectedOperations.saveFilteredData(fileName, csvContent)) as string
-
-      // Then copy it to Downloads folder using CSRF protection
       try {
         const result = await protectedOperations.copyFileToDownloads(savedPath, fileName)
-
-        showSuccess(
-          'File Exported Successfully',
-          `Filtered data exported to Downloads folder: ${result}`,
-        )
+        showSuccess('File Exported Successfully', `Exported ${rowCount} rows: ${result}`)
       } catch {
-        // If copy fails, at least show where the file was saved
-        showInfo(
-          'Export Completed - Manual Copy Available',
-          `Filtered data saved to: ${savedPath}\n\nNote: You can manually copy this file to your desired location.`,
-        )
+        showInfo('Export Completed - Manual Copy Available', `Exported ${rowCount} rows to: ${savedPath}`)
       }
     } catch (err) {
-      console.error('Failed to export filtered data:', err)
-      showError('Export Failed', `Failed to export filtered data: ${err}`)
+      console.error('Failed to export data slice:', err)
+      showError('Export Failed', `Failed to export data: ${err}`)
     }
-  }, [filteredData, sessionName, showSuccess, showError, showInfo])
+  }, [optimizedData, timeRange, sessionName, showSuccess, showError, showInfo])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when DataViewer is open and not in input fields
       if (event.target && (event.target as HTMLElement).tagName === 'INPUT') return
-
       const step = (timeWindowSize / zoomLevel) * 0.1
       const totalDuration = optimizedData?.metadata.duration || 30
-
       switch (event.key) {
         case 'Escape':
           onClose()
@@ -604,16 +590,15 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           event.preventDefault()
           setZoomLevel(1)
           setCurrentTimePosition(0)
+          setTimeRange(null)
           break
         case '1':
           event.preventDefault()
-          // View all data
           setZoomLevel(1)
           setCurrentTimePosition(0)
           break
         case '2':
           event.preventDefault()
-          // 30 second view
           if (totalDuration >= 30) {
             setZoomLevel(totalDuration / 30)
             setCurrentTimePosition(0)
@@ -621,7 +606,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '3':
           event.preventDefault()
-          // 10 second view
           if (totalDuration >= 10) {
             setZoomLevel(totalDuration / 10)
             setCurrentTimePosition(0)
@@ -629,7 +613,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '4':
           event.preventDefault()
-          // 5 second view
           if (totalDuration >= 5) {
             setZoomLevel(totalDuration / 5)
             setCurrentTimePosition(0)
@@ -637,7 +620,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
         case '5':
           event.preventDefault()
-          // 2 second view
           if (totalDuration >= 2) {
             setZoomLevel(totalDuration / 2)
             setCurrentTimePosition(0)
@@ -674,7 +656,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
           break
       }
     }
-
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose, optimizedData, timeWindowSize, zoomLevel, exportFilteredData, showInfo])
@@ -809,6 +790,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                   {optimizedData.metadata.devices.length} device
                   {optimizedData.metadata.devices.length !== 1 ? 's' : ''}
                 </span>
+                {fullDataLoading && (
+                  <>
+                    <span className="metadata-separator" aria-hidden="true">•</span>
+                    <span className="metadata-item" title="Loading full datasets">Loading full data…</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1100,6 +1087,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                           options={{
                             responsive: true,
                             maintainAspectRatio: false,
+                            parsing: { xAxisKey: '0', yAxisKey: '1' },
                             animation: enableAnimations
                               ? {
                                   duration: 300,
@@ -1107,6 +1095,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 }
                               : false,
                             plugins: {
+                              decimation: {
+                                enabled: true,
+                                algorithm: 'lttb',
+                                samples: Math.min(maxDataPoints, 5000),
+                              },
                               legend: {
                                 position: 'top',
                                 labels: {

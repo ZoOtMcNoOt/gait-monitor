@@ -1956,6 +1956,40 @@ tbody tr:hover {
     0 0 0 1px rgba(16, 185, 129, 0.15);
 }
 
+/* Compact scaling when many devices */
+.device-status-viewer.compact .device-status-item { padding: 0.85rem 0.9rem; margin-bottom: 0.4rem; }
+.device-status-viewer.compact .device-name { font-size: 0.85rem; padding: 0.3rem 0.55rem; }
+.device-status-viewer.compact .status-label { font-size: 0.7rem; }
+.device-status-viewer.compact .device-label { display:none; }
+.device-status-viewer.compact .data-indicators { gap: 0.4rem; }
+.device-status-viewer.compact .rate-value { font-size: 0.7rem; }
+.device-status-viewer.compact select { font-size: 0.6rem; }
+
+/* Very compact for large fleets */
+.device-status-viewer.very-compact .device-status-item { padding: 0.6rem 0.55rem; margin-bottom: 0.35rem; }
+.device-status-viewer.very-compact .device-name { font-size: 0.75rem; padding: 0.25rem 0.45rem; }
+.device-status-viewer.very-compact .status-label { display:none; }
+.device-status-viewer.very-compact .device-indicators { gap: 0.6rem; }
+.device-status-viewer.very-compact .data-indicators { display:none; }
+.device-status-viewer.very-compact .device-side-select select { font-size: 0.55rem; padding: 0.25rem 0.4rem; }
+.device-status-viewer.very-compact .device-status-item.collecting { border-left-width: 3px; }
+.device-status-viewer.very-compact .activity-indicator { display:none; }
+
+@media (max-height: 750px) {
+  .device-status-viewer.sidebar-style { font-size: 0.9rem; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.85rem 0.9rem; }
+}
+@media (max-height: 650px) {
+  .device-status-viewer.sidebar-style { font-size: 0.85rem; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.7rem 0.75rem; }
+  .device-status-viewer.sidebar-style .status-label { font-size: 0.7rem; }
+  .device-status-viewer.sidebar-style .device-name { font-size: 0.8rem; }
+}
+@media (max-height: 550px) {
+  .device-status-viewer.sidebar-style .data-indicators, .device-status-viewer.sidebar-style .activity-indicator { display:none; }
+  .device-status-viewer.sidebar-style .device-status-item { padding: 0.6rem 0.65rem; }
+}
+
 .device-status-viewer .device-status-item.error {
   background: linear-gradient(to right, rgba(220, 38, 38, 0.03), var(--color-card-bg));
   border-left: 4px solid var(--error-color);
@@ -2615,8 +2649,11 @@ tbody tr:hover {
 }
 
 .device-status-viewer .device-status-list {
-  max-height: 300px;
+  /* Fill remaining space in viewer; parent is flex column */
+  flex: 1 1 auto;
+  min-height: 0; /* allow flex child to shrink for scroll */
   overflow-y: auto;
+  max-height: none; /* remove fixed cap */
 }
 
 .device-status-viewer .device-status-item {
