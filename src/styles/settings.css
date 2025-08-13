@@ -32,8 +32,6 @@
   gap: 1.5rem;
   background: var(--color-card-bg);
   padding: var(--spacing);
-  border-radius: var(--radius);
-  border: 1px solid var(--color-border);
 }
 
 .setting-group h3 {
@@ -398,6 +396,36 @@ input:checked + .toggle-slider:before {
   background: var(--color-bg) !important;
   border-color: var(--color-border) !important;
   transform: translateX(1.25rem) !important;
+}
+
+/*────────────────────────────────────────────────────────
+  Storage Info Specific
+────────────────────────────────────────────────────────*/
+.storage-info .storage-path,
+.storage-info .storage-count {
+  word-break: break-all; /* Allow breaking anywhere for very long paths */
+  overflow-wrap: anywhere; /* Modern wrapping */
+  white-space: normal; /* Ensure wrapping enabled */
+  font-family: var(--font-mono, monospace);
+  background: var(--color-bg);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  max-height: 4.5rem; /* Prevent giant block */
+  overflow-y: auto; /* Scroll if still too long */
+  line-height: 1.2;
+  margin: 0.25rem 0 0;
+}
+
+.storage-info .setting-group label + .storage-path {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .storage-info .storage-path,
+  .storage-info .storage-count {
+    max-height: 6rem; /* a little more room on narrow screens */
+  }
 }
 
 .high-contrast .toggle-slider:hover {

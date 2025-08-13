@@ -2,8 +2,7 @@
 // This uses a direct approach to solve the issue
 
 // Override the problematic internal module path
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(global as any).getConfig = () => ({
+;(globalThis as unknown as { getConfig: () => { testIdAttribute: string } }).getConfig = () => ({
   testIdAttribute: 'data-testid',
 })
 

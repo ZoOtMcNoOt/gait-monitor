@@ -1723,6 +1723,39 @@ async fn delete_session(
   Ok(())
 }
 
+// Bulk delete all sessions (single rate-limited operation)
+#[tauri::command]
+async fn delete_all_sessions(
+  csrf_token: String,
+  csrf_state: tauri::State<'_, CSRFTokenState>,
+  path_config: tauri::State<'_, PathConfigState>
+) -> Result<u32, String> {
+  // Validate once for the bulk operation
+  validate_file_operation!(csrf_state, &csrf_token, "delete_all_sessions");
+
+  let sessions = get_sessions(path_config.clone()).await?;
+  let count = sessions.len() as u32;
+  if count == 0 { return Ok(0); }
+
+  // Delete data files
+  for session in &sessions {
+    if Path::new(&session.file_path).exists() {
+      if let Err(e) = tokio::fs::remove_file(&session.file_path).await {
+        warn!("Failed to delete session data file {}: {}", session.file_path, e);
+      }
+    }
+  }
+
+  // Write empty sessions index (assumes shared base path)
+  if let Some(first) = sessions.first() {
+    if let Some(base_path) = Path::new(&first.file_path).parent() {
+      save_sessions_metadata(base_path, &[]).await?;
+    }
+  }
+
+  Ok(count)
+}
+
 #[tauri::command]
 async fn choose_storage_directory(
   app_handle: tauri::AppHandle,
@@ -2434,6 +2467,7 @@ fn main() {
       save_session_data, 
       get_sessions, 
       delete_session, 
+  delete_all_sessions,
       choose_storage_directory, 
       copy_file_to_downloads, 
       get_csrf_token, 

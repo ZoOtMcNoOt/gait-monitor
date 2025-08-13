@@ -193,18 +193,32 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
 
       if (finalConfirmed) {
         try {
-          // Get all sessions first
-          const sessions = await invoke<SessionMetadata[]>('get_sessions')
-
-          // Delete each session using CSRF protection
-          for (const session of sessions) {
-            await protectedOperations.deleteSession(session.id)
+          // Try bulk delete first
+          try {
+            const deletedCount = await protectedOperations.deleteAllSessions()
+            showSuccess(
+              'Data Cleared',
+              `Successfully deleted ${deletedCount} session(s) and their data files.`,
+            )
+          } catch (bulkErr) {
+            console.warn('[Settings] Bulk delete failed, falling back to batched deletion:', bulkErr)
+            const sessions = await invoke<SessionMetadata[]>('get_sessions')
+            const BATCH_SIZE = 5
+            const DELAY_MS = 1200 // Slightly above 1s to stay within 30/min if many sessions
+            let deleted = 0
+            for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+              const batch = sessions.slice(i, i + BATCH_SIZE)
+              await Promise.all(batch.map((s) => protectedOperations.deleteSession(s.id)))
+              deleted += batch.length
+              if (i + BATCH_SIZE < sessions.length) {
+                await new Promise((res) => setTimeout(res, DELAY_MS))
+              }
+            }
+            showSuccess(
+              'Data Cleared',
+              `Successfully deleted ${deleted} session(s) and their data files.`,
+            )
           }
-
-          showSuccess(
-            'Data Cleared',
-            `Successfully deleted ${sessions.length} session(s) and their data files.`,
-          )
         } catch (error) {
           console.error('Failed to clear data:', error)
           showError('Clear Data Failed', `Failed to clear data: ${error}`)
@@ -496,7 +510,7 @@ function StorageInfo() {
       </div>
       <div className="setting-group">
         <label>Saved Sessions:</label>
-        <p>{sessionCount} session(s)</p>
+        <p className="storage-count">{sessionCount} session(s)</p>
       </div>
     </div>
   )

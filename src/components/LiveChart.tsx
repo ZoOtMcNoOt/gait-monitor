@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { ChartDataset } from 'chart.js'
 import '../styles/chart.css'
 import '../styles/collect.css'
 import {
@@ -163,10 +164,11 @@ export default function LiveChart({ isCollecting = false }: Props) {
       if (!groupsMap.has(deviceLabel)) {
         groupsMap.set(deviceLabel, { deviceLabel, items: [] })
       }
+      const borderColor = (ds as { borderColor?: string | string[] }).borderColor
       groupsMap.get(deviceLabel)!.items.push({
         index: idx,
         channel,
-        color: (ds as any).borderColor || '#888',
+        color: Array.isArray(borderColor) ? borderColor[0] : borderColor || '#888',
         visible: chart.isDatasetVisible(idx),
       })
       partsForHash.push(`${full}:${chart.isDatasetVisible(idx) ? '1' : '0'}`)
@@ -203,7 +205,9 @@ export default function LiveChart({ isCollecting = false }: Props) {
       targetVisible,
     )
     // For Chart.js 4, prefer hide/show helpers; fallback to meta.hidden
-    const ds: any = chart.data.datasets[index]
+    const ds = chart.data.datasets[index] as ChartDataset<'line', { x: number; y: number }[]> & {
+      customId?: string
+    }
     const key: string | undefined = ds?.customId
     if (targetVisible) {
       if (key) hiddenKeysRef.current.delete(key)
@@ -467,7 +471,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
           y: point[key] as number,
         }))
 
-        const dataset: any = {
+        const dataset: ChartDataset<'line', { x: number; y: number }[]> & { customId: string } = {
           label: datasetLabel,
           data: channelData,
           borderColor: colors.primary,
@@ -483,8 +487,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
     })
 
     // Apply hidden state from ref
-    chart.data.datasets.forEach((ds: any, idx: number) => {
-      const key = ds.customId as string | undefined
+    chart.data.datasets.forEach((ds, idx: number) => {
+      const key = (ds as { customId?: string }).customId
       if (key && hiddenKeysRef.current.has(key)) {
         const meta = chart.getDatasetMeta(idx)
         meta.hidden = true
@@ -507,7 +511,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
     )
     chart.update('none')
     rebuildLegend()
-  }, [chartMode, allDataPoints, deviceColors, rebuildLegend])
+  }, [chartMode, allDataPoints, deviceColors, rebuildLegend, deviceSides])
 
   // Update dynamic swatch styles to reflect dataset colors without inline styles
   useEffect(() => {

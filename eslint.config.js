@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
+import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config([
   globalIgnores(['dist', 'coverage', 'src-tauri/target']),
@@ -15,7 +16,7 @@ export default tseslint.config([
       reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
       // Prettier last to turn off formatting rules handled by Prettier
-      'eslint-config-prettier',
+      eslintConfigPrettier,
     ],
     languageOptions: {
       ecmaVersion: 2020,
@@ -27,9 +28,21 @@ export default tseslint.config([
         'warn',
         {
           allowConstantExport: true,
-          allowExportNames: ['useDeviceConnection', 'useToast', 'useScroll'],
+          allowExportNames: [
+            'useDeviceConnection',
+            'useOptionalDeviceConnection',
+            'useToast',
+            'useScroll',
+          ],
         },
       ],
+    },
+  },
+  // Test overrides
+  {
+    files: ['**/__tests__/**/*.{ts,tsx}', '**/test/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ])

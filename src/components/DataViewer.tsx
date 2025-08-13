@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react'
+import type { Chart as ChartJS, ChartDataset } from 'chart.js'
 import { invoke } from '@tauri-apps/api/core'
-// Lazy load heavy chart libraries (react-chartjs-2 & chart.js) after metadata fetch
-// to reduce initial bundle parse/execute time.
-// (They will be dynamically imported once we have metadata.)
-// import { Line } from 'react-chartjs-2'
-// import { Chart } from 'chart.js'
-// import { registerChartComponents } from '../utils/chartSetup'
 import { Icon } from './icons'
 import { config } from '../config'
 import {
@@ -17,8 +12,6 @@ import { useTimestampManager } from '../hooks/useTimestampManager'
 import { useToast } from '../contexts/ToastContext'
 import { protectedOperations } from '../services/csrfProtection'
 import { useDeviceConnection } from '../contexts/DeviceConnectionContext'
-
-// NOTE: Chart components now registered on-demand after dynamic import.
 
 interface DataViewerProps {
   sessionId: string
@@ -54,8 +47,6 @@ interface ProcessedDatasetPointArrays {
 
 type ProcessedDatasets = Record<string, Record<string, ProcessedDatasetPointArrays>>
 
-// Removed legacy FilteredDataPoint list usage (export now slices directly)
-
 export default function DataViewer({ sessionId, sessionName, onClose }: DataViewerProps) {
   const [optimizedData, setOptimizedData] = useState<OptimizedChartData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,7 +55,11 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [timeRange, setTimeRange] = useState<{ start: number; end: number } | null>(null)
 
   // Dynamically loaded chart libraries (Chart.js + react-chartjs-2 Line component)
-  const [chartLib, setChartLib] = useState<{ Line: any; Chart: any } | null>(null)
+  interface ChartLib {
+    Line: React.ComponentType<any>
+    Chart: typeof ChartJS
+  }
+  const [chartLib, setChartLib] = useState<ChartLib | null>(null)
 
   const [timeWindowSize, setTimeWindowSize] = useState<number>(10) // seconds - base window size
   const [currentTimePosition, setCurrentTimePosition] = useState<number>(0) // start position in seconds
@@ -75,6 +70,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [useDownsampling, setUseDownsampling] = useState<boolean>(true)
   const [enableAnimations] = useState<boolean>(false) // Disabled by default for performance
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false)
+  
   // Track chart width for adaptive decimation / thinning
   const chartContainerRef = useRef<HTMLDivElement | null>(null)
   const [chartWidth, setChartWidth] = useState<number>(800)
@@ -209,44 +205,6 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     setShowAdvancedSettings((prev) => !prev)
   }, [])
 
-  const downsampleData = useCallback((points: ChartPoint[], maxPoints: number): ChartPoint[] => {
-    if (points.length <= maxPoints) return points
-
-    // Use LTTB (Largest Triangle Three Buckets) algorithm for better visual preservation
-    const bucketSize = (points.length - 2) / (maxPoints - 2)
-    const sampled: ChartPoint[] = [points[0]] // Always keep first point
-
-    for (let i = 1; i < maxPoints - 1; i++) {
-      const bucketStart = Math.floor(i * bucketSize) + 1
-      const bucketEnd = Math.floor((i + 1) * bucketSize) + 1
-
-      // Find point with largest triangle area
-      let maxArea = 0
-      let selectedPoint = points[bucketStart]
-
-      const prevPoint = sampled[sampled.length - 1]
-      const nextBucketPoint =
-        i < maxPoints - 2 ? points[Math.floor((i + 1) * bucketSize + 1)] : points[points.length - 1]
-
-      for (let j = bucketStart; j < Math.min(bucketEnd, points.length - 1); j++) {
-        const area = Math.abs(
-          (prevPoint.x - nextBucketPoint.x) * (points[j].y - prevPoint.y) -
-            (prevPoint.x - points[j].x) * (nextBucketPoint.y - prevPoint.y),
-        )
-
-        if (area > maxArea) {
-          maxArea = area
-          selectedPoint = points[j]
-        }
-      }
-
-      sampled.push(selectedPoint)
-    }
-
-    sampled.push(points[points.length - 1]) // Always keep last point
-    return sampled
-  }, [])
-
   const loadSessionData = useCallback(async () => {
     try {
       setLoading(true)
@@ -264,7 +222,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         normalize_timestamps: true,
       })
       // Skeleton (no datasets yet)
-      setOptimizedData({ ...metaOnly, datasets: {} as any })
+      setOptimizedData({ ...metaOnly, datasets: {} as OptimizedChartData['datasets'] })
       // Kick off dynamic import of chart libraries immediately after metadata is known.
       // This allows UI (metadata header, etc.) to paint before heavy libs parse.
       if (!chartLib) {
@@ -481,6 +439,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   // Unified computation for chartData (single traversal & slicing)
   const unifiedView = useMemo(() => {
     if (!optimizedData || !processedRef.current || deviceColors.size === 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { chartData: null as any }
     }
     const rangeStart = timeRange?.start ?? 0
@@ -519,7 +478,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     const perSeriesBaseTarget = Math.max(100, Math.floor(maxDataPoints / totalSeries))
     const pixelCap = Math.max(300, chartWidth || 800) // approximate distinguishable points per series
 
-    const datasets: any[] = []
+    const datasets: ChartDataset<'line', ChartTuple[]>[] = []
     let totalDataPoints = 0
 
     for (const [device, deviceData] of Object.entries(processedRef.current)) {
@@ -582,9 +541,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
     timeRange,
     useDownsampling,
     maxDataPoints,
-    downsampleData,
     getDeviceColor,
     deviceSides,
+    chartWidth,
   ])
 
   const chartData = unifiedView.chartData
@@ -661,7 +620,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
         }
         return lo
       }
-      let lines: string[] = [['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(',')]
+      const lines: string[] = [['Timestamp', 'Device', 'Data Type', 'Value', 'Unit'].join(',')]
       let rowCount = 0
       for (const [device, deviceData] of Object.entries(processedRef.current)) {
         for (const [dataType, arrays] of Object.entries(deviceData)) {
@@ -991,7 +950,9 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                       requiredZoom = 1
                       isActive = Math.abs(zoomLevel - 1) < 0.1
                     }
-                    const spanValue = (preset as any).span ?? undefined
+                    // Currently preset is a number; keep loose for potential future object form.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const spanValue: any = preset
                     return (
                       <button
                         key={preset.label}
@@ -1393,10 +1354,12 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   font: {
                                     size: 12,
                                   },
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                   generateLabels: function (chart: any) {
                                     const baseGen =
                                       ChartJS?.defaults?.plugins?.legend?.labels?.generateLabels
                                     const original = baseGen ? baseGen(chart) : []
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     return original.map((item: any) => {
                                       if (item.text) {
                                         const match = item.text.match(/^Device (\w+) - (.+)$/)
@@ -1419,6 +1382,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 enabled: true,
                                 mode: 'index',
                                 intersect: false,
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 filter: function (tooltipItem: any) {
                                   // Filter out null/undefined values from tooltips
                                   return (
@@ -1431,12 +1395,14 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                   )
                                 },
                                 callbacks: {
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                   title: function (context: any) {
                                     if (context && context[0] && context[0].parsed) {
                                       return `Time: ${context[0].parsed.x.toFixed(2)}s`
                                     }
                                     return 'Data Point'
                                   },
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                   label: function (context: any) {
                                     if (
                                       context &&
@@ -1461,6 +1427,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
                                 min: timeRange?.start,
                                 max: timeRange?.end,
                                 ticks: {
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                   callback: function (value: any) {
                                     // Format relative time in seconds (matching LiveChart)
                                     if (typeof value === 'number' && !isNaN(value)) {

@@ -614,7 +614,9 @@ export const DeviceConnectionProvider: React.FC<DeviceConnectionProviderProps> =
         next.set(deviceId, side)
         try {
           localStorage.setItem('deviceSides', JSON.stringify(Array.from(next.entries())))
-        } catch {}
+        } catch {
+          // Intentionally ignore persistence errors (e.g., private mode, quota exceeded)
+        }
         return next
       })
     },

@@ -28,8 +28,9 @@ jest.mock('../../utils/TimestampManager', () => {
 
 // Add getInstance static method to the mock
 const MockedTimestampManager = TimestampManager as jest.MockedClass<typeof TimestampManager>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(MockedTimestampManager as any).getInstance = jest.fn(() => new MockedTimestampManager())
+;(
+  MockedTimestampManager as unknown as { getInstance: () => typeof MockedTimestampManager }
+).getInstance = jest.fn(() => new MockedTimestampManager()) as any
 
 // Test component for useTimestampManager
 function TestTimestampManagerComponent({
@@ -66,7 +67,7 @@ function TestTimestampFormatterComponent({
 describe('useTimestampManager', () => {
   let container: HTMLDivElement
   let root: ReturnType<typeof createRoot>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Use a broad type for the mocked manager to avoid complex generic constraint issues (rule disabled in tests)
   let mockManager: any
 
   beforeEach(() => {

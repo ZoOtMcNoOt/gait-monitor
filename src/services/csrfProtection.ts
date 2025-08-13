@@ -254,6 +254,15 @@ export const protectedOperations = {
     })
   },
 
+  // Bulk delete all sessions in one backend call (rate-limit friendly)
+  deleteAllSessions: async () => {
+    return withCSRFProtection(async (token) => {
+      return invoke('delete_all_sessions', {
+        csrfToken: token,
+      }) as Promise<number>
+    })
+  },
+
   copyFileToDownloads: async (filePath: string, fileName: string) => {
     return withCSRFProtection(async (token) => {
       return invoke('copy_file_to_downloads', {

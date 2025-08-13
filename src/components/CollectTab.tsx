@@ -116,6 +116,50 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
   }, [])
 
   const optionalCtx = useOptionalDeviceConnection()
+  // Gait data subscription effect (must appear before any conditional returns to satisfy hook rules)
+  useEffect(() => {
+    if (!optionalCtx || !isCollecting) return
+    console.log('[Collect] Setting up gait data subscription')
+    const lastReceiveTimes = new Map<string, number>()
+    const packetCounts = new Map<string, number>()
+
+    const unsubscribe = optionalCtx.subscribeToGaitData((data) => {
+      const receiveTime = performance.now()
+
+      const lastReceiveTime = lastReceiveTimes.get(data.device_id) || receiveTime
+      const interval = receiveTime - lastReceiveTime
+      lastReceiveTimes.set(data.device_id, receiveTime)
+
+      packetCounts.set(data.device_id, (packetCounts.get(data.device_id) || 0) + 1)
+      const count = packetCounts.get(data.device_id) || 0
+
+      if (count % 100 === 0) {
+        const avgInterval = interval > 0 ? interval : 0
+        const estimatedHz = avgInterval > 0 ? 1000 / avgInterval : 0
+        console.log(
+          `[Collect][Timing] [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`,
+        )
+      }
+
+      console.log('[Collect] Received gait data:', data.device_id, data.timestamp)
+      dataBuffer.current.push({
+        device_id: data.device_id,
+        r1: data.r1,
+        r2: data.r2,
+        r3: data.r3,
+        x: data.x,
+        y: data.y,
+        z: data.z,
+        timestamp: data.timestamp,
+      })
+    })
+
+    return () => {
+      console.log('[Collect] Cleaning up gait data subscription')
+      unsubscribe()
+    }
+  }, [optionalCtx, isCollecting])
+
   if (!optionalCtx) {
     return (
       <div className="card">
@@ -127,57 +171,7 @@ export default function CollectTab({ onNavigateToConnect }: CollectTabProps) {
       </div>
     )
   }
-  const {
-    connectedDevices,
-    startDeviceCollection,
-    stopDeviceCollection,
-    subscribeToGaitData,
-    deviceSides,
-  } = optionalCtx
-
-  useEffect(() => {
-    if (isCollecting) {
-      console.log('[Collect] Setting up gait data subscription')
-      const lastReceiveTimes = new Map<string, number>()
-      const packetCounts = new Map<string, number>()
-
-      const unsubscribe = subscribeToGaitData((data) => {
-        const receiveTime = performance.now()
-
-        const lastReceiveTime = lastReceiveTimes.get(data.device_id) || receiveTime
-        const interval = receiveTime - lastReceiveTime
-        lastReceiveTimes.set(data.device_id, receiveTime)
-
-        packetCounts.set(data.device_id, (packetCounts.get(data.device_id) || 0) + 1)
-        const count = packetCounts.get(data.device_id) || 0
-
-        if (count % 100 === 0) {
-          const avgInterval = interval > 0 ? interval : 0
-          const estimatedHz = avgInterval > 0 ? 1000 / avgInterval : 0
-          console.log(
-            `[Collect][Timing] [${data.device_id}, packet ${count}]: Interval: ${avgInterval.toFixed(1)}ms, Est. Rate: ${estimatedHz.toFixed(1)}Hz`,
-          )
-        }
-
-        console.log('[Collect] Received gait data:', data.device_id, data.timestamp)
-        dataBuffer.current.push({
-          device_id: data.device_id,
-          r1: data.r1,
-          r2: data.r2,
-          r3: data.r3,
-          x: data.x,
-          y: data.y,
-          z: data.z,
-          timestamp: data.timestamp,
-        })
-      })
-
-      return () => {
-        console.log('[Collect] Cleaning up gait data subscription')
-        unsubscribe()
-      }
-    }
-  }, [isCollecting]) // eslint-disable-line react-hooks/exhaustive-deps -- subscribeToGaitData should be stable, excluding to prevent re-subscriptions
+  const { connectedDevices, startDeviceCollection, stopDeviceCollection, deviceSides } = optionalCtx
 
   const steps = [
     { id: 'metadata', label: 'Metadata', number: 1 },
