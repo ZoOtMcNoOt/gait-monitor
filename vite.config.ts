@@ -24,6 +24,22 @@ export default defineConfig(({ mode }) => {
       // Tauri expects the frontend to be served on a fixed port
       port: 1420,
       strictPort: true,
+      // Avoid watching huge / generated Rust build artifacts (prevents EMFILE)
+      watch: {
+        ignored: [
+          '**/src-tauri/target/**',
+          '**/src-tauri/target/doc/**'
+        ]
+      },
+      fs: {
+        // Restrict file system access so Vite dep-scan doesn\'t traverse target/doc
+        strict: true,
+        allow: [
+          process.cwd(),
+          'src',
+          'src-tauri/src'
+        ]
+      }
     },
 
     // Build configuration
@@ -47,5 +63,23 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+
+    // Prevent optimizeDeps scan from crawling large generated directories
+    optimizeDeps: {
+      exclude: [],
+      entries: [
+        'index.html'
+      ],
+      esbuildOptions: {
+        // No special options; placeholder if we need to tweak later
+      }
+    },
+
+    // Safeguard: tell Vite to treat these directories as external/unrelated
+    resolve: {
+      alias: {
+        // Explicitly no alias pointing into target/doc
+      }
+    }
   }
 })
