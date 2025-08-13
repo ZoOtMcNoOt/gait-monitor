@@ -62,6 +62,8 @@ html,
 /*────────────────────────────────────────────────────────
   2. Layout
 ────────────────────────────────────────────────────────*/
+/* Ensure predictable sizing across all elements */
+*, *::before, *::after { box-sizing: border-box; }
 .app {
   display: flex;
   height: 100vh;
@@ -530,8 +532,11 @@ tbody tr:hover {
 
 .device-info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Use minmax(0,1fr) to allow proper shrinking and prevent content overflow pushing card width */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .device-info-section,
@@ -539,6 +544,31 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0; /* allow flex children to shrink */
+}
+
+/* Keep additional info from overflowing card */
+.device-additional-info {
+  max-width: 100%;
+  /* Allow natural wrapping (no clipping) */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Improve wrapping layout inside additional info rows */
+.device-additional-info .info-row {
+  justify-content: flex-start; /* avoid large space-between gaps when wrapping */
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+.device-additional-info .info-label {
+  flex: 0 0 80px; /* fixed label column */
+  text-align: left;
+}
+.device-additional-info .info-value {
+  flex: 1 1 auto;
+  text-align: left; /* left-align multi-line content */
+  white-space: normal;
 }
 
 .info-row {
@@ -1613,6 +1643,50 @@ tbody tr:hover {
     gap: 0.5rem;
   }
 }
+
+/* Micro width refinements */
+@media (max-width: 340px) {
+  .device-list-card, .device-card { padding: 0.5rem; }
+  .device-card .device-name { font-size: 0.9rem; }
+  .device-id { font-size: 0.7rem; }
+  .data-status .data-text { font-size: 0.7rem; }
+  .action-buttons .btn { padding: 0.45rem 0.6rem; }
+  .more-actions-menu { display: block; }
+  /* Hide inline secondary buttons when More menu present */
+  .action-buttons > .btn.btn-debug,
+  .action-buttons > .btn.btn-remove { display: none; }
+}
+
+/* Ultra-narrow layout: remove 320px min constraint & allow full shrink */
+@media (max-width: 360px) {
+  .content { grid-template-columns: 1fr !important; }
+  .tab-content { padding: clamp(0.4rem, 2vw, 0.6rem); }
+  /* Allow buttons to shrink */
+  .action-buttons, .device-actions { min-width: 0; }
+  /* Only force full width for grouped action buttons; keep global buttons auto */
+  button, .btn, .btn-primary, .btn-secondary, .btn-tertiary, .btn-danger { min-width: 0 !important; width: auto; }
+  .action-buttons .btn, .device-actions .btn { width: 100%; }
+  /* Ensure flexible children can shrink */
+  .device-card, .device-list-card { overflow-wrap: anywhere; }
+  .device-actions, .action-buttons { flex-wrap: nowrap; }
+  /* Stack footer contents to avoid horizontal squeeze */
+  .device-footer { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .device-connection-status, .device-actions { width: 100%; }
+  .device-info-grid { gap: 0.5rem; }
+  /* Hide potential horizontal overflow */
+  .device-list-card, .tab-content { overflow-x: hidden; }
+  /* Hide inline secondary actions & show compact menu */
+  .action-buttons > .btn.btn-debug,
+  .action-buttons > .btn.btn-remove { display: none; }
+  .more-actions-menu { display: block; }
+}
+
+/* More actions dropdown styling */
+.more-actions-menu details { position: relative; }
+.btn.btn-more { background: #6b7280; color:#fff; }
+.btn.btn-more:hover { background:#4b5563; }
+.more-actions-dropdown { position:absolute; top:100%; right:0; z-index:10; background:var(--color-card-bg); border:1px solid var(--color-border); border-radius:6px; padding:0.5rem; display:flex; flex-direction:column; gap:0.25rem; min-width:140px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.more-actions-dropdown .btn { width:100%; min-width:0; }
 
 /*────────────────────────────────────────────────────────
   15. Collection Layout & Device Status Viewer
@@ -2788,6 +2862,42 @@ tbody tr:hover {
 
 .device-actions {
   flex: 0 0 auto;
+}
+
+/* Default / larger screens: keep actions to the right */
+.device-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
+
+/* Medium range (retain right alignment but allow wrapping if needed) */
+@media (max-width: 767px) and (min-width: 560px) {
+  .device-actions { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* Small screens (501px–559px): keep horizontal, compress spacing to avoid premature wrap */
+@media (max-width: 559px) and (min-width: 501px) {
+  .device-footer { flex-direction: row; align-items: center; }
+  .device-actions { width: auto; }
+  .action-buttons { width: auto; }
+  .device-actions .btn, .action-buttons .btn { padding: 0.45rem 0.55rem; min-width: 80px; }
+  .device-actions { gap: 0.35rem; }
+}
+
+/* Extra-small (<=500px): now stack footer contents */
+@media (max-width: 500px) {
+  .device-footer { flex-direction: column; align-items: stretch; }
+  .device-actions { width: 100%; justify-content: center; }
+  .action-buttons { width: 100%; justify-content: center; }
+}
+
+/* Tablet refinement: keep footer horizontal, push actions right without awkward wrapping */
+@media (min-width: 560px) and (max-width: 899px) {
+  .device-footer { flex-wrap: wrap; align-items: flex-start; }
+  .device-connection-status { flex: 0 0 auto; padding-bottom: 0.25rem; }
+  .device-actions { margin-left: auto; flex: 0 0 auto; justify-content: flex-end; }
+  .device-actions .action-buttons { flex-wrap: nowrap; gap: 0.5rem; }
+  /* Prevent mid-tablet wrapping caused by button min-width */
+  .device-actions .btn { min-width: 90px; }
+  /* Slightly reduce padding to keep on one line when possible */
+  .device-actions .btn { padding: 0.45rem 0.75rem; }
 }
 
 /* Update device-footer to have the border instead */

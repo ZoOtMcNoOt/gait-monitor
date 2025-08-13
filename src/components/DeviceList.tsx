@@ -238,8 +238,9 @@ export default function DeviceList() {
                 const deviceInfo = scannedDevices.find((d) => d.id === deviceId)
                 const status = connectionStatus.get(deviceId)
 
+                const isGaitBLE = (deviceInfo?.name || '').toLowerCase().startsWith('gaitble')
                 return (
-                  <li key={deviceId} className={`device-card connected gaitble-device`}>
+                  <li key={deviceId} className={`device-card connected ${isGaitBLE ? 'gaitble-device' : ''}`}>
                     <div className="device-header">
                       <div className="device-name-section">
                         <h4 className="device-name" title={deviceInfo?.name || 'Unknown Device'}>
@@ -263,10 +264,6 @@ export default function DeviceList() {
                             </span>
                           </div>
                           <div className="info-row">
-                            <span className="info-label">Status:</span>
-                            <span className="info-value device-connectable connectable">
-                              ✓ Connected
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -313,13 +310,6 @@ export default function DeviceList() {
                             title="Debug: List all services on this device"
                           >
                             Debug Services
-                          </button>
-                          <button
-                            onClick={() => handleRemoveDevice(deviceId)}
-                            className="btn btn-remove"
-                            title="Remove this device from the list"
-                          >
-                            Remove
                           </button>
                         </div>
                       </div>
@@ -399,14 +389,7 @@ export default function DeviceList() {
                             {d.rssi !== undefined ? `${d.rssi}dBm` : 'N/A'}
                           </span>
                         </div>
-                        <div className="info-row">
-                          <span className="info-label">Status:</span>
-                          <span
-                            className={`info-value device-connectable ${d.connectable ? 'connectable' : 'not-connectable'}`}
-                          >
-                            {d.connectable ? '✓ Connectable' : '✗ Not Connectable'}
-                          </span>
-                        </div>
+                        {/* Status row removed per request */}
                         <div className="info-row">
                           <span className="info-label">Type:</span>
                           <span className="info-value device-type">{d.address_type}</span>
@@ -494,14 +477,6 @@ export default function DeviceList() {
                             aria-label={`Debug services for ${d.name || 'Unknown Device'}`}
                           >
                             Debug Services
-                          </button>
-                          <button
-                            onClick={() => handleRemoveDevice(d.id)}
-                            className="btn btn-remove"
-                            title="Remove this device from the list"
-                            aria-label={`Remove ${d.name || 'Unknown Device'} from list`}
-                          >
-                            Remove
                           </button>
                         </div>
                       ) : (
