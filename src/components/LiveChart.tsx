@@ -72,6 +72,7 @@ export default function LiveChart({ isCollecting = false }: Props) {
   const [announcementText, setAnnouncementText] = useState('')
   // Using built-in Chart.js legend (no custom grouping)
 
+  // Historical points for summaries/accessibility only (not driving rebuild effect each tick)
   const [allDataPoints, setAllDataPoints] = useState<
     Map<
       string,
@@ -96,6 +97,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
 
   const chartUpdateBatchRef = useRef<NodeJS.Timeout | null>(null)
   const pendingUpdatesRef = useRef<Set<string>>(new Set())
+  // Map device -> channel key -> dataset index for incremental appends
+  const datasetIndexMapRef = useRef<Map<string, Map<string, number>>>(new Map())
   // Per-session time baseline so each recording starts near 0s
   const sessionBaseRef = useRef<number | null>(null)
 
@@ -196,12 +199,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
   )
 
   const updateChartForDevice = useCallback((deviceId: string, gaitData: GaitData) => {
-    // Optimize state updates by batching them - use callback form to avoid excessive re-renders
-    setAllDataPoints((prev) => {
-      const deviceData = prev.get(deviceId) || []
-
-      // Add new point
-      const newPoint = {
+    // Maintain local history with sliding window
+    setAllDataPoints(prev => {
+      const existing = prev.get(deviceId) || []
+      const next = [...existing, {
         timestamp: gaitData.timestamp,
         R1: gaitData.R1,
         R2: gaitData.R2,
@@ -209,51 +210,47 @@ export default function LiveChart({ isCollecting = false }: Props) {
         X: gaitData.X,
         Y: gaitData.Y,
         Z: gaitData.Z,
-      }
-
-      // Performance optimization: only create new Map if data actually changes
-      const updatedData = [...deviceData, newPoint]
-
-      // Apply time-based filtering to keep only recent data
-      const cutoffTime = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
-      const filteredData = updatedData.filter((point) => point.timestamp >= cutoffTime)
-
-      // Apply maximum points limit
+      }]
+      const cutoff = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
+      const filtered = next.filter(p => p.timestamp >= cutoff)
       const maxPoints = config.bufferConfig.maxChartPoints
-      const finalData =
-        filteredData.length > maxPoints ? filteredData.slice(-maxPoints) : filteredData
-
-      // Only update state if data actually changed
-      if (
-        finalData.length === deviceData.length &&
-        finalData.every(
-          (point, index) => deviceData[index] && point.timestamp === deviceData[index].timestamp,
-        )
-      ) {
-        return prev // No change needed
-      }
-
-      const newMap = new Map(prev)
-      newMap.set(deviceId, finalData)
-      return newMap
+      const finalData = filtered.length > maxPoints ? filtered.slice(-maxPoints) : filtered
+      if (finalData.length === existing.length) return prev
+      const m = new Map(prev)
+      m.set(deviceId, finalData)
+      return m
     })
 
+    // Incrementally append to datasets
     if (!chartRef.current) return
-
     const chart = chartRef.current
-    const currentTime = gaitData.timestamp
-    const windowSize = config.bufferConfig.slidingWindowSeconds
-    const xScale = chart.options.scales?.x
-    if (xScale && typeof xScale === 'object') {
-      if (currentTime <= windowSize) {
-        xScale.min = 0
-        xScale.max = Math.max(windowSize, currentTime + 1)
-      } else {
-        xScale.min = currentTime - windowSize
-        xScale.max = currentTime + 1
+    const channelIndexMap = datasetIndexMapRef.current.get(deviceId)
+    if (channelIndexMap) {
+      channelIndexMap.forEach((dsIndex, channelKey) => {
+        const ds: any = chart.data.datasets[dsIndex]
+        if (!ds) return
+        const value = (gaitData as any)[channelKey]
+        ds.data.push({ x: gaitData.timestamp, y: value })
+        // Periodic prune
+        if (ds.data.length % 50 === 0) {
+          const cutoff = gaitData.timestamp - config.bufferConfig.slidingWindowSeconds
+            ds.data = ds.data.filter((pt: any) => pt.x >= cutoff)
+        }
+      })
+      // Update x-axis window
+      const xScale: any = chart.options.scales?.x
+      if (xScale) {
+        const t = gaitData.timestamp
+        const w = config.bufferConfig.slidingWindowSeconds
+        if (t <= w) {
+          xScale.min = 0
+          xScale.max = Math.max(w, t + 1)
+        } else {
+          xScale.min = t - w
+          xScale.max = t + 1
+        }
       }
     }
-    // chart.update() batched elsewhere for perf
   }, [])
 
   const addBLEDataToChart = useCallback(
@@ -303,30 +300,12 @@ export default function LiveChart({ isCollecting = false }: Props) {
     [updateChartForDevice, bufferManager, getChartTimestamp],
   )
 
+  // Rebuild datasets only when chart mode or color/side context changes
   useEffect(() => {
     if (!chartRef.current) return
-
     const chart = chartRef.current
-
-    // Log only when mode actually changes (not every point)
-    const prevModeRef = (useRef as any)._liveChartPrevMode || ((useRef as any)._liveChartPrevMode = { current: chartMode })
-    if (prevModeRef.current !== chartMode) {
-      console.log(`[LiveChart] Chart mode changed to: ${chartMode}`)
-      prevModeRef.current = chartMode
-    }
-
-    // Throttle dataset rebuild logging
-    const lastLogRef = (useRef as any)._liveChartLastBuild || ((useRef as any)._liveChartLastBuild = { current: 0 })
-    const nowTs = performance.now()
-    const shouldLogBuild = nowTs - lastLogRef.current > 2000
-
-    if (allDataPoints.size === 0) {
-      chart.data.datasets = []
-      chart.update('none')
-      return
-    }
-
-  chart.data.datasets = []
+    chart.data.datasets = []
+    datasetIndexMapRef.current.clear()
 
     const channelConfigs = {
       all: [
@@ -348,53 +327,42 @@ export default function LiveChart({ isCollecting = false }: Props) {
         { key: 'Z' as const, label: 'Z (Accel)', colorKey: 'Z' as const },
       ],
     }
-
     const channelsToShow = channelConfigs[chartMode] || channelConfigs.all
 
-  allDataPoints.forEach((deviceData, deviceId) => {
-      if (deviceData.length === 0) return
-
-  const baseLabel = getDeviceLabel(deviceId)
-  const side = deviceSides.get(deviceId)
-  const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
-      let deviceColorPalette = deviceColors.get(deviceId)
-
-      if (!deviceColorPalette) {
-        console.warn(`[LiveChart] Missing color palette for ${deviceId} – generating fallback.`)
-        const fallbackPalette = generateDeviceColorPalette(deviceId, 0)
-        setDeviceColors((prev) => {
-          const next = new Map(prev)
-          next.set(deviceId, fallbackPalette)
-          return next
-        })
-        deviceColorPalette = fallbackPalette
+    // Seed from existing stored points (most recent snapshot)
+    allDataPoints.forEach((deviceData, deviceId) => {
+      if (!deviceData.length) return
+      const baseLabel = getDeviceLabel(deviceId)
+      const side = deviceSides.get(deviceId)
+      const deviceLabel = side ? `${side}:${baseLabel}` : baseLabel
+      let palette = deviceColors.get(deviceId)
+      if (!palette) {
+        const fallback = generateDeviceColorPalette(deviceId, 0)
+        setDeviceColors(prev => { const next = new Map(prev); next.set(deviceId, fallback); return next })
+        palette = fallback
       }
-
+      const channelIndexMap = new Map<string, number>()
       channelsToShow.forEach(({ key, label, colorKey }) => {
-        const colors = deviceColorPalette[colorKey]
+        const colors = palette![colorKey]
         const datasetLabel = `${deviceLabel} - ${label}`
-
-        const channelData = deviceData.map((point) => ({
-          x: point.timestamp,
-          y: point[key] as number,
-        }))
-
-        const dataset = {
+        const data = deviceData.map(pt => ({ x: pt.timestamp, y: (pt as any)[key] as number }))
+        const ds = {
           label: datasetLabel,
-          data: channelData,
+          data,
           borderColor: colors.primary,
           backgroundColor: colors.background,
           tension: 0.1,
           pointRadius: 0,
           borderWidth: 2,
         }
-
-  chart.data.datasets.push(dataset as any)
+        chart.data.datasets.push(ds as any)
+        channelIndexMap.set(key, chart.data.datasets.length - 1)
       })
+      datasetIndexMapRef.current.set(deviceId, channelIndexMap)
     })
 
-    const yScale = chart.options.scales?.y
-    if (yScale && typeof yScale === 'object' && 'title' in yScale && yScale.title) {
+    const yScale = chart.options.scales?.y as any
+    if (yScale && yScale.title) {
       yScale.title.text =
         chartMode === 'resistance'
           ? 'Resistance Values'
@@ -402,15 +370,10 @@ export default function LiveChart({ isCollecting = false }: Props) {
             ? 'Acceleration (m/s²)'
             : 'Sensor Values'
     }
-
-    if (shouldLogBuild) {
-      console.log(
-        `[LiveChart] Rebuilt datasets (${chart.data.datasets.length} sets, ${allDataPoints.size} devices)`,
-      )
-      lastLogRef.current = nowTs
-    }
     chart.update('none')
-  }, [chartMode, allDataPoints, deviceColors])
+    console.log(`[LiveChart] Dataset rebuild (mode=${chartMode}) -> ${chart.data.datasets.length} datasets`)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartMode, deviceColors, deviceSides])
 
   // Chart initialization effect - create empty chart once
   useEffect(() => {
@@ -516,7 +479,8 @@ export default function LiveChart({ isCollecting = false }: Props) {
       // Reset session baseline & buffers for fresh recording
       sessionBaseRef.current = null
       bufferManager.clearAll()
-      setAllDataPoints(new Map())
+  setAllDataPoints(new Map())
+  datasetIndexMapRef.current.clear()
       // Reset timestamp manager base & cache so relative time restarts at 0
       try {
         clearCache()
