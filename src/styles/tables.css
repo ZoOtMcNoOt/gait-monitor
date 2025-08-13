@@ -123,11 +123,70 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+/* Mid-range tablet adjustments to prevent horizontal scroll before card view kicks in */
+@media (max-width: 900px) {
+  .table-container { overflow-x: hidden; }
+  .logs-table { table-layout: fixed; width: 100%; }
+  .logs-table th, .logs-table td { word-break: break-word; overflow-wrap: anywhere; }
+  /* Allocate proportional widths for clearer alignment */
+  .logs-table tr { width: 100%; }
+  .logs-table td:nth-child(1), .logs-table th:nth-child(1) { width: 22%; }
+  .logs-table td:nth-child(2), .logs-table th:nth-child(2) { width: 12%; }
+  .logs-table td:nth-child(3), .logs-table th:nth-child(3) { width: 22%; }
+  .logs-table td:nth-child(4), .logs-table th:nth-child(4) { width: 11%; }
+  .logs-table td:nth-child(5), .logs-table th:nth-child(5) { width: 11%; }
+  .logs-table td:nth-child(6), .logs-table th:nth-child(6) { width: 14%; }
+  .logs-table td:nth-child(7), .logs-table th:nth-child(7) { width: 8%; }
+  .logs-table .session-name { display: table-cell; }
+  .logs-table .notes-cell { max-width: 140px; }
+  .logs-table .notes-cell span { display: inline-block; width: 100%; }
+  .logs-table td, .logs-table th { padding: 0.55rem 0.5rem; }
+  .logs-table th { font-size: 0.75rem; }
+  .logs-table td { font-size: 0.75rem; }
+  /* Allow actions to wrap if absolutely necessary instead of forcing scroll */
+  .logs-table .actions-cell { white-space: normal; display: flex; gap: 0.25rem; flex-wrap: wrap; }
+  .logs-table .actions-cell .btn-small { flex: 0 0 auto; }
+}
+
 .btn-small {
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
   margin: 0 0.1rem;
   border-radius: calc(var(--radius) * 0.75);
+}
+
+/* Responsive: convert logs table to card/stack layout on narrow screens */
+@media (max-width: 640px) {
+  .logs-table thead { display: none; }
+  .logs-table, .logs-table tbody, .logs-table tr, .logs-table td { display: block; width: 100%; }
+  .logs-table tr { margin: 0 0 0.85rem 0; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-card-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  /* Use CSS grid for stable two-column label/value (prevents ultra-narrow value shrink) */
+  .logs-table td { border: none; padding: 0.5rem 0; position: relative; font-size: 0.8rem; display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: start; column-gap: 0.75rem; row-gap: 0.25rem; word-break: normal; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+  .logs-table td:first-child { padding-top: 0; }
+  .logs-table td:last-child { padding-bottom: 0; }
+  .logs-table td::before { content: attr(data-label); font-weight: 600; text-transform: uppercase; font-size: 0.6rem; opacity: 0.65; letter-spacing: 0.5px; line-height: 1.1; padding-top: 0.15rem; grid-column: 1; word-break: normal; }
+  /* Align session name visually with other fields by normalizing weight if desired */
+  .logs-table td.session-name { font-weight: 600; }
+  .logs-table td.session-name, .logs-table td.notes-cell { overflow-wrap: break-word; word-break: normal; -webkit-hyphens: auto; hyphens: auto; }
+  /* Fallback class (add in markup if ever needed) to force break long unspaced tokens */
+  .force-wrap { overflow-wrap: anywhere; word-break: break-word; }
+  .logs-table td.actions-cell { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 0.5rem; padding-top: 0.5rem; }
+  .logs-table td.actions-cell::before { content: attr(data-label); flex: 0 0 100%; margin-bottom: 0.25rem; grid-column: 1 / -1; white-space: nowrap; word-break: normal; overflow-wrap: normal; letter-spacing: 0.25px; }
+  .logs-table td.actions-cell .btn-small { min-width: 90px; }
+  .logs-table td.notes-cell span { display: inline-block; max-width: 100%; }
+  .logs-table td.notes-cell { max-width: 100%; overflow: visible; }
+}
+
+/* Extra-narrow refinement: stack label above value to let value use full width */
+@media (max-width: 480px) {
+  .logs-table td { grid-template-columns: 1fr !important; column-gap: 0; }
+  .logs-table td::before { grid-column: 1; margin-bottom: 0.2rem; display: block; width: 100%; }
+  .logs-table td.actions-cell { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 0.5rem; width: 100%; padding-top: 0.75rem; }
+  .logs-table td.actions-cell::before { display: none; }
+  .logs-table td.actions-cell .btn-small { width: 100%; min-width: 0; justify-content: center; }
+  /* Tighten card padding slightly for ultra small viewports */
+  .logs-table tr { padding: 0.6rem 0.6rem; }
+  .logs-table td { padding: 0.45rem 0 0.45rem 0; }
 }
 
 /* Empty state styling */

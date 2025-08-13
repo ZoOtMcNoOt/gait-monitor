@@ -9,6 +9,7 @@
   margin: 0 auto;
   padding: clamp(1rem, 4vw, 2rem); /* Responsive padding using fluid typography */
   box-sizing: border-box;
+  overflow-x: hidden; /* Contain accidental horizontal overflow */
 }
 
 .tab-header {
@@ -139,6 +140,7 @@
 @media (max-width: 768px) {
   .tab-content {
     padding: clamp(0.75rem, 3vw, 1rem); /* More refined responsive padding */
+  overflow-x: hidden; /* Reinforce containment at tablet */
   }
 
   .tab-nav {
@@ -264,6 +266,7 @@
 @media (max-width: 480px) {
   .tab-content {
     padding: clamp(0.5rem, 2vw, 0.75rem); /* Even more refined for mobile */
+  overflow-x: hidden; /* Avoid mobile side-scroll */
   }
 
   .tab-panel {

@@ -263,8 +263,6 @@ export default function DeviceList() {
                               {deviceInfo?.rssi !== undefined ? `${deviceInfo.rssi}dBm` : 'N/A'}
                             </span>
                           </div>
-                          <div className="info-row">
-                          </div>
                         </div>
                       </div>
 

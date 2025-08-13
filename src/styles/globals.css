@@ -186,6 +186,39 @@ button:active {
   background: #4b5563;
 }
 
+/* Download button variant: distinct teal tone for differentiation */
+.btn-download {
+  background: #0d9488; /* teal-600 */
+  border-color: #0d9488;
+  color: #fff;
+  min-width: 120px;
+}
+
+.btn-download:hover {
+  background: #0f766e; /* teal-700 */
+  border-color: #0f766e;
+}
+
+.btn-download:focus-visible {
+  outline: 2px solid #14b8a6; /* focus accent */
+  outline-offset: 2px;
+}
+
+/* Dark mode variant for download button (use emerald tone distinct from primary) */
+.dark .btn-download {
+  background: #065f46; /* emerald-800 */
+  border-color: #065f46;
+  color: #ecfdf5;
+}
+.dark .btn-download:hover {
+  background: #047857; /* emerald-700 */
+  border-color: #047857;
+}
+.dark .btn-download:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
 .btn-tertiary {
   background: transparent;
   border-color: var(--color-border);
