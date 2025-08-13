@@ -201,7 +201,10 @@ export default function SettingsTab({ darkMode, onToggleDarkMode }: Props) {
               `Successfully deleted ${deletedCount} session(s) and their data files.`,
             )
           } catch (bulkErr) {
-            console.warn('[Settings] Bulk delete failed, falling back to batched deletion:', bulkErr)
+            console.warn(
+              '[Settings] Bulk delete failed, falling back to batched deletion:',
+              bulkErr,
+            )
             const sessions = await invoke<SessionMetadata[]>('get_sessions')
             const BATCH_SIZE = 5
             const DELAY_MS = 1200 // Slightly above 1s to stay within 30/min if many sessions

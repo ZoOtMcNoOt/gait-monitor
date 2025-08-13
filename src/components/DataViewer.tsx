@@ -70,7 +70,7 @@ export default function DataViewer({ sessionId, sessionName, onClose }: DataView
   const [useDownsampling, setUseDownsampling] = useState<boolean>(true)
   const [enableAnimations] = useState<boolean>(false) // Disabled by default for performance
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false)
-  
+
   // Track chart width for adaptive decimation / thinning
   const chartContainerRef = useRef<HTMLDivElement | null>(null)
   const [chartWidth, setChartWidth] = useState<number>(800)
