@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "gait-monitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "identifier": "com.gaitmonitor",
   "build": {
     "frontendDist": "../dist",
@@ -16,7 +16,7 @@
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": true
       }
     ],
     "security": {
